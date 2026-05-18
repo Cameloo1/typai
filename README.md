@@ -11,12 +11,12 @@ Status: alpha. Packages are local-ready and tested but not yet published to npm.
 Current phase: V4.1 Completion Surface Expansion. V4 Remote Completion
 Prototype is complete, and completion is now an optional package. Current
 completion support covers contenteditable, textarea, React wrappers, and
-CodeMirror ghost rendering/dismissal. CodeMirror completion accept/revert is
-still planned for V4.1. Rich Editor Adapter Foundation is complete for this
-checkpoint. React is available as the app-level integration surface, and
-CodeMirror 6 is the first serious editor integration with protected contexts,
-safe correction transactions, V1B red/blue popovers, and optional ghost
-decorations. Deterministic correction remains local and no-remote.
+CodeMirror ghost rendering, dismiss, Tab accept, completion transactions, and
+exact revert. Rich Editor Adapter Foundation is complete for this checkpoint.
+React is available as the app-level integration surface, and CodeMirror 6 is
+the first serious editor integration with protected contexts, safe correction
+transactions, V1B red/blue popovers, and optional ghost decorations.
+Deterministic correction remains local and no-remote.
 
 ## What this is, structurally
 
@@ -116,11 +116,10 @@ browser extension, LLM, remote model, Codex integration, or local service.
 
 That boundary is not a permanent product exclusion. Advanced work now starts
 with optional `@typai/completion-remote`; current completion support covers
-contenteditable, textarea, React wrappers, and CodeMirror ghost
-rendering/dismissal. CodeMirror completion accept/revert is still planned for
-V4.1. Future planned work includes async grammar/style assistance, richer
-adapters, Codex integration, persistent memory, and next-writing-edit
-prediction.
+contenteditable, textarea, React wrappers, and CodeMirror ghost rendering,
+dismiss, Tab accept, completion transactions, and exact revert. Future planned
+work includes async grammar/style assistance, richer adapters, Codex
+integration, persistent memory, and next-writing-edit prediction.
 
 The rule is: deterministic correction remains local and trustworthy; advanced
 capabilities are separate, explicit, opt-in packages or later phases.
@@ -181,9 +180,9 @@ package named `@typai/completion-remote`. It is scoped to contenteditable first
 and is not imported by `@typai/core` or bundled implicitly into existing
 correction adapters.
 
-V4.1 expands completion to textarea, React, and CodeMirror. CodeMirror ghost
-rendering/dismissal exists now; accept/revert remains planned. Core correction
-remains local and no-remote.
+V4.1 expands completion to textarea, React, and CodeMirror. CodeMirror
+completion now supports ghost rendering, dismiss, Tab accept, completion
+transactions, and exact revert. Core correction remains local and no-remote.
 
 Future planned work also includes async grammar/style assistance, richer
 adapters, Codex integration, persistent memory, and next-writing-edit

@@ -3,6 +3,7 @@ import { EditorView } from "@codemirror/view";
 import { resolveTypaiCodeMirrorOptions } from "./options";
 import { createTypaiCodeMirrorPlugin } from "./plugin";
 import {
+  typaiCodeMirrorCompletionTransactionsField,
   typaiCodeMirrorGhostTextField,
   typaiCodeMirrorMarksField,
   typaiCodeMirrorOptionsFacet,
@@ -19,6 +20,7 @@ export function createTypaiCodeMirrorExtension(options: TypaiCodeMirrorOptions):
     typaiCodeMirrorRuntimeSettingsField,
     typaiCodeMirrorMarksField,
     typaiCodeMirrorGhostTextField,
+    typaiCodeMirrorCompletionTransactionsField,
     typaiCodeMirrorTransactionsField,
     typaiCodeMirrorTheme,
     createTypaiCodeMirrorPlugin(resolvedOptions),

@@ -16,9 +16,9 @@ completion package with provider, scheduler, context, metrics, endpoint
 provider, contenteditable controller, mocked demo, E2E coverage, package
 readiness, and mocked benchmark coverage.
 
-Contenteditable, textarea, and React completion exist today. CodeMirror
-completion has ghost-text rendering and dismiss behavior; accept/revert remains
-the next V4.1 CodeMirror completion step.
+Contenteditable, textarea, React, and CodeMirror completion exist today.
+CodeMirror completion supports ghost-text rendering, dismiss behavior, Tab
+accept, completion transactions, and exact revert.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -50,8 +50,8 @@ deterministic correction adapters in this phase.
 - Contenteditable completion exists and must be preserved.
 - Textarea completion exists and must be preserved.
 - React completion wrappers/components exist and must remain optional.
-- CodeMirror ghost completion exists; Tab accept and exact revert are still
-  next in V4.1.
+- CodeMirror completion exists and must keep accepted completions separate from
+  blue correction marks.
 - Mock providers are used in tests, demos, E2E, and browser benchmark smoke.
 - Endpoint providers require an embedder backend; browser code must not call
   model providers directly.

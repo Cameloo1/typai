@@ -16,6 +16,7 @@ import {
 } from "./decorations";
 import type {
   CodeMirrorCompletionGhost,
+  CodeMirrorCompletionTransaction,
   CodeMirrorTypaiCorrectionTransaction,
   CodeMirrorTypaiMark,
   TypaiCodeMirrorResolvedOptions,
@@ -34,6 +35,9 @@ export const addTypaiCodeMirrorTransactionEffect =
 export const clearTypaiCodeMirrorTransactionsEffect = StateEffect.define<void>();
 export const setTypaiCodeMirrorGhostTextEffect = StateEffect.define<CodeMirrorCompletionGhost>();
 export const clearTypaiCodeMirrorGhostTextEffect = StateEffect.define<void>();
+export const addTypaiCodeMirrorCompletionTransactionEffect =
+  StateEffect.define<CodeMirrorCompletionTransaction>();
+export const clearTypaiCodeMirrorCompletionTransactionsEffect = StateEffect.define<void>();
 export const setTypaiCodeMirrorRuntimeSettingsEffect =
   StateEffect.define<TypaiCodeMirrorRuntimeSettings>();
 
@@ -176,6 +180,30 @@ export const typaiCodeMirrorGhostTextField = StateField.define<DecorationSet>({
   },
 });
 
+export const typaiCodeMirrorCompletionTransactionsField = StateField.define<
+  CodeMirrorCompletionTransaction[]
+>({
+  create() {
+    return [];
+  },
+  update(transactions, transaction) {
+    let nextTransactions = transactions;
+
+    for (const effect of transaction.effects) {
+      if (effect.is(clearTypaiCodeMirrorCompletionTransactionsEffect)) {
+        nextTransactions = [];
+        continue;
+      }
+
+      if (effect.is(addTypaiCodeMirrorCompletionTransactionEffect)) {
+        nextTransactions = [...nextTransactions, effect.value];
+      }
+    }
+
+    return nextTransactions;
+  },
+});
+
 export function getTypaiCodeMirrorMarks(state: {
   field<T>(field: StateField<T>): T;
 }): CodeMirrorTypaiMark[] {
@@ -186,6 +214,12 @@ export function getTypaiCodeMirrorTransactions(state: {
   field<T>(field: StateField<T>): T;
 }): CodeMirrorTypaiCorrectionTransaction[] {
   return state.field(typaiCodeMirrorTransactionsField);
+}
+
+export function getTypaiCodeMirrorCompletionTransactions(state: {
+  field<T>(field: StateField<T>): T;
+}): CodeMirrorCompletionTransaction[] {
+  return state.field(typaiCodeMirrorCompletionTransactionsField);
 }
 
 export function getTypaiCodeMirrorGhostText(state: {

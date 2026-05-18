@@ -10,6 +10,7 @@ import {
   addTypaiCodeMirrorTransactionEffect,
   clearTypaiCodeMirrorGhostTextEffect,
   clearTypaiCodeMirrorMarksEffect,
+  getTypaiCodeMirrorCompletionTransactions,
   getTypaiCodeMirrorGhostText,
   getTypaiCodeMirrorMarks,
   getTypaiCodeMirrorOptions,
@@ -21,6 +22,7 @@ import {
 import type {
   CodeMirrorCompletionGhostMetadata,
   CodeMirrorCompletionSnapshot,
+  CodeMirrorCompletionTransaction,
   CodeMirrorGhostTextClearReason,
   CodeMirrorTypaiCorrectionTransaction,
   CodeMirrorTypaiMark,
@@ -44,6 +46,12 @@ export function getTypaiCodeMirrorViewTransactions(
   view: EditorView,
 ): CodeMirrorTypaiCorrectionTransaction[] {
   return getTypaiCodeMirrorTransactions(view.state);
+}
+
+export function getTypaiCodeMirrorViewCompletionTransactions(
+  view: EditorView,
+): CodeMirrorCompletionTransaction[] {
+  return getTypaiCodeMirrorCompletionTransactions(view.state);
 }
 
 export function renderTypaiCodeMirrorGhostText(
@@ -99,6 +107,28 @@ export function isTypaiCodeMirrorGhostTextVisible(view: EditorView): boolean {
 
 export function getTypaiCodeMirrorGhostTextContent(view: EditorView): string | null {
   return getTypaiCodeMirrorGhostText(view.state)?.text ?? null;
+}
+
+export function revertLastTypaiCodeMirrorCompletion(view: EditorView): boolean {
+  const transaction = getTypaiCodeMirrorCompletionTransactions(view.state).at(-1);
+
+  if (transaction === undefined) {
+    return false;
+  }
+
+  return revertTypaiCodeMirrorCompletionTransaction(view, transaction);
+}
+
+export function revertTypaiCodeMirrorCompletion(view: EditorView, transactionId: string): boolean {
+  const transaction = getTypaiCodeMirrorCompletionTransactions(view.state).find(
+    (candidate) => candidate.id === transactionId,
+  );
+
+  if (transaction === undefined) {
+    return false;
+  }
+
+  return revertTypaiCodeMirrorCompletionTransaction(view, transaction);
 }
 
 export function revertFirstTypaiCodeMirrorCorrection(view: EditorView): boolean {
@@ -418,6 +448,37 @@ function revertTypaiCodeMirrorBlueMark(view: EditorView, mark: CodeMirrorTypaiMa
     effects: removeTypaiCodeMirrorMarkEffect.of(mark.id),
     userEvent: "input.typai.revert",
   });
+
+  return true;
+}
+
+function revertTypaiCodeMirrorCompletionTransaction(
+  view: EditorView,
+  transaction: CodeMirrorCompletionTransaction,
+): boolean {
+  if (
+    transaction.insertedText.length === 0 ||
+    view.state.doc.sliceString(transaction.rangeAfter.from, transaction.rangeAfter.to) !==
+      transaction.insertedText
+  ) {
+    return false;
+  }
+
+  const options = getTypaiCodeMirrorOptions(view.state);
+
+  view.dispatch({
+    changes: {
+      from: transaction.rangeAfter.from,
+      to: transaction.rangeAfter.to,
+      insert: "",
+    },
+    selection: {
+      anchor: transaction.rangeAfter.from,
+    },
+    userEvent: "input.typai.completion.revert",
+  });
+
+  options?.completion?.onCompletionReverted?.(transaction);
 
   return true;
 }

@@ -11,11 +11,13 @@ import {
   type CodeMirrorCompletionController,
   type CodeMirrorCompletionEditor,
   type CodeMirrorCompletionSnapshot,
+  type CodeMirrorCompletionTransaction,
   type CodeMirrorGhostTextClearReason,
   createTypaiCodeMirrorExtension,
   getTypaiCodeMirrorGhostTextContent,
   getTypaiCodeMirrorMarks,
   getTypaiCodeMirrorRuntimeSettings,
+  getTypaiCodeMirrorViewCompletionTransactions,
   getTypaiCodeMirrorViewTransactions,
   isTypaiCodeMirrorGhostTextVisible,
   openFirstTypaiCodeMirrorBluePopover,
@@ -23,6 +25,8 @@ import {
   openTypaiCodeMirrorPopoverForMark,
   renderTypaiCodeMirrorGhostText,
   revertFirstTypaiCodeMirrorCorrection,
+  revertLastTypaiCodeMirrorCompletion,
+  setTypaiCodeMirrorGhostTextEffect,
   typaiCodeMirrorBlueCorrectedClass,
   typaiCodeMirrorGhostTextClass,
   typaiCodeMirrorRedSpellingClass,
@@ -790,6 +794,116 @@ describe("@typai/codemirror scaffold", () => {
     expect(completion.correctionTransactions).toBe(1);
   });
 
+  it("accepts CodeMirror ghost text with Tab and inserts it into the document", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    const tabEvent = dispatchKey(view, "Tab");
+
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(view.state.doc.toString()).toBe("Hello there");
+    expect(view.state.selection.main.head).toBe("Hello there".length);
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.acceptedTransactions).toHaveLength(1);
+  });
+
+  it("records accepted CodeMirror completion transactions", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    dispatchKey(view, "Tab");
+
+    expect(getTypaiCodeMirrorViewCompletionTransactions(view)).toEqual([
+      expect.objectContaining({
+        requestId: "mock-codemirror-completion",
+        rangeBefore: {
+          from: 5,
+          to: 5,
+          text: "",
+        },
+        rangeAfter: {
+          from: 5,
+          to: 11,
+          text: " there",
+        },
+        insertedText: " there",
+        providerName: "mock",
+      }),
+    ]);
+  });
+
+  it("reverts accepted CodeMirror completion text exactly", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    dispatchKey(view, "Tab");
+
+    expect(revertLastTypaiCodeMirrorCompletion(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe("Hello");
+    expect(view.state.selection.main.head).toBe(5);
+    expect(completion.revertedTransactions).toHaveLength(1);
+  });
+
+  it("blocks stale CodeMirror completion accept", async () => {
+    const completion = createMockCompletionController({ ghostText: " stale" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    const snapshot = completion.editor?.getSnapshot();
+
+    if (snapshot === undefined) {
+      throw new Error("Expected completion snapshot.");
+    }
+
+    view.dispatch({
+      effects: setTypaiCodeMirrorGhostTextEffect.of({
+        text: " stale",
+        from: view.state.selection.main.head,
+        snapshot: {
+          ...snapshot,
+          version: snapshot.version - 1,
+        },
+        metadata: {
+          requestId: "stale-request",
+        },
+      }),
+    });
+
+    const tabEvent = dispatchKey(view, "Tab");
+
+    expect(tabEvent.defaultPrevented).toBe(false);
+    expect(view.state.doc.toString()).toBe("Hello");
+    expect(getTypaiCodeMirrorViewCompletionTransactions(view)).toEqual([]);
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("stale");
+  });
+
+  it("does not create blue correction marks for accepted CodeMirror completions", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    dispatchKey(view, "Tab");
+
+    expect(getTypaiCodeMirrorMarks(view.state)).toEqual([]);
+    expect(view.dom.querySelector(`.${typaiCodeMirrorBlueCorrectedClass}`)).toBeNull();
+  });
+
+  it("continues normal typing after accepting a CodeMirror completion", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    dispatchKey(view, "Tab");
+    completion.renderOnInput = false;
+    await typeText(view, "!");
+
+    expect(view.state.doc.toString()).toBe("Hello there!");
+  });
+
   it("suppresses CodeMirror completion in protected code contexts", async () => {
     const completion = createMockCompletionController({ ghostText: " there" });
     const view = createEditor({
@@ -804,14 +918,21 @@ describe("@typai/codemirror scaffold", () => {
     expect(completion.inputSnapshots).toEqual([]);
   });
 
-  it("does not create blue correction marks for CodeMirror ghost text", async () => {
+  it("keeps protected code contexts protected when Tab is pressed", async () => {
     const completion = createMockCompletionController({ ghostText: " there" });
-    const view = createEditor({ completion });
+    const view = createEditor({
+      doc: "```ts\n",
+      extensions: [markdown()],
+      completion,
+    });
 
-    await typeText(view, "Hello");
+    await typeText(view, "const value = 1");
+    const tabEvent = dispatchKey(view, "Tab");
 
+    expect(tabEvent.defaultPrevented).toBe(false);
+    expect(view.state.doc.toString()).toBe("```ts\nconst value = 1");
     expect(getTypaiCodeMirrorMarks(view.state)).toEqual([]);
-    expect(view.dom.querySelector(`.${typaiCodeMirrorBlueCorrectedClass}`)).toBeNull();
+    expect(getTypaiCodeMirrorViewCompletionTransactions(view)).toEqual([]);
   });
 
   it("keeps @typai/core free of completion-remote imports", () => {
@@ -869,6 +990,8 @@ type MockCompletionController = CodeMirrorCompletionController & {
   inputSnapshots: CodeMirrorCompletionSnapshot[];
   selectionSnapshots: CodeMirrorCompletionSnapshot[];
   dismissReasons: CodeMirrorGhostTextClearReason[];
+  acceptedTransactions: CodeMirrorCompletionTransaction[];
+  revertedTransactions: CodeMirrorCompletionTransaction[];
   compositionStarts: number;
   blurs: number;
   correctionTransactions: number;
@@ -886,6 +1009,8 @@ function createMockCompletionController(
     inputSnapshots: [],
     selectionSnapshots: [],
     dismissReasons: [],
+    acceptedTransactions: [],
+    revertedTransactions: [],
     compositionStarts: 0,
     blurs: 0,
     correctionTransactions: 0,
@@ -921,6 +1046,12 @@ function createMockCompletionController(
     onCorrectionTransaction() {
       controller.correctionTransactions += 1;
     },
+    onCompletionAccepted(transaction) {
+      controller.acceptedTransactions.push(transaction);
+    },
+    onCompletionReverted(transaction) {
+      controller.revertedTransactions.push(transaction);
+    },
     onGhostTextDismiss(reason) {
       controller.dismissReasons.push(reason);
     },
@@ -951,6 +1082,14 @@ function typeTextWithoutFlush(view: EditorView, text: string): void {
 
 function getGhostElement(view: EditorView): HTMLElement | null {
   return view.dom.querySelector<HTMLElement>(`.${typaiCodeMirrorGhostTextClass}`);
+}
+
+function dispatchKey(view: EditorView, key: string): KeyboardEvent {
+  const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key });
+
+  view.contentDOM.dispatchEvent(event);
+
+  return event;
 }
 
 async function flushMicrotasks(): Promise<void> {

@@ -34,10 +34,15 @@ ghost text when a host passes a structural completion controller.
   document.
 - Completion ghost text clears on typing, Escape, selection changes,
   composition, blur, paste, correction transactions, and stale snapshots.
+- Tab accepts visible ghost text with a CodeMirror transaction after stale
+  snapshot checks.
+- Accepted completion creates a completion transaction and does not create a
+  blue correction mark.
+- Exact revert removes the inserted completion text only when the recorded
+  inserted range still matches.
 - Completion controllers are passed in by the host; this package does not
   construct providers or require `@typai/completion-remote`.
 - No CodeMirror 5 support.
-- No completion accept/revert yet.
 - No OpenAI/provider endpoint.
 
 ## Dependency Policy
@@ -120,8 +125,22 @@ const extension = createTypaiCodeMirrorExtension({
 });
 ```
 
-The current CodeMirror completion layer only renders and dismisses ghost text.
-Tab accept and exact revert are intentionally left for the next V4.1 prompt.
+The current CodeMirror completion layer renders ghost text, accepts it with Tab,
+and supports exact revert through CodeMirror-native transactions:
+
+```ts
+import {
+  getTypaiCodeMirrorViewCompletionTransactions,
+  revertLastTypaiCodeMirrorCompletion,
+} from "@typai/codemirror";
+
+getTypaiCodeMirrorViewCompletionTransactions(view);
+revertLastTypaiCodeMirrorCompletion(view);
+```
+
+Accepted completions are not correction marks. They do not use the blue
+applied-correction decoration because blue remains reserved for deterministic
+corrections that Typai changed.
 
 ## Popovers And Controls
 

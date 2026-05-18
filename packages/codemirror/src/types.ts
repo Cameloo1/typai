@@ -78,6 +78,27 @@ export type CodeMirrorCompletionGhost = {
   metadata?: CodeMirrorCompletionGhostMetadata;
 };
 
+export type CodeMirrorCompletionTransaction = {
+  id: string;
+  requestId: string;
+  documentVersion: number;
+  rangeBefore: {
+    from: number;
+    to: number;
+    text: string;
+  };
+  rangeAfter: {
+    from: number;
+    to: number;
+    text: string;
+  };
+  insertedText: string;
+  createdAt: number;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+};
+
 export type CodeMirrorCompletionEditor = {
   renderGhostTextAtCaret(
     text: string,
@@ -97,6 +118,8 @@ export type CodeMirrorCompletionController = {
   onEditorBlur?(): void;
   onEditorCompositionStart?(): void;
   onCorrectionTransaction?(): void;
+  onCompletionAccepted?(transaction: CodeMirrorCompletionTransaction): void;
+  onCompletionReverted?(transaction: CodeMirrorCompletionTransaction): void;
   onGhostTextDismiss?(
     reason: CodeMirrorGhostTextClearReason,
     snapshot: CodeMirrorCompletionSnapshot,

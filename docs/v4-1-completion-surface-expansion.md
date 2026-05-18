@@ -121,8 +121,7 @@ Recommended V4.1 sequence:
 6. V4.1-5: React hooks/components for contenteditable and textarea completion.
 7. V4.1-6: React mocked tests and demo wiring.
 8. V4.1-7: CodeMirror ghost-text decoration layer and dismiss behavior.
-9. V4.1-8: CodeMirror accept, transaction, revert, mocked tests, and demo
-   wiring.
+9. V4.1-8: CodeMirror accept, transaction, and revert.
 10. V4.1-9: cross-surface conformance audit.
 11. V4.1-10: optional streaming experiment behind a feature flag, mocked only,
     after non-streaming surfaces are stable.

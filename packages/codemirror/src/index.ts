@@ -4,6 +4,7 @@ export {
   clearTypaiCodeMirrorMarks,
   closeTypaiCodeMirrorPopover,
   getTypaiCodeMirrorGhostTextContent,
+  getTypaiCodeMirrorViewCompletionTransactions,
   getTypaiCodeMirrorViewMarks,
   getTypaiCodeMirrorViewTransactions,
   ignoreFirstTypaiCodeMirrorRedMark,
@@ -13,7 +14,9 @@ export {
   openTypaiCodeMirrorPopoverForMark,
   renderTypaiCodeMirrorGhostText,
   revertFirstTypaiCodeMirrorCorrection,
+  revertLastTypaiCodeMirrorCompletion,
   revertSelectedTypaiCodeMirrorCorrection,
+  revertTypaiCodeMirrorCompletion,
 } from "./commands";
 export { createTypaiCodeMirrorExtension } from "./createTypaiCodeMirrorExtension";
 export {
@@ -22,7 +25,10 @@ export {
   typaiCodeMirrorRedSpellingClass,
 } from "./decorations";
 export {
+  addTypaiCodeMirrorCompletionTransactionEffect,
+  clearTypaiCodeMirrorCompletionTransactionsEffect,
   clearTypaiCodeMirrorGhostTextEffect,
+  getTypaiCodeMirrorCompletionTransactions,
   getTypaiCodeMirrorGhostText,
   getTypaiCodeMirrorMarks,
   getTypaiCodeMirrorOptions,
@@ -30,6 +36,7 @@ export {
   getTypaiCodeMirrorTransactions,
   setTypaiCodeMirrorGhostTextEffect,
   setTypaiCodeMirrorRuntimeSettingsEffect,
+  typaiCodeMirrorCompletionTransactionsField,
   typaiCodeMirrorGhostTextField,
   typaiCodeMirrorMarksField,
   typaiCodeMirrorOptionsFacet,
@@ -43,6 +50,7 @@ export type {
   CodeMirrorCompletionGhostMetadata,
   CodeMirrorCompletionMode,
   CodeMirrorCompletionSnapshot,
+  CodeMirrorCompletionTransaction,
   CodeMirrorGhostTextClearReason,
   CodeMirrorTypaiCorrectionTransaction,
   CodeMirrorTypaiCorrectionTrigger,

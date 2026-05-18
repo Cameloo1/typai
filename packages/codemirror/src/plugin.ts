@@ -7,6 +7,7 @@ import {
   isProtectedCodeMirrorToken,
 } from "./protectedContexts";
 import {
+  addTypaiCodeMirrorCompletionTransactionEffect,
   addTypaiCodeMirrorMarkEffect,
   addTypaiCodeMirrorTransactionEffect,
   clearTypaiCodeMirrorGhostTextEffect,
@@ -17,6 +18,7 @@ import {
 import type {
   CodeMirrorCompletionGhostMetadata,
   CodeMirrorCompletionSnapshot,
+  CodeMirrorCompletionTransaction,
   CodeMirrorGhostTextClearReason,
   CodeMirrorTypaiCorrectionTransaction,
   CodeMirrorTypaiCorrectionTrigger,
@@ -71,7 +73,12 @@ export function createTypaiCodeMirrorPlugin(resolvedOptions: TypaiCodeMirrorReso
         this.documentVersion += 1;
 
         if (isTypaiGeneratedUpdate(update)) {
-          this.handleCorrectionTransaction(getTypaiCodeMirrorGhostText(update.startState) !== null);
+          if (isTypaiCorrectionGeneratedUpdate(update)) {
+            this.handleCorrectionTransaction(
+              getTypaiCodeMirrorGhostText(update.startState) !== null,
+            );
+          }
+
           return;
         }
 
@@ -228,6 +235,65 @@ export function createTypaiCodeMirrorPlugin(resolvedOptions: TypaiCodeMirrorReso
             metadata,
           }),
         });
+
+        return true;
+      }
+
+      acceptGhostText(): boolean {
+        const ghost = getTypaiCodeMirrorGhostText(this.view.state);
+        const selection = this.view.state.selection.main;
+
+        if (
+          ghost === null ||
+          ghost.from !== selection.head ||
+          !this.isFreshCompletionSnapshot(ghost.snapshot)
+        ) {
+          if (ghost !== null) {
+            this.clearGhostText("stale");
+          }
+
+          return false;
+        }
+
+        const insertedText = ghost.text;
+        const transaction: CodeMirrorCompletionTransaction = {
+          id: this.createId("completion-tx"),
+          requestId: ghost.metadata?.requestId ?? this.createId("completion-request"),
+          documentVersion: this.documentVersion,
+          rangeBefore: {
+            from: selection.head,
+            to: selection.head,
+            text: "",
+          },
+          rangeAfter: {
+            from: selection.head,
+            to: selection.head + insertedText.length,
+            text: insertedText,
+          },
+          insertedText,
+          createdAt: Date.now(),
+          providerName: ghost.metadata?.providerName,
+          model: ghost.metadata?.model,
+          latencyMs: ghost.metadata?.latencyMs,
+        };
+
+        this.view.dispatch({
+          changes: {
+            from: transaction.rangeBefore.from,
+            to: transaction.rangeBefore.to,
+            insert: insertedText,
+          },
+          selection: {
+            anchor: transaction.rangeAfter.to,
+          },
+          effects: [
+            clearTypaiCodeMirrorGhostTextEffect.of(),
+            addTypaiCodeMirrorCompletionTransactionEffect.of(transaction),
+          ],
+          userEvent: "input.typai.completion.accept",
+        });
+
+        resolvedOptions.completion?.onCompletionAccepted?.(transaction);
 
         return true;
       }
@@ -424,6 +490,17 @@ export function createTypaiCodeMirrorPlugin(resolvedOptions: TypaiCodeMirrorReso
           return openTypaiCodeMirrorPopoverForMark(view, markId);
         },
         keydown(event, view) {
+          if (event.key === "Tab") {
+            if (!this.acceptGhostText()) {
+              return false;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            return true;
+          }
+
           if (event.key === "Escape") {
             if (!this.clearGhostText("escape")) {
               return false;
@@ -482,9 +559,30 @@ function isDelimiterBeforeCursor(view: EditorView): boolean {
 function isTypaiGeneratedUpdate(update: ViewUpdate): boolean {
   return update.transactions.some(
     (transaction) =>
-      transaction.isUserEvent("input.typai.correct") ||
-      transaction.isUserEvent("input.typai.suggestion") ||
-      transaction.isUserEvent("input.typai.revert"),
+      isTypaiCorrectionTransaction(transaction) || isTypaiCompletionTransaction(transaction),
+  );
+}
+
+function isTypaiCorrectionGeneratedUpdate(update: ViewUpdate): boolean {
+  return update.transactions.some((transaction) => isTypaiCorrectionTransaction(transaction));
+}
+
+function isTypaiCorrectionTransaction(transaction: {
+  isUserEvent(event: string): boolean;
+}): boolean {
+  return (
+    transaction.isUserEvent("input.typai.correct") ||
+    transaction.isUserEvent("input.typai.suggestion") ||
+    transaction.isUserEvent("input.typai.revert")
+  );
+}
+
+function isTypaiCompletionTransaction(transaction: {
+  isUserEvent(event: string): boolean;
+}): boolean {
+  return (
+    transaction.isUserEvent("input.typai.completion.accept") ||
+    transaction.isUserEvent("input.typai.completion.revert")
   );
 }
 

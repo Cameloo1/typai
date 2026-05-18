@@ -243,11 +243,9 @@ completion request, and verifies `@typai/core` does not depend on
 
 ## Docs
 
-- [docs/v4-remote-completion.md](./docs/v4-remote-completion.md) - V4 remote completion prototype scope
-- [docs/v4-remote-completion-complete.md](./docs/v4-remote-completion-complete.md) - V4 hardening audit and completion checkpoint
-- [docs/package-readiness.md](./docs/package-readiness.md) - local package, smoke install, CI, and benchmark gates
 - [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) - textarea completion audit
 
 ## License
 
 License not selected yet.
+

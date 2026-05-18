@@ -17,6 +17,7 @@ import {
 } from "@typai/core";
 import {
   attachTextarea,
+  type TextareaCompletionSnapshot,
   type TextareaCorrectionEvent,
   type TextareaDecisionEvent,
   type TextareaMark,
@@ -25,11 +26,6 @@ import {
   type TextareaProtectedSkipEvent,
 } from "@typai/textarea";
 import { measureCaretInOverlayMirror } from "../../../packages/textarea/src/completion/caretGeometry";
-import {
-  clearExperimentalCaretGhost,
-  type ExperimentalTextareaCaretGhost,
-  renderExperimentalCaretGhost,
-} from "../../../packages/textarea/src/completion/textareaGhostFeasibility";
 import { mountCodeMirrorDemo, mountCodexMockDemo } from "./codemirrorDemo";
 import { type DemoMark, pruneStaleMarks, renderMarkedText } from "./markRendering";
 import { mountReactDemo } from "./reactDemo";
@@ -107,6 +103,7 @@ declare global {
     __typaiDebug?: TypaiDemoDebug;
     __typaiTextareaDebug?: TypaiTextareaDemoDebug;
     __typaiTextareaGhostFeasibility?: TypaiTextareaGhostFeasibilityDebug;
+    __typaiTextareaGhostRenderer?: TypaiTextareaGhostFeasibilityDebug;
   }
 }
 
@@ -687,8 +684,8 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
   let storage = createDemoStorage(storageMode);
   let core = await createTypaiCore({ storage });
   let adapter: ReturnType<typeof attachTextarea> | null = null;
-  let experimentalGhost: ExperimentalTextareaCaretGhost | null = null;
   let suppressMarkRemovedMetrics = false;
+  let latestCompletionSnapshot: TextareaCompletionSnapshot | null = null;
 
   const updateDebug = () => {
     setText(elements.debugEls.lastDecision, metrics.lastDecision);
@@ -758,6 +755,7 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
 
   const attachAdapter = () => {
     adapter?.();
+    latestCompletionSnapshot = null;
     adapter = attachTextarea({
       textarea: elements.textarea,
       typai: core,
@@ -771,6 +769,34 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
         enabled: true,
         className: "typai-textarea-demo-overlay",
       },
+      completion: {
+        onEditorInput(snapshot) {
+          latestCompletionSnapshot = snapshot;
+        },
+        onEditorSelectionChange(snapshot) {
+          latestCompletionSnapshot = snapshot;
+        },
+        onEditorBlur() {
+          latestCompletionSnapshot = null;
+        },
+        onEditorCompositionStart() {
+          latestCompletionSnapshot = null;
+        },
+        onCorrectionTransaction() {
+          latestCompletionSnapshot = {
+            text: elements.textarea.value,
+            version: (latestCompletionSnapshot?.version ?? 0) + 1,
+            selection: {
+              start: elements.textarea.selectionStart,
+              end: elements.textarea.selectionEnd,
+            },
+            isComposingIME: false,
+          };
+        },
+        destroy() {
+          latestCompletionSnapshot = null;
+        },
+      },
       onDecision,
       onCorrection,
       onMark,
@@ -781,16 +807,14 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
   };
 
   const clearTextareaGhostFeasibility = () => {
-    experimentalGhost?.clear();
-    experimentalGhost = null;
-    clearExperimentalCaretGhost();
+    adapter?.clearTextareaGhostText("manual");
   };
   const getGhostFeasibilitySnapshot = (): TextareaGhostFeasibilitySnapshot | null => {
-    if (experimentalGhost === null) {
+    if (adapter === null || !adapter.isTextareaGhostVisible()) {
       return null;
     }
 
-    return getTextareaGhostFeasibilitySnapshot(elements.textarea, experimentalGhost);
+    return getTextareaGhostFeasibilitySnapshot(elements.textarea, adapter);
   };
 
   const reinitializeCore = async () => {
@@ -922,19 +946,36 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
   };
   window.__typaiTextareaGhostFeasibility = {
     render(text, offset = elements.textarea.selectionStart) {
-      clearTextareaGhostFeasibility();
-      experimentalGhost = renderExperimentalCaretGhost(elements.textarea, text, offset);
+      const snapshot = getTextareaCompletionSnapshotForDemo(
+        elements.textarea,
+        latestCompletionSnapshot,
+        offset,
+      );
 
-      return getTextareaGhostFeasibilitySnapshot(elements.textarea, experimentalGhost);
-    },
-    resync(offset = experimentalGhost?.offset ?? elements.textarea.selectionStart) {
-      if (experimentalGhost === null) {
-        experimentalGhost = renderExperimentalCaretGhost(elements.textarea, "", offset);
-      } else {
-        experimentalGhost.resync(offset);
+      if (adapter?.renderTextareaGhostText(text, snapshot) !== true) {
+        throw new Error("Textarea ghost renderer did not render.");
       }
 
-      return getTextareaGhostFeasibilitySnapshot(elements.textarea, experimentalGhost);
+      latestCompletionSnapshot = snapshot;
+
+      return getTextareaGhostFeasibilitySnapshot(elements.textarea, adapter);
+    },
+    resync(offset = elements.textarea.selectionStart) {
+      if (adapter === null || !adapter.isTextareaGhostVisible()) {
+        throw new Error("Textarea ghost renderer has no visible ghost to resync.");
+      }
+
+      const text = adapter.getTextareaGhostText() ?? "";
+      const snapshot = getTextareaCompletionSnapshotForDemo(
+        elements.textarea,
+        latestCompletionSnapshot,
+        offset,
+      );
+
+      adapter.renderTextareaGhostText(text, snapshot);
+      latestCompletionSnapshot = snapshot;
+
+      return getTextareaGhostFeasibilitySnapshot(elements.textarea, adapter);
     },
     clear() {
       clearTextareaGhostFeasibility();
@@ -943,6 +984,7 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
       return getGhostFeasibilitySnapshot();
     },
   };
+  window.__typaiTextareaGhostRenderer = window.__typaiTextareaGhostFeasibility;
   metrics.lastDecision = "Ready.";
   updateDebug();
 }
@@ -1028,25 +1070,51 @@ function markTextareaOverlayForTests(textarea: HTMLTextAreaElement): void {
 
 function getTextareaGhostFeasibilitySnapshot(
   textarea: HTMLTextAreaElement,
-  ghost: ExperimentalTextareaCaretGhost,
+  adapter: ReturnType<typeof attachTextarea>,
 ): TextareaGhostFeasibilitySnapshot {
-  const ghostRect = rectSnapshot(ghost.getRect());
+  const ghost = textarea.parentElement?.querySelector<HTMLElement>(
+    "[data-typai-textarea-ghost='true']",
+  );
+
+  if (ghost === undefined || ghost === null) {
+    throw new Error("Textarea ghost element is not visible.");
+  }
+
+  const offset = Number.parseInt(ghost.dataset.typaiTextareaGhostOffset ?? "", 10);
+  const safeOffset = Number.isFinite(offset) ? offset : textarea.selectionStart;
+  const ghostRect = rectSnapshot(ghost.getBoundingClientRect());
   const overlay = textarea.parentElement?.querySelector<HTMLElement>(
     "[data-testid='textarea-overlay']",
   );
   const caretRect =
     overlay === undefined || overlay === null
       ? null
-      : rectSnapshot(measureCaretInOverlayMirror(textarea, overlay, ghost.offset));
+      : rectSnapshot(measureCaretInOverlayMirror(textarea, overlay, safeOffset));
 
   return {
     textareaValue: textarea.value,
-    ghostText: ghost.ghost.textContent ?? "",
-    offset: ghost.offset,
+    ghostText: adapter.getTextareaGhostText() ?? "",
+    offset: safeOffset,
     ghostRect,
     caretRect,
     deltaLeft: caretRect === null ? null : ghostRect.left - caretRect.left,
     deltaTop: caretRect === null ? null : ghostRect.top - caretRect.top,
+  };
+}
+
+function getTextareaCompletionSnapshotForDemo(
+  textarea: HTMLTextAreaElement,
+  latestSnapshot: TextareaCompletionSnapshot | null,
+  offset: number,
+): TextareaCompletionSnapshot {
+  return {
+    text: textarea.value,
+    version: latestSnapshot?.text === textarea.value ? latestSnapshot.version : 0,
+    selection: {
+      start: offset,
+      end: offset,
+    },
+    isComposingIME: false,
   };
 }
 

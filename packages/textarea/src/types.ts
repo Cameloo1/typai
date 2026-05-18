@@ -19,6 +19,39 @@ export type TextareaSnapshot = {
   isComposingIME: boolean;
 };
 
+export type TextareaCompletionMode = "prose" | "prompt" | "markdown" | "command" | "code";
+
+export type TextareaCompletionSnapshot = {
+  text: string;
+  version: number;
+  selection: { start: number; end: number };
+  isComposingIME: boolean;
+  mode?: TextareaCompletionMode;
+};
+
+export type TextareaCompletionController = {
+  onEditorInput?(snapshot: TextareaCompletionSnapshot): void;
+  onEditorSelectionChange?(snapshot: TextareaCompletionSnapshot): void;
+  onEditorBlur?(): void;
+  onEditorCompositionStart?(): void;
+  onCorrectionTransaction?(): void;
+  destroy?(): void;
+};
+
+export type TextareaGhostTextClearReason =
+  | "manual"
+  | "typing"
+  | "escape"
+  | "selection_change"
+  | "composition_start"
+  | "blur"
+  | "paste"
+  | "correction_transaction"
+  | "stale_snapshot"
+  | "empty"
+  | "overlay_unavailable"
+  | "detach";
+
 export type TextareaMark = {
   id: string;
   range: TextareaRange;
@@ -98,6 +131,7 @@ export type AttachTextareaOptions = {
     enabled?: boolean;
     className?: string;
   };
+  completion?: TextareaCompletionController;
   onDecision?: (event: TextareaDecisionEvent) => void;
   onCorrection?: (event: TextareaCorrectionEvent) => void;
   onMark?: (event: TextareaMarkEvent) => void;
@@ -110,4 +144,8 @@ export type DetachTextarea = (() => void) & {
   getSettings(): TextareaAdapterSettings;
   updateSettings(settings: Partial<TextareaAdapterSettings>): void;
   resyncOverlay(): void;
+  renderTextareaGhostText(text: string, snapshot: TextareaCompletionSnapshot): boolean;
+  clearTextareaGhostText(reason?: TextareaGhostTextClearReason): void;
+  isTextareaGhostVisible(): boolean;
+  getTextareaGhostText(): string | null;
 };

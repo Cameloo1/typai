@@ -51,7 +51,10 @@ export type TypaiAdapterDebugState = {
   lastError: unknown;
 };
 
-export type TypaiTextareaHookOptions = Omit<AttachTextareaOptions, "textarea" | "typai"> & {
+export type TypaiTextareaHookOptions = Omit<
+  AttachTextareaOptions,
+  "textarea" | "typai" | "completion"
+> & {
   typai?: TypaiCore;
   textareaRef?: Ref<HTMLTextAreaElement>;
   disabled?: boolean;

@@ -28,7 +28,7 @@ type TextareaGhostFeasibilityWindow = Window & {
   };
 };
 
-test("textarea experimental ghost tracks caret geometry without mutating value", async ({
+test("textarea ghost renderer tracks caret geometry without mutating value", async ({
   page,
 }, testInfo) => {
   await openTextareaDemo(page, testInfo);
@@ -51,11 +51,9 @@ test("textarea experimental ghost tracks caret geometry without mutating value",
     { value, offset },
   );
 
-  const initial = await renderGhost(page, " with an experimental ghost.", offset);
+  const initial = await renderGhost(page, " with a renderer ghost.", offset);
 
-  await expect(page.getByTestId("textarea-experimental-ghost")).toHaveText(
-    " with an experimental ghost.",
-  );
+  await expect(page.getByTestId("textarea-ghost-text")).toHaveText(" with a renderer ghost.");
   await expect(textarea).toHaveValue(value);
   expectWithinCaretTolerance(initial);
 
@@ -89,7 +87,7 @@ test("textarea experimental ghost tracks caret geometry without mutating value",
   await page.evaluate(() => {
     (window as TextareaGhostFeasibilityWindow).__typaiTextareaGhostFeasibility?.clear();
   });
-  await expect(page.getByTestId("textarea-experimental-ghost")).toHaveCount(0);
+  await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
   await expect(textarea).toHaveValue(value);
 });
 

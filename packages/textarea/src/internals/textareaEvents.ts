@@ -1,4 +1,11 @@
-export type TextareaEventName = "compositionstart" | "compositionend" | "input";
+export type TextareaEventName =
+  | "blur"
+  | "compositionstart"
+  | "compositionend"
+  | "input"
+  | "keydown"
+  | "paste"
+  | "select";
 
 export type TextareaEventDisposables = {
   add(dispose: () => void): void;

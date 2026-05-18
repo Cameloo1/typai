@@ -150,6 +150,15 @@ describe("attachTextarea event core", () => {
 
     expect(detach.isTextareaGhostVisible()).toBe(false);
     expect(detach.getTextareaGhostText()).toBeNull();
+    expect(detach.getTextareaCompletionTransactions()).toEqual([]);
+    expect(detach.acceptTextareaCompletion()).toEqual({
+      applied: false,
+      reason: "no_visible_ghost",
+    });
+    expect(detach.revertTextareaCompletion("missing")).toEqual({
+      applied: false,
+      reason: "missing_transaction",
+    });
     expect(
       detach.renderTextareaGhostText(" world", {
         text: "hello",

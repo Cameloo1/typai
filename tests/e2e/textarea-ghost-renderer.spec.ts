@@ -25,8 +25,73 @@ type TextareaGhostRendererWindow = Window & {
     resync(offset?: number): TextareaGhostSnapshot;
     clear(): void;
     getSnapshot(): TextareaGhostSnapshot | null;
+    accept(): TextareaCompletionAcceptResult;
+    revertLast(): TextareaCompletionRevertResult;
+    getTransactions(): TextareaCompletionTransaction[];
   };
 };
+
+type TextareaCompletionTransaction = {
+  id: string;
+  requestId: string;
+  editorVersion: number;
+  rangeBefore: { start: number; end: number; text: string };
+  rangeAfter: { start: number; end: number; text: string };
+  insertedText: string;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+};
+
+type TextareaCompletionAcceptResult = {
+  applied: boolean;
+  transaction?: TextareaCompletionTransaction;
+  reason?: string;
+};
+
+type TextareaCompletionRevertResult = {
+  applied: boolean;
+  transaction?: TextareaCompletionTransaction;
+  reason?: string;
+};
+
+test("textarea Tab accepts ghost text and exact revert removes it", async ({ page }, testInfo) => {
+  await openTextareaDemo(page, testInfo);
+  const textarea = page.getByTestId("textarea-editor");
+  const value = "Draft";
+
+  await setTextareaValue(page, value);
+  await textarea.focus();
+  await renderGhost(page, " accepted completion", value.length);
+  await page.keyboard.press("Tab");
+
+  await expect(textarea).toHaveValue("Draft accepted completion");
+  await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
+  await expect(page.getByTestId("textarea-blue-mark")).toHaveCount(0);
+
+  const transactions = await getTransactions(page);
+
+  expect(transactions).toHaveLength(1);
+  expect(transactions[0]).toMatchObject({
+    requestId: "textarea-demo-completion-1-5",
+    editorVersion: 1,
+    rangeBefore: { start: 5, end: 5, text: "" },
+    rangeAfter: { start: 5, end: 25, text: " accepted completion" },
+    insertedText: " accepted completion",
+    providerName: "demo-mock",
+    model: "mock-textarea",
+    latencyMs: 0,
+  });
+
+  const revertResult = await page.evaluate(
+    () =>
+      (window as TextareaGhostRendererWindow).__typaiTextareaGhostRenderer?.revertLast() ?? null,
+  );
+
+  expect(revertResult).toMatchObject({ applied: true });
+  await expect(textarea).toHaveValue(value);
+  await expect(page.getByTestId("textarea-blue-mark")).toHaveCount(0);
+});
 
 test("textarea ghost renderer is visual-only and excluded from form submission", async ({
   page,
@@ -58,14 +123,14 @@ test("textarea ghost renderer clears on editor invalidators", async ({ page }, t
   const textarea = page.getByTestId("textarea-editor");
 
   await setTextareaValue(page, "typing");
+  await textarea.focus();
   await renderGhost(page, " ghost", "typing".length);
-  await textarea.click();
   await page.keyboard.type("x");
   await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
 
   await setTextareaValue(page, "escape");
+  await textarea.focus();
   await renderGhost(page, " ghost", "escape".length);
-  await textarea.click();
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
 
@@ -102,13 +167,36 @@ test("textarea ghost renderer clears on editor invalidators", async ({ page }, t
   await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
 });
 
+test("textarea Space and Enter dismiss ghost without accepting", async ({ page }, testInfo) => {
+  await openTextareaDemo(page, testInfo);
+  const textarea = page.getByTestId("textarea-editor");
+
+  await setTextareaValue(page, "space");
+  await textarea.focus();
+  await renderGhost(page, " ghost", "space".length);
+  await page.keyboard.press("Space");
+
+  await expect(textarea).toHaveValue("space ");
+  await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
+  expect(await getTransactions(page)).toEqual([]);
+
+  await setTextareaValue(page, "enter");
+  await textarea.focus();
+  await renderGhost(page, " ghost", "enter".length);
+  await page.keyboard.press("Enter");
+
+  await expect(textarea).toHaveValue("enter\n");
+  await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
+  expect(await getTransactions(page)).toEqual([]);
+});
+
 test("textarea correction transactions clear ghost text", async ({ page }, testInfo) => {
   await openTextareaDemo(page, testInfo);
   const textarea = page.getByTestId("textarea-editor");
 
   await setTextareaValue(page, "teh");
+  await textarea.focus();
   await renderGhost(page, " ghost", 3);
-  await textarea.click();
   await page.keyboard.type(" ");
 
   await expect(textarea).toHaveValue("the ");
@@ -118,21 +206,21 @@ test("textarea correction transactions clear ghost text", async ({ page }, testI
 
 test("stale textarea ghost snapshots are blocked", async ({ page }, testInfo) => {
   await openTextareaDemo(page, testInfo);
+  const textarea = page.getByTestId("textarea-editor");
+
   await setTextareaValue(page, "fresh");
-
-  const rendered = await page.evaluate(() => {
-    const renderer = (window as TextareaGhostRendererWindow).__typaiTextareaGhostRenderer;
-
-    try {
-      renderer?.render(" stale", 0);
-      return true;
-    } catch {
-      return false;
-    }
+  await renderGhost(page, " stale", "fresh".length);
+  await textarea.evaluate((element) => {
+    element.value = "fresh changed";
+    element.selectionStart = element.value.length;
+    element.selectionEnd = element.value.length;
   });
+  await textarea.focus();
+  await page.keyboard.press("Tab");
 
-  expect(rendered).toBe(false);
+  await expect(textarea).toHaveValue("fresh changed");
   await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
+  expect(await getTransactions(page)).toEqual([]);
 });
 
 async function openTextareaDemo(page: Page, testInfo: TestInfo): Promise<void> {
@@ -177,6 +265,13 @@ async function renderGhost(
   }
 
   return snapshot;
+}
+
+async function getTransactions(page: Page): Promise<TextareaCompletionTransaction[]> {
+  return page.evaluate(
+    () =>
+      (window as TextareaGhostRendererWindow).__typaiTextareaGhostRenderer?.getTransactions() ?? [],
+  );
 }
 
 function expectWithinCaretTolerance(snapshot: TextareaGhostSnapshot): void {

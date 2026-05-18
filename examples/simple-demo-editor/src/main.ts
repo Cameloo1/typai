@@ -17,7 +17,10 @@ import {
 } from "@typai/core";
 import {
   attachTextarea,
+  type TextareaCompletionAcceptResult,
+  type TextareaCompletionRevertResult,
   type TextareaCompletionSnapshot,
+  type TextareaCompletionTransaction,
   type TextareaCorrectionEvent,
   type TextareaDecisionEvent,
   type TextareaMark,
@@ -96,6 +99,9 @@ type TypaiTextareaGhostFeasibilityDebug = {
   resync(offset?: number): TextareaGhostFeasibilitySnapshot;
   clear(): void;
   getSnapshot(): TextareaGhostFeasibilitySnapshot | null;
+  accept(): TextareaCompletionAcceptResult;
+  revertLast(): TextareaCompletionRevertResult;
+  getTransactions(): TextareaCompletionTransaction[];
 };
 
 declare global {
@@ -952,7 +958,14 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
         offset,
       );
 
-      if (adapter?.renderTextareaGhostText(text, snapshot) !== true) {
+      if (
+        adapter?.renderTextareaGhostText(text, snapshot, {
+          requestId: `textarea-demo-completion-${snapshot.version}-${offset}`,
+          providerName: "demo-mock",
+          model: "mock-textarea",
+          latencyMs: 0,
+        }) !== true
+      ) {
         throw new Error("Textarea ghost renderer did not render.");
       }
 
@@ -982,6 +995,27 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
     },
     getSnapshot() {
       return getGhostFeasibilitySnapshot();
+    },
+    accept() {
+      const result = adapter?.acceptTextareaCompletion();
+
+      if (result === undefined) {
+        throw new Error("Textarea adapter is not attached.");
+      }
+
+      return result;
+    },
+    revertLast() {
+      const transaction = adapter?.getTextareaCompletionTransactions().at(-1);
+
+      if (adapter === null || transaction === undefined) {
+        return { applied: false, reason: "missing_transaction" };
+      }
+
+      return adapter.revertTextareaCompletion(transaction.id);
+    },
+    getTransactions() {
+      return adapter?.getTextareaCompletionTransactions() ?? [];
     },
   };
   window.__typaiTextareaGhostRenderer = window.__typaiTextareaGhostFeasibility;

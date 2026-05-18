@@ -1,5 +1,9 @@
 import type { TextareaOverlayMirror } from "../overlay/createOverlayMirror";
-import type { TextareaCompletionSnapshot, TextareaGhostTextClearReason } from "../types";
+import type {
+  TextareaCompletionRenderMetadata,
+  TextareaCompletionSnapshot,
+  TextareaGhostTextClearReason,
+} from "../types";
 import {
   getLineHeightPx,
   measureCaretInOverlayMirror,
@@ -7,12 +11,23 @@ import {
 } from "./caretGeometry";
 
 export type TextareaGhostTextRenderer = {
-  renderTextareaGhostText(text: string, snapshot: TextareaCompletionSnapshot): boolean;
+  renderTextareaGhostText(
+    text: string,
+    snapshot: TextareaCompletionSnapshot,
+    metadata?: TextareaCompletionRenderMetadata,
+  ): boolean;
   clearTextareaGhostText(reason?: TextareaGhostTextClearReason): void;
   isTextareaGhostVisible(): boolean;
   getTextareaGhostText(): string | null;
+  getTextareaGhostProposal(): TextareaGhostTextProposal | null;
   resyncTextareaGhostText(): void;
   destroy(): void;
+};
+
+export type TextareaGhostTextProposal = {
+  text: string;
+  snapshot: TextareaCompletionSnapshot;
+  metadata: TextareaCompletionRenderMetadata;
 };
 
 export type CreateTextareaGhostTextRendererOptions = {
@@ -29,6 +44,7 @@ export function createTextareaGhostTextRenderer(
   let ghost: HTMLElement | null = null;
   let activeSnapshot: TextareaCompletionSnapshot | null = null;
   let activeText: string | null = null;
+  let activeMetadata: TextareaCompletionRenderMetadata = {};
   let destroyed = false;
 
   const resyncTextareaGhostText = () => {
@@ -67,7 +83,11 @@ export function createTextareaGhostTextRenderer(
     ghost.dataset.typaiTextareaGhostOffset = String(activeSnapshot.selection.end);
   };
 
-  const renderTextareaGhostText = (text: string, snapshot: TextareaCompletionSnapshot): boolean => {
+  const renderTextareaGhostText = (
+    text: string,
+    snapshot: TextareaCompletionSnapshot,
+    metadata: TextareaCompletionRenderMetadata = {},
+  ): boolean => {
     if (destroyed) {
       return false;
     }
@@ -97,6 +117,7 @@ export function createTextareaGhostTextRenderer(
 
     activeText = text;
     activeSnapshot = cloneCompletionSnapshot(snapshot);
+    activeMetadata = { ...metadata };
     resyncTextareaGhostText();
 
     return ghost.parentNode !== null;
@@ -105,6 +126,7 @@ export function createTextareaGhostTextRenderer(
   const clearTextareaGhostText = (_reason: TextareaGhostTextClearReason = "manual") => {
     activeSnapshot = null;
     activeText = null;
+    activeMetadata = {};
 
     if (ghost === null) {
       return;
@@ -133,6 +155,17 @@ export function createTextareaGhostTextRenderer(
     },
     getTextareaGhostText() {
       return activeText;
+    },
+    getTextareaGhostProposal() {
+      if (activeText === null || activeSnapshot === null || ghost === null) {
+        return null;
+      }
+
+      return {
+        text: activeText,
+        snapshot: cloneCompletionSnapshot(activeSnapshot),
+        metadata: { ...activeMetadata },
+      };
     },
     resyncTextareaGhostText,
     destroy() {

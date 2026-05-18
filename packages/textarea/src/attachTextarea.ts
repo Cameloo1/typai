@@ -19,7 +19,11 @@ import type {
   AttachTextareaOptions,
   DetachTextarea,
   TextareaAdapterSettings,
+  TextareaCompletionAcceptResult,
+  TextareaCompletionRenderMetadata,
+  TextareaCompletionRevertResult,
   TextareaCompletionSnapshot,
+  TextareaCompletionTransaction,
   TextareaCorrectionRevertResult,
   TextareaCorrectionTransaction,
   TextareaGhostTextClearReason,
@@ -49,6 +53,7 @@ type TextareaAdapterState = {
   snapshot: TextareaSnapshot;
   marks: Map<string, StoredTextareaMark>;
   transactions: TextareaCorrectionTransaction[];
+  completionTransactions: TextareaCompletionTransaction[];
   overlay: TextareaOverlayMirror | null;
   ghostRenderer: TextareaGhostTextRenderer | null;
   triggerRoot: HTMLElement | null;
@@ -79,6 +84,7 @@ export function attachTextarea(options: AttachTextareaOptions): DetachTextarea {
     snapshot: getTextareaSnapshot(textarea, 0, false),
     marks: new Map(),
     transactions: [],
+    completionTransactions: [],
     overlay: null,
     ghostRenderer: null,
     triggerRoot: null,
@@ -140,7 +146,15 @@ export function attachTextarea(options: AttachTextareaOptions): DetachTextarea {
 
   disposables.add(
     addTextareaEventListener(textarea, "keydown", (event) => {
-      if (getKeyboardEventKey(event) === "Escape") {
+      const key = getKeyboardEventKey(event);
+
+      if (key === "Tab" && state.ghostRenderer?.isTextareaGhostVisible() === true) {
+        event.preventDefault();
+        acceptTextareaCompletion(attachOptions, state);
+        return;
+      }
+
+      if (key === "Escape") {
         clearTextareaGhostText(state, "escape");
       }
     }),
@@ -200,13 +214,17 @@ export function attachTextarea(options: AttachTextareaOptions): DetachTextarea {
     renderOverlay(state);
     state.ghostRenderer?.resyncTextareaGhostText();
   };
-  detach.renderTextareaGhostText = (text, snapshot) =>
-    state.ghostRenderer?.renderTextareaGhostText(text, snapshot) ?? false;
+  detach.renderTextareaGhostText = (text, snapshot, metadata) =>
+    state.ghostRenderer?.renderTextareaGhostText(text, snapshot, metadata) ?? false;
   detach.clearTextareaGhostText = (reason) => {
     clearTextareaGhostText(state, reason ?? "manual");
   };
   detach.isTextareaGhostVisible = () => state.ghostRenderer?.isTextareaGhostVisible() ?? false;
   detach.getTextareaGhostText = () => state.ghostRenderer?.getTextareaGhostText() ?? null;
+  detach.acceptTextareaCompletion = () => acceptTextareaCompletion(attachOptions, state);
+  detach.revertTextareaCompletion = (transactionId) =>
+    revertTextareaCompletion(attachOptions, state, transactionId);
+  detach.getTextareaCompletionTransactions = () => [...state.completionTransactions];
 
   return detach;
 }
@@ -235,13 +253,22 @@ function handleTextareaSelectionChange(
 ): void {
   const previousVersion = state.version;
   const snapshot = syncTextareaSnapshot(options.textarea, state);
+  const proposal = state.ghostRenderer?.getTextareaGhostProposal() ?? null;
+  const visibleGhostStillMatches =
+    proposal !== null &&
+    state.ghostRenderer?.isTextareaGhostVisible() === true &&
+    isFreshCompletionSnapshot(state, proposal.snapshot);
 
   if (state.version !== previousVersion) {
     pruneStaleMarks(options, state);
     renderOverlay(state);
   }
 
-  clearTextareaGhostText(state, "selection_change");
+  if (visibleGhostStillMatches) {
+    state.ghostRenderer?.resyncTextareaGhostText();
+  } else {
+    clearTextareaGhostText(state, "selection_change");
+  }
   options.completion?.onEditorSelectionChange?.(toTextareaCompletionSnapshot(snapshot));
 }
 
@@ -327,8 +354,22 @@ function handleTextareaInput(
 function clearTextareaGhostText(
   state: TextareaAdapterState,
   reason: TextareaGhostTextClearReason,
+  emitDismiss = true,
 ): void {
+  const proposal = state.ghostRenderer?.getTextareaGhostProposal() ?? null;
+
   state.ghostRenderer?.clearTextareaGhostText(reason);
+
+  if (emitDismiss && proposal !== null) {
+    state.options.completion?.onCompletionDismissed?.({
+      snapshot: state.snapshot,
+      reason,
+      ghostText: proposal.text,
+      requestId: proposal.metadata.requestId,
+      providerName: proposal.metadata.providerName,
+      model: proposal.metadata.model,
+    });
+  }
 }
 
 function toTextareaCompletionSnapshot(snapshot: TextareaSnapshot): TextareaCompletionSnapshot {
@@ -363,6 +404,163 @@ function isFreshCompletionSnapshot(
     snapshot.selection.start === state.snapshot.selectionStart &&
     snapshot.selection.end === state.snapshot.selectionEnd
   );
+}
+
+function acceptTextareaCompletion(
+  options: AttachTextareaOptions,
+  state: TextareaAdapterState,
+): TextareaCompletionAcceptResult {
+  const proposal = state.ghostRenderer?.getTextareaGhostProposal() ?? null;
+
+  if (proposal === null) {
+    return { applied: false, reason: "no_visible_ghost" };
+  }
+
+  if (proposal.text.length === 0) {
+    clearTextareaGhostText(state, "empty");
+    return { applied: false, reason: "empty_text" };
+  }
+
+  if (!isTextareaWritable(options.textarea)) {
+    return { applied: false, reason: "not_writable" };
+  }
+
+  const previousVersion = state.version;
+  const currentSnapshot = syncTextareaSnapshot(options.textarea, state);
+
+  if (state.version !== previousVersion) {
+    pruneStaleMarks(options, state);
+    renderOverlay(state);
+  }
+
+  if (
+    proposal.snapshot.selection.start !== proposal.snapshot.selection.end ||
+    currentSnapshot.selectionStart !== currentSnapshot.selectionEnd
+  ) {
+    clearTextareaGhostText(state, "stale_snapshot");
+    return { applied: false, reason: "non_collapsed_selection" };
+  }
+
+  if (!isFreshCompletionSnapshot(state, proposal.snapshot)) {
+    clearTextareaGhostText(state, "stale_snapshot");
+    return { applied: false, reason: "stale_snapshot" };
+  }
+
+  const insertAt = currentSnapshot.selectionStart;
+  const nextValue =
+    options.textarea.value.slice(0, insertAt) +
+    proposal.text +
+    options.textarea.value.slice(insertAt);
+  const transaction = createTextareaCompletionTransaction(
+    state,
+    proposal.metadata,
+    currentSnapshot,
+    insertAt,
+    proposal.text,
+  );
+  const nextSelection = {
+    selectionStart: transaction.rangeAfter.end,
+    selectionEnd: transaction.rangeAfter.end,
+  };
+
+  clearTextareaGhostText(state, "manual", false);
+  const committedSnapshot = commitTextareaCompletionValue(options, state, nextValue, nextSelection);
+
+  state.completionTransactions.push(transaction);
+  options.completion?.onCompletionAccepted?.({
+    snapshot: committedSnapshot,
+    transaction,
+  });
+
+  return { applied: true, transaction };
+}
+
+function revertTextareaCompletion(
+  options: AttachTextareaOptions,
+  state: TextareaAdapterState,
+  transactionId: string,
+): TextareaCompletionRevertResult {
+  const transaction = state.completionTransactions.find(
+    (candidate) => candidate.id === transactionId,
+  );
+
+  if (transaction === undefined) {
+    return { applied: false, reason: "missing_transaction" };
+  }
+
+  if (!isTextareaWritable(options.textarea)) {
+    return { applied: false, reason: "not_writable" };
+  }
+
+  if (
+    !isValidTextareaRange(options.textarea.value, transaction.rangeAfter) ||
+    options.textarea.value.slice(transaction.rangeAfter.start, transaction.rangeAfter.end) !==
+      transaction.insertedText
+  ) {
+    return { applied: false, reason: "stale_range" };
+  }
+
+  const nextValue =
+    options.textarea.value.slice(0, transaction.rangeAfter.start) +
+    options.textarea.value.slice(transaction.rangeAfter.end);
+  const nextSelection = {
+    selectionStart: transaction.rangeAfter.start,
+    selectionEnd: transaction.rangeAfter.start,
+  };
+  const committedSnapshot = commitTextareaCompletionValue(options, state, nextValue, nextSelection);
+
+  options.completion?.onCompletionReverted?.({
+    snapshot: committedSnapshot,
+    transaction,
+  });
+
+  return { applied: true, transaction };
+}
+
+function createTextareaCompletionTransaction(
+  state: TextareaAdapterState,
+  metadata: TextareaCompletionRenderMetadata,
+  snapshot: TextareaSnapshot,
+  insertAt: number,
+  insertedText: string,
+): TextareaCompletionTransaction {
+  return {
+    id: createId(state, "completion"),
+    requestId: metadata.requestId ?? createId(state, "completion-request"),
+    editorVersion: snapshot.version,
+    rangeBefore: {
+      start: insertAt,
+      end: insertAt,
+      text: "",
+    },
+    rangeAfter: {
+      start: insertAt,
+      end: insertAt + insertedText.length,
+      text: insertedText,
+    },
+    insertedText,
+    createdAt: Date.now(),
+    providerName: metadata.providerName,
+    model: metadata.model,
+    latencyMs: metadata.latencyMs,
+  };
+}
+
+function commitTextareaCompletionValue(
+  options: AttachTextareaOptions,
+  state: TextareaAdapterState,
+  nextValue: string,
+  nextSelection: { selectionStart: number; selectionEnd: number },
+): TextareaSnapshot {
+  options.textarea.value = nextValue;
+  setTextareaSelection(options.textarea, nextSelection.selectionStart, nextSelection.selectionEnd);
+  state.version += 1;
+  state.lastValue = options.textarea.value;
+  state.snapshot = getTextareaSnapshot(options.textarea, state.version, state.isComposingIME);
+  pruneStaleMarks(options, state);
+  renderOverlay(state);
+
+  return state.snapshot;
 }
 
 function emitMark(

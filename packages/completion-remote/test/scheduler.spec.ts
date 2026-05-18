@@ -7,7 +7,7 @@ import type {
   CompletionResponse,
   CompletionScheduleInput,
 } from "../src";
-import { createMemoryMetricsSink, createRemoteCompletion } from "../src";
+import { CompletionProviderFailure, createMemoryMetricsSink, createRemoteCompletion } from "../src";
 
 describe("remote completion scheduler", () => {
   afterEach(() => {
@@ -179,17 +179,172 @@ describe("remote completion scheduler", () => {
     expect(controller.getState()).toEqual({
       status: "error",
       requestId: "completion-1",
-      error: "provider failed",
+      error: "Completion provider request failed.",
+      providerErrorKind: "network_error",
     });
     expect(events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           type: "provider_error",
           requestId: "completion-1",
-          reason: "provider failed",
+          reason: "network_error",
+          providerErrorKind: "network_error",
         }),
       ]),
     );
+  });
+
+  it("records typed provider errors without showing ghost text", async () => {
+    vi.useFakeTimers();
+    const complete = vi.fn(async () => {
+      throw new CompletionProviderFailure({
+        kind: "timeout",
+        message: "raw timeout detail",
+      });
+    });
+    const controller = createRemoteCompletion({
+      provider: createProvider(complete),
+      debounceMs: 0,
+    });
+
+    controller.schedule(createScheduleInput());
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    expect(controller.getState()).toEqual({
+      status: "error",
+      requestId: "completion-1",
+      error: "Completion provider request timed out.",
+      providerErrorKind: "timeout",
+    });
+    expect(controller.accept()).toBeNull();
+    expect(controller.getMetricsSnapshot().counts.provider_error).toBe(1);
+    expect(controller.getMetricsSnapshot().counts.provider_timeout).toBe(1);
+  });
+
+  it("records invalid_response metrics for malformed provider output", async () => {
+    vi.useFakeTimers();
+    const complete = vi.fn(async () => {
+      throw new CompletionProviderFailure({
+        kind: "invalid_response",
+        message: "malformed provider response",
+      });
+    });
+    const controller = createRemoteCompletion({
+      provider: createProvider(complete),
+      debounceMs: 0,
+    });
+
+    controller.schedule(createScheduleInput());
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    expect(controller.getState()).toEqual({
+      status: "error",
+      requestId: "completion-1",
+      error: "Completion provider returned an invalid response.",
+      providerErrorKind: "invalid_response",
+    });
+    expect(controller.getMetricsSnapshot().counts.invalid_response).toBe(1);
+  });
+
+  it("prevents excessive provider calls with maxRequestsPerMinute", async () => {
+    vi.useFakeTimers();
+    const complete = vi.fn(async (request: CompletionRequest) => createResponse(request));
+    const controller = createRemoteCompletion({
+      provider: createProvider(complete),
+      debounceMs: 0,
+      requestBudget: {
+        maxRequestsPerMinute: 1,
+      },
+    });
+
+    controller.schedule(createScheduleInput({ contextBefore: "first context value" }));
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    controller.schedule(createScheduleInput({ contextBefore: "second context value" }));
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(controller.getState()).toEqual({ status: "idle" });
+    expect(controller.getMetricsSnapshot().counts.request_budget_exceeded).toBe(1);
+    expect(controller.getMetricsSnapshot().events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "request_budget_exceeded",
+          reason: "maxRequestsPerMinute",
+          budgetLimit: "maxRequestsPerMinute",
+        }),
+      ]),
+    );
+  });
+
+  it("starts rate-limit cooldown and suppresses schedules during cooldown", async () => {
+    vi.useFakeTimers();
+    const complete = vi
+      .fn<CompletionProvider["complete"]>()
+      .mockRejectedValueOnce(
+        new CompletionProviderFailure({
+          kind: "rate_limited",
+          message: "rate limited",
+          retryAfterMs: 1000,
+        }),
+      )
+      .mockImplementationOnce(async (request: CompletionRequest) => createResponse(request));
+    const controller = createRemoteCompletion({
+      provider: createProvider(complete),
+      debounceMs: 0,
+    });
+
+    controller.schedule(createScheduleInput({ contextBefore: "first context value" }));
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    controller.schedule(createScheduleInput({ contextBefore: "second context value" }));
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(controller.getMetricsSnapshot().counts.rate_limit_cooldown_started).toBe(1);
+    expect(controller.getMetricsSnapshot().counts.request_budget_exceeded).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    controller.schedule(createScheduleInput({ contextBefore: "third context value" }));
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    expect(complete).toHaveBeenCalledTimes(2);
+    expect(controller.getState()).toEqual({
+      status: "showing",
+      requestId: "completion-2",
+      text: " completion",
+    });
+  });
+
+  it("does not retry provider errors by default", async () => {
+    vi.useFakeTimers();
+    const complete = vi.fn(async () => {
+      throw new CompletionProviderFailure({
+        kind: "server_error",
+        status: 500,
+        message: "server failed",
+      });
+    });
+    const controller = createRemoteCompletion({
+      provider: createProvider(complete),
+      debounceMs: 0,
+    });
+
+    controller.schedule(createScheduleInput());
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await flushPromises();
+
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(controller.getMetricsSnapshot().counts.provider_error).toBe(1);
   });
 
   it("dismisses showing completions with escape", async () => {
@@ -303,6 +458,46 @@ describe("remote completion scheduler", () => {
     const metrics = createMemoryMetricsSink();
     const controller = createRemoteCompletion({
       provider: createProvider(async (request) => createResponse(request, " safe ghost")),
+      debounceMs: 0,
+      metrics,
+    });
+    controller.subscribe((event) => events.push(event));
+
+    controller.schedule(
+      createScheduleInput({
+        contextBefore: "RAW_CONTEXT_BEFORE value",
+        contextAfter: "RAW_CONTEXT_AFTER value",
+        currentLine: "RAW_CURRENT_LINE value",
+        metadata: { secret: "RAW_METADATA_VALUE" },
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+
+    const serializedEvents = JSON.stringify(events);
+    const serializedMetrics = JSON.stringify(metrics.events);
+    expect(serializedEvents).not.toContain("RAW_CONTEXT_BEFORE");
+    expect(serializedEvents).not.toContain("RAW_CONTEXT_AFTER");
+    expect(serializedEvents).not.toContain("RAW_CURRENT_LINE");
+    expect(serializedEvents).not.toContain("RAW_METADATA_VALUE");
+    expect(serializedMetrics).not.toContain("RAW_CONTEXT_BEFORE");
+    expect(serializedMetrics).not.toContain("RAW_CONTEXT_AFTER");
+    expect(serializedMetrics).not.toContain("RAW_CURRENT_LINE");
+    expect(serializedMetrics).not.toContain("RAW_METADATA_VALUE");
+  });
+
+  it("does not include raw context in provider error events or metrics", async () => {
+    vi.useFakeTimers();
+    const events: CompletionEvent[] = [];
+    const metrics = createMemoryMetricsSink();
+    const controller = createRemoteCompletion({
+      provider: createProvider(async () => {
+        throw new CompletionProviderFailure({
+          kind: "server_error",
+          status: 500,
+          message: "RAW_CONTEXT_BEFORE provider detail",
+        });
+      }),
       debounceMs: 0,
       metrics,
     });

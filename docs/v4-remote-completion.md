@@ -10,6 +10,10 @@ integration.
 
 Completion checkpoint: `docs/v4-remote-completion-complete.md`.
 
+V4.1 begins by hardening the shared remote provider layer before expanding
+completion beyond contenteditable. The V4.0 browser-key, mocked-test, and
+no-real-provider-call boundaries still apply.
+
 ## Phase
 
 Phase name: V4 Remote Completion Prototype.
@@ -69,6 +73,9 @@ configured.
 `@typai/completion-remote` owns:
 
 - Provider abstraction.
+- Typed provider error classification.
+- Endpoint response validation.
+- Request budget controls and rate-limit cooldown.
 - Request scheduler.
 - Context extraction.
 - Metrics.
@@ -168,6 +175,38 @@ client bundles.
 Default context handling should be bounded and inspectable. Do not send full
 documents by default.
 
+## Provider Resilience
+
+Provider failures are typed before they reach editor surfaces:
+
+- `network_error`.
+- `timeout`.
+- `abort`.
+- `rate_limited`.
+- `invalid_response`.
+- `server_error`.
+- `client_error`.
+
+Endpoint providers classify HTTP responses conservatively:
+
+- HTTP 429 becomes `rate_limited` and may carry `retryAfterMs`.
+- HTTP 5xx becomes `server_error`.
+- HTTP 4xx becomes `client_error`.
+- Timeout becomes `timeout`.
+- Abort becomes `abort`.
+- Malformed JSON or malformed response shape becomes `invalid_response`.
+
+The scheduler defaults to one in-flight request per controller/surface. Hosts
+may configure `maxRequestsPerMinute`, `maxConcurrentRequests`, and
+`cooldownAfterRateLimitMs` as request-budget controls.
+
+Rate-limited responses start a local cooldown. During cooldown, scheduling is
+suppressed and a metric is recorded. Provider errors never render ghost text,
+never mutate editor source text, and do not create completion transactions.
+
+There is no automatic retry by default. Tests and demos continue to use mocked
+providers only.
+
 ## Latency
 
 Remote completion has a separate latency budget from deterministic correction.
@@ -196,7 +235,11 @@ V4 local metrics track:
 - `request_scheduled`.
 - `request_canceled_before_send`.
 - `request_aborted_in_flight`.
+- `request_budget_exceeded`.
 - `provider_error`.
+- `provider_timeout`.
+- `invalid_response`.
+- `rate_limit_cooldown_started`.
 - `provider_latency`.
 - `ghost_shown`.
 - `ghost_dismissed_by_typing`.
@@ -218,7 +261,8 @@ Timing metrics include:
 
 Metric payloads are intentionally small. They may include request ID,
 completion mode, surface category, context-before length, context-after length,
-completion length, latency, provider name, status, and dismiss/error reason.
+completion length, latency, provider name, status, dismiss/error reason,
+provider error kind, retry-after duration, cooldown deadline, and budget limit.
 
 Metric payloads must not include:
 
@@ -301,6 +345,7 @@ tests, reports, examples, or browser artifacts in the dry-run tarball.
 - No browser provider API-key path is added.
 - No production server implementation is added.
 - No real provider calls are required by tests, E2E, demos, or benchmarks.
+- No automatic retry is enabled by default.
 - No streaming provider is implemented.
 - No textarea, React, or CodeMirror completion surface is added.
 - No real Codex integration is added.

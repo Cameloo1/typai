@@ -5,8 +5,7 @@ Status date: 2026-05-18.
 V4.1 expands the optional remote completion surface beyond the V4.0
 contenteditable prototype while preserving Typai's local deterministic
 correction contract. This phase is a scope lock for surface expansion, shared
-contracts, and provider resilience. It does not authorize implementation in
-this prompt.
+contracts, and provider resilience.
 
 ## Current V4.0 State
 
@@ -43,10 +42,15 @@ routed through `@typai/completion-remote`.
 Provider resilience basics are in scope:
 
 - Timeout handling.
+- Typed provider error classification.
+- Endpoint response validation.
+- Rate-limit cooldown.
+- Request budget controls.
 - Stale response discard.
 - Provider error state that does not break the editor.
 - Abort/cancel paths when user input changes.
-- Mocked tests for retry/rate-limit behavior if a retry policy is introduced.
+- No automatic retry by default.
+- Mocked tests for retry/rate-limit behavior; no real provider calls.
 
 Optional streaming support may be added only after non-streaming textarea,
 React, and CodeMirror completion surfaces are stable. Streaming must remain
@@ -110,15 +114,16 @@ Recommended V4.1 sequence:
 
 1. V4.1-0: scope lock and documentation handoff.
 2. V4.1-1: shared completion surface contract and conformance test harness.
-3. V4.1-2: textarea completion rendering design and non-streaming adapter
+3. V4.1-2: provider resilience for `@typai/completion-remote`.
+4. V4.1-3: textarea completion rendering design and non-streaming adapter
    implementation.
-4. V4.1-3: textarea mocked tests, E2E, and accessibility checks.
-5. V4.1-4: React hooks/components for contenteditable and textarea completion.
-6. V4.1-5: React mocked tests and demo wiring.
-7. V4.1-6: CodeMirror completion decorations and transaction integration.
-8. V4.1-7: CodeMirror mocked tests and demo wiring.
-9. V4.1-8: provider resilience basics and cross-surface conformance audit.
-10. V4.1-9: optional streaming experiment behind a feature flag, mocked only,
+5. V4.1-4: textarea mocked tests, E2E, and accessibility checks.
+6. V4.1-5: React hooks/components for contenteditable and textarea completion.
+7. V4.1-6: React mocked tests and demo wiring.
+8. V4.1-7: CodeMirror completion decorations and transaction integration.
+9. V4.1-8: CodeMirror mocked tests and demo wiring.
+10. V4.1-9: cross-surface conformance audit.
+11. V4.1-10: optional streaming experiment behind a feature flag, mocked only,
     after non-streaming surfaces are stable.
 
 Each implementation prompt should preserve contenteditable completion behavior
@@ -137,8 +142,12 @@ Required invariants:
 - Stale accept is blocked by checking the current editor state before
   insertion.
 - Provider responses are discarded if stale.
+- Provider errors never render ghost text.
+- Provider errors never mutate editor text.
+- Scheduler cooldown and budget rejections never create editor transactions.
 - Typing, Escape, selection change, composition, blur, paste, and incompatible
   correction transactions dismiss visible completions.
+- Default retry count is zero.
 - Completion auto-accept is forbidden.
 - Silent rewrite is forbidden.
 
@@ -150,6 +159,8 @@ Required invariants:
 - Endpoint provider behavior.
 - Mock provider behavior.
 - Scheduling, debounce, abort, stale response handling, and metrics.
+- Typed provider error classification.
+- Request budget controls and rate-limit cooldown.
 - Feature flags for later optional streaming support.
 
 Adapters own:

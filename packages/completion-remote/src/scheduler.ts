@@ -6,7 +6,14 @@ import {
   type CompletionMetricsSnapshot,
   createMemoryMetricsSink,
 } from "./metrics";
-import { type CompletionProvider, createNoopCompletionProvider } from "./provider";
+import {
+  type CompletionProvider,
+  type CompletionProviderError,
+  type CompletionRequestBudget,
+  createNoopCompletionProvider,
+  getSafeCompletionProviderErrorMessage,
+  normalizeCompletionProviderError,
+} from "./provider";
 import { sanitizeCompletionText } from "./sanitize";
 import type { CompletionState } from "./state";
 import type { CompletionMode, CompletionResponse } from "./types";
@@ -16,6 +23,8 @@ export const DEFAULT_REMOTE_COMPLETION_OPTIONS = {
   timeoutMs: 2500,
   minPrefixChars: 12,
   maxCompletionChars: 220,
+  maxConcurrentRequests: 1,
+  cooldownAfterRateLimitMs: 30_000,
 } as const;
 
 export type CompletionDismissReason =
@@ -60,6 +69,8 @@ export type CompletionEvent = {
   model?: string;
   latencyMs?: number;
   reason?: string;
+  providerErrorKind?: CompletionProviderError["kind"];
+  retryAfterMs?: number;
   metadata?: Record<string, unknown>;
 };
 
@@ -72,6 +83,7 @@ export type RemoteCompletionOptions = {
   stopSequences?: string[];
   metrics?: CompletionMetricsSink;
   maxMetricEvents?: number;
+  requestBudget?: CompletionRequestBudget;
 };
 
 export type RemoteCompletionController = {
@@ -132,6 +144,7 @@ export function createRemoteCompletion(
   const maxCompletionChars =
     options.maxCompletionChars ?? DEFAULT_REMOTE_COMPLETION_OPTIONS.maxCompletionChars;
   const stopSequences = options.stopSequences ?? [];
+  const requestBudget = normalizeRequestBudget(options.requestBudget);
   const listeners = new Set<(event: CompletionEvent) => void>();
 
   let state: CompletionState = { status: "idle" };
@@ -140,6 +153,8 @@ export function createRemoteCompletion(
   let scheduledRequest: ScheduledRequest | null = null;
   let inFlightRequest: InFlightRequest | null = null;
   let showingResponse: CompletionResponse | null = null;
+  let cooldownUntilMs = 0;
+  const requestStartedAtMsWindow: number[] = [];
   const requestMetrics = new Map<string, RequestMetricsContext>();
   let destroyed = false;
 
@@ -154,9 +169,22 @@ export function createRemoteCompletion(
         return;
       }
 
+      const now = performance.now();
+
       cancelScheduledRequest("request_canceled_before_send");
       abortInFlightRequest("request_aborted_in_flight");
       dismissShowingAsStale();
+
+      if (isInRateLimitCooldown(now)) {
+        activeRequestId = null;
+        state = { status: "idle" };
+        recordMetric("request_budget_exceeded", undefined, {
+          reason: "rate_limit_cooldown",
+          budgetLimit: "rate_limit_cooldown",
+          cooldownUntilMs,
+        });
+        return;
+      }
 
       if (input.contextBefore.length < minPrefixChars) {
         activeRequestId = null;
@@ -164,8 +192,19 @@ export function createRemoteCompletion(
         return;
       }
 
+      const budgetLimit = getExceededRequestBudget(now);
+      if (budgetLimit !== null) {
+        activeRequestId = null;
+        state = { status: "idle" };
+        recordMetric("request_budget_exceeded", undefined, {
+          reason: budgetLimit,
+          budgetLimit,
+        });
+        return;
+      }
+
       const requestId = createRequestId();
-      const scheduledAtMs = performance.now();
+      const scheduledAtMs = now;
       requestMetrics.set(requestId, {
         requestId,
         mode: input.mode,
@@ -303,6 +342,7 @@ export function createRemoteCompletion(
     updateRequestMetrics(requestId, {
       requestStartedAtMs,
     });
+    recordRequestStartedAt(requestStartedAtMs);
     state = { status: "requesting", requestId };
 
     try {
@@ -411,19 +451,124 @@ export function createRemoteCompletion(
         return;
       }
 
-      const message = error instanceof Error ? error.message : String(error);
+      const providerError = normalizeCompletionProviderError(error);
+      const message = getSafeCompletionProviderErrorMessage(providerError);
+      const timestampMs = performance.now();
       activeRequestId = null;
       showingResponse = null;
-      state = { status: "error", requestId, error: message };
+      state = {
+        status: "error",
+        requestId,
+        error: message,
+        providerErrorKind: providerError.kind,
+      };
       emit({
         type: "provider_error",
         requestId,
-        reason: message,
+        reason: providerError.kind,
+        providerErrorKind: providerError.kind,
+        retryAfterMs: getRetryAfterMs(providerError),
       });
-      recordMetric("provider_error", requestId, {
-        reason: "provider_error",
-      });
+      recordMetric(
+        "provider_error",
+        requestId,
+        {
+          reason: providerError.kind,
+          providerErrorKind: providerError.kind,
+          retryAfterMs: getRetryAfterMs(providerError),
+        },
+        timestampMs,
+      );
+      recordProviderErrorSpecificMetrics(requestId, providerError, timestampMs);
     }
+  }
+
+  function isInRateLimitCooldown(now: number): boolean {
+    return cooldownUntilMs > now;
+  }
+
+  function getExceededRequestBudget(now: number): keyof CompletionRequestBudget | null {
+    trimRequestStartedAtWindow(now);
+
+    if (
+      requestBudget.maxRequestsPerMinute !== undefined &&
+      requestStartedAtMsWindow.length >= requestBudget.maxRequestsPerMinute
+    ) {
+      return "maxRequestsPerMinute";
+    }
+
+    return null;
+  }
+
+  function recordRequestStartedAt(timestampMs: number): void {
+    trimRequestStartedAtWindow(timestampMs);
+    requestStartedAtMsWindow.push(timestampMs);
+  }
+
+  function trimRequestStartedAtWindow(now: number): void {
+    const oneMinuteAgo = now - 60_000;
+
+    while (
+      requestStartedAtMsWindow.length > 0 &&
+      (requestStartedAtMsWindow[0] ?? 0) <= oneMinuteAgo
+    ) {
+      requestStartedAtMsWindow.shift();
+    }
+  }
+
+  function recordProviderErrorSpecificMetrics(
+    requestId: string,
+    providerError: CompletionProviderError,
+    timestampMs: number,
+  ): void {
+    if (providerError.kind === "timeout") {
+      recordMetric(
+        "provider_timeout",
+        requestId,
+        {
+          reason: providerError.kind,
+          providerErrorKind: providerError.kind,
+        },
+        timestampMs,
+      );
+      return;
+    }
+
+    if (providerError.kind === "invalid_response") {
+      recordMetric(
+        "invalid_response",
+        requestId,
+        {
+          reason: providerError.kind,
+          providerErrorKind: providerError.kind,
+        },
+        timestampMs,
+      );
+      return;
+    }
+
+    if (providerError.kind !== "rate_limited") {
+      return;
+    }
+
+    const cooldownMs = providerError.retryAfterMs ?? requestBudget.cooldownAfterRateLimitMs;
+
+    if (cooldownMs <= 0) {
+      return;
+    }
+
+    cooldownUntilMs = Math.max(cooldownUntilMs, timestampMs + cooldownMs);
+    recordMetric(
+      "rate_limit_cooldown_started",
+      requestId,
+      {
+        reason: providerError.kind,
+        providerErrorKind: providerError.kind,
+        retryAfterMs: cooldownMs,
+        cooldownUntilMs,
+      },
+      timestampMs,
+    );
   }
 
   function cancel(): void {
@@ -634,4 +779,54 @@ function normalizeSurface(surface: string | undefined): string | undefined {
   }
 
   return normalized;
+}
+
+type NormalizedCompletionRequestBudget = {
+  maxRequestsPerMinute?: number;
+  maxConcurrentRequests: number;
+  cooldownAfterRateLimitMs: number;
+};
+
+function normalizeRequestBudget(
+  budget: CompletionRequestBudget | undefined,
+): NormalizedCompletionRequestBudget {
+  return {
+    maxRequestsPerMinute: normalizeOptionalNonNegativeInteger(budget?.maxRequestsPerMinute),
+    maxConcurrentRequests: normalizePositiveInteger(
+      budget?.maxConcurrentRequests,
+      DEFAULT_REMOTE_COMPLETION_OPTIONS.maxConcurrentRequests,
+    ),
+    cooldownAfterRateLimitMs: normalizeNonNegativeInteger(
+      budget?.cooldownAfterRateLimitMs,
+      DEFAULT_REMOTE_COMPLETION_OPTIONS.cooldownAfterRateLimitMs,
+    ),
+  };
+}
+
+function normalizeOptionalNonNegativeInteger(value: number | undefined): number | undefined {
+  if (value === undefined || !Number.isFinite(value) || value < 0) {
+    return undefined;
+  }
+
+  return Math.floor(value);
+}
+
+function normalizePositiveInteger(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value) || value < 1) {
+    return fallback;
+  }
+
+  return Math.floor(value);
+}
+
+function normalizeNonNegativeInteger(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value) || value < 0) {
+    return fallback;
+  }
+
+  return Math.floor(value);
+}
+
+function getRetryAfterMs(providerError: CompletionProviderError): number | undefined {
+  return providerError.kind === "rate_limited" ? providerError.retryAfterMs : undefined;
 }

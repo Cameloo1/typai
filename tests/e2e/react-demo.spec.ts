@@ -96,7 +96,7 @@ async function openReactDemo(page: Page, testInfo: TestInfo): Promise<Locator> {
 
   await page.goto(url);
   await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
-  await page.getByRole("button", { name: "React Demo" }).click();
+  await page.getByRole("button", { name: /React.*Demo/ }).click();
 
   const root = page.getByTestId("react-demo-root");
 

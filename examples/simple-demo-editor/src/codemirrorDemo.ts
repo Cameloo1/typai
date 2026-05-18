@@ -55,6 +55,10 @@ type CodeMirrorDemoDebug = {
   getMetrics(): CodeMirrorDemoMetrics;
   clearLatencies(): void;
   getCompletionMetrics(): ReturnType<DemoCodeMirrorCompletionController["getDemoMetrics"]>;
+  getCompletionTransactionCount(): number;
+  setCompletionLatencyMs(value: number): void;
+  setIgnoreAbortForProvider(value: boolean): void;
+  failNextCompletionRequest(): void;
   openFirstRedPopover(): boolean;
   openFirstBluePopover(): boolean;
   applyFirstRedSuggestion(suggestion?: string): boolean;
@@ -433,6 +437,9 @@ function startCodeMirrorSurface(
   const revertCompletionButton = mount.querySelector<HTMLButtonElement>(
     "[data-codemirror-revert-completion]",
   );
+  let completionLatencyMs = 50;
+  let ignoreAbortForCompletionProvider = false;
+  let failNextCompletionRequest = false;
   let completionController: DemoCodeMirrorCompletionController | null = null;
 
   const updateCompletionDebug = () => {
@@ -485,6 +492,14 @@ function startCodeMirrorSurface(
             completionTextInput?.value.trim() === ""
               ? " with mocked CodeMirror completion."
               : (completionTextInput?.value ?? " with mocked CodeMirror completion."),
+          getLatencyMs: () => completionLatencyMs,
+          shouldIgnoreAbort: () => ignoreAbortForCompletionProvider,
+          consumeProviderError: () => {
+            const shouldFail = failNextCompletionRequest;
+
+            failNextCompletionRequest = false;
+            return shouldFail;
+          },
           onUpdate: updateCompletionDebug,
         })
       : null;
@@ -845,10 +860,24 @@ function startCodeMirrorSurface(
           acceptedCount: 0,
           dismissedCount: 0,
           revertedCount: 0,
+          providerErrorCount: 0,
+          staleResponseDroppedCount: 0,
           p95GhostLatencyMs: null,
           lastEvent: "-",
         }
       );
+    },
+    getCompletionTransactionCount() {
+      return getTypaiCodeMirrorViewCompletionTransactions(view).length;
+    },
+    setCompletionLatencyMs(value) {
+      completionLatencyMs = value;
+    },
+    setIgnoreAbortForProvider(value) {
+      ignoreAbortForCompletionProvider = value;
+    },
+    failNextCompletionRequest() {
+      failNextCompletionRequest = true;
     },
     openFirstRedPopover() {
       return openFirstTypaiCodeMirrorRedPopover(view);

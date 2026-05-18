@@ -39,6 +39,8 @@ export type CompletionDemoMetricsSnapshot = {
   acceptedCount: number;
   dismissedCount: number;
   revertedCount: number;
+  providerErrorCount: number;
+  staleResponseDroppedCount: number;
   p95GhostLatencyMs: number | null;
   lastEvent: string;
 };
@@ -48,6 +50,8 @@ export type CompletionDemoControllerOptions = {
   mode?: CompletionMode;
   getCompletionText?: () => string;
   getLatencyMs?: () => number;
+  shouldIgnoreAbort?: () => boolean;
+  consumeProviderError?: () => boolean;
   isEnabled?: () => boolean;
   onUpdate?: () => void;
 };
@@ -499,7 +503,14 @@ function createDemoRemote(options: CompletionDemoControllerOptions): RemoteCompl
 
 function createDemoMockProvider(options: CompletionDemoControllerOptions) {
   return createMockCompletionProvider(async (request, providerOptions) => {
-    await waitForMockLatency(options.getLatencyMs?.() ?? 180, providerOptions.signal);
+    await waitForMockLatency(
+      options.getLatencyMs?.() ?? 180,
+      options.shouldIgnoreAbort?.() === true ? undefined : providerOptions.signal,
+    );
+
+    if (options.consumeProviderError?.() === true) {
+      throw new Error("Mock completion provider error.");
+    }
 
     const completionText =
       options.getCompletionText?.() ?? completionDemoTextForSurface(options.surface);
@@ -539,6 +550,8 @@ function createMetricTracker(
           (counts.ghost_dismissed_by_blur ?? 0) +
           (counts.ghost_dismissed_by_composition ?? 0),
         revertedCount: counts.completion_reverted ?? 0,
+        providerErrorCount: counts.provider_error ?? 0,
+        staleResponseDroppedCount: counts.stale_response_dropped ?? 0,
         p95GhostLatencyMs: getP95(ghostLatencies),
         lastEvent: lastMetricEvent?.type ?? "-",
       };

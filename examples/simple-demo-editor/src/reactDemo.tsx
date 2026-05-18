@@ -35,6 +35,9 @@ type TypaiReactDebug = {
     textarea: CompletionDemoMetricsSnapshot;
     contenteditable: CompletionDemoMetricsSnapshot;
   };
+  setCompletionLatencyMs(value: number): void;
+  setIgnoreAbortForProvider(value: boolean): void;
+  failNextCompletionRequest(surface: "textarea" | "contenteditable"): void;
 };
 
 type TypaiUiDebugEvent = {
@@ -93,6 +96,8 @@ const emptyCompletionMetrics: CompletionDemoMetricsSnapshot = {
   acceptedCount: 0,
   dismissedCount: 0,
   revertedCount: 0,
+  providerErrorCount: 0,
+  staleResponseDroppedCount: 0,
   p95GhostLatencyMs: null,
   lastEvent: "-",
 };
@@ -121,6 +126,12 @@ function ReactDemoContent() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const contenteditableRef = useRef<HTMLDivElement | null>(null);
   const completionEnabledRef = useRef(true);
+  const completionProviderControlRef = useRef({
+    latencyMs: 50,
+    ignoreAbort: false,
+    failNextTextarea: false,
+    failNextContenteditable: false,
+  });
 
   const requestCompletionMetricRender = useCallback(() => {
     setCompletionMetricVersion((current) => current + 1);
@@ -132,6 +143,14 @@ function ReactDemoContent() {
         surface: "react-textarea",
         mode: "prose",
         isEnabled: () => completionEnabledRef.current,
+        getLatencyMs: () => completionProviderControlRef.current.latencyMs,
+        shouldIgnoreAbort: () => completionProviderControlRef.current.ignoreAbort,
+        consumeProviderError: () => {
+          const shouldFail = completionProviderControlRef.current.failNextTextarea;
+
+          completionProviderControlRef.current.failNextTextarea = false;
+          return shouldFail;
+        },
         onUpdate: requestCompletionMetricRender,
       }),
     [requestCompletionMetricRender],
@@ -143,6 +162,14 @@ function ReactDemoContent() {
         surface: "react-contenteditable",
         mode: "prose",
         isEnabled: () => completionEnabledRef.current,
+        getLatencyMs: () => completionProviderControlRef.current.latencyMs,
+        shouldIgnoreAbort: () => completionProviderControlRef.current.ignoreAbort,
+        consumeProviderError: () => {
+          const shouldFail = completionProviderControlRef.current.failNextContenteditable;
+
+          completionProviderControlRef.current.failNextContenteditable = false;
+          return shouldFail;
+        },
         onUpdate: requestCompletionMetricRender,
       }),
     [requestCompletionMetricRender],
@@ -380,6 +407,20 @@ function ReactDemoContent() {
           textarea: textareaCompletion.getDemoMetrics(),
           contenteditable: contenteditableCompletion.getDemoMetrics(),
         };
+      },
+      setCompletionLatencyMs(value) {
+        completionProviderControlRef.current.latencyMs = value;
+      },
+      setIgnoreAbortForProvider(value) {
+        completionProviderControlRef.current.ignoreAbort = value;
+      },
+      failNextCompletionRequest(surface) {
+        if (surface === "textarea") {
+          completionProviderControlRef.current.failNextTextarea = true;
+          return;
+        }
+
+        completionProviderControlRef.current.failNextContenteditable = true;
       },
     };
 
@@ -714,6 +755,9 @@ function combineCompletionMetrics(
     acceptedCount: textarea.acceptedCount + contenteditable.acceptedCount,
     dismissedCount: textarea.dismissedCount + contenteditable.dismissedCount,
     revertedCount: textarea.revertedCount + contenteditable.revertedCount,
+    providerErrorCount: textarea.providerErrorCount + contenteditable.providerErrorCount,
+    staleResponseDroppedCount:
+      textarea.staleResponseDroppedCount + contenteditable.staleResponseDroppedCount,
     p95GhostLatencyMs: p95Values.length === 0 ? null : Math.max(...p95Values),
     lastEvent:
       contenteditable.lastEvent !== "-"

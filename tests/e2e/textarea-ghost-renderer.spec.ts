@@ -229,7 +229,7 @@ async function openTextareaDemo(page: Page, testInfo: TestInfo): Promise<void> {
   await page.goto(url);
   await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
   await expect(page.locator("[data-textarea-last-decision]")).toHaveText("Ready.");
-  await page.getByRole("button", { name: "Textarea Demo" }).click();
+  await page.getByRole("button", { name: /Textarea.*Demo/ }).click();
   await expect(page.getByTestId("textarea-demo-root")).toBeVisible();
   await expect(page.getByTestId("textarea-overlay")).toHaveCount(1);
 }

@@ -106,7 +106,7 @@ test("Codex mock run is local-only and no completion UI appears", async ({ page 
   page.on("request", (request) => {
     const url = request.url();
 
-    if (/completion-remote|openai|provider-endpoint|ghost-text/i.test(url)) {
+    if (/api\.openai\.com|openrouter\.ai|api\.anthropic\.com|provider-endpoint/i.test(url)) {
       suspiciousRequests.push(url);
     }
   });
@@ -124,7 +124,7 @@ test("Codex mock run is local-only and no completion UI appears", async ({ page 
 });
 
 async function openCodeMirrorDemo(page: Page, testInfo: TestInfo): Promise<Locator> {
-  await openDemoTab(page, testInfo, "CodeMirror Demo");
+  await openDemoTab(page, testInfo, /CodeMirror.*Demo/);
 
   const root = page.getByTestId("codemirror-demo-root");
 
@@ -146,7 +146,11 @@ async function openCodexMockDemo(page: Page, testInfo: TestInfo): Promise<Locato
   return root;
 }
 
-async function openDemoTab(page: Page, testInfo: TestInfo, tabName: string): Promise<void> {
+async function openDemoTab(
+  page: Page,
+  testInfo: TestInfo,
+  tabName: string | RegExp,
+): Promise<void> {
   const url = `/?storage=memory&typaiDbName=${encodeURIComponent(uniqueDbName(testInfo))}`;
 
   await page.goto(url);

@@ -110,10 +110,18 @@ type TypaiTextareaGhostFeasibilityDebug = {
   getTransactions(): TextareaCompletionTransaction[];
 };
 
+type TypaiTextareaCompletionDemoDebug = {
+  getMetrics(): ReturnType<DemoTextareaCompletionController["getDemoMetrics"]>;
+  setLatencyMs(value: number): void;
+  setIgnoreAbortForProvider(value: boolean): void;
+  failNextRequest(): void;
+};
+
 declare global {
   interface Window {
     __typaiDebug?: TypaiDemoDebug;
     __typaiTextareaDebug?: TypaiTextareaDemoDebug;
+    __typaiTextareaCompletionDebug?: TypaiTextareaCompletionDemoDebug;
     __typaiTextareaGhostFeasibility?: TypaiTextareaGhostFeasibilityDebug;
     __typaiTextareaGhostRenderer?: TypaiTextareaGhostFeasibilityDebug;
   }
@@ -820,6 +828,9 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
   let suppressMarkRemovedMetrics = false;
   let latestCompletionSnapshot: TextareaCompletionSnapshot | null = null;
   let lastCompletionTransactionId: string | null = null;
+  let completionLatencyMs = 50;
+  let ignoreAbortForCompletionProvider = false;
+  let failNextCompletionRequest = false;
 
   const updateDebug = () => {
     setText(elements.debugEls.lastDecision, metrics.lastDecision);
@@ -915,6 +926,14 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
           surface: "textarea",
           mode: "prose",
           getCompletionText: () => elements.completionTextInput.value,
+          getLatencyMs: () => completionLatencyMs,
+          shouldIgnoreAbort: () => ignoreAbortForCompletionProvider,
+          consumeProviderError: () => {
+            const shouldFail = failNextCompletionRequest;
+
+            failNextCompletionRequest = false;
+            return shouldFail;
+          },
           onUpdate: updateCompletionDebug,
         })
       : null;
@@ -1244,6 +1263,33 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
     },
   };
   window.__typaiTextareaGhostRenderer = window.__typaiTextareaGhostFeasibility;
+  window.__typaiTextareaCompletionDebug = {
+    getMetrics() {
+      return (
+        completionController?.getDemoMetrics() ?? {
+          status: "idle",
+          requestCount: 0,
+          ghostShownCount: 0,
+          acceptedCount: 0,
+          dismissedCount: 0,
+          revertedCount: 0,
+          providerErrorCount: 0,
+          staleResponseDroppedCount: 0,
+          p95GhostLatencyMs: null,
+          lastEvent: "-",
+        }
+      );
+    },
+    setLatencyMs(value) {
+      completionLatencyMs = value;
+    },
+    setIgnoreAbortForProvider(value) {
+      ignoreAbortForCompletionProvider = value;
+    },
+    failNextRequest() {
+      failNextCompletionRequest = true;
+    },
+  };
   metrics.lastDecision = "Ready.";
   updateDebug();
   updateCompletionDebug();

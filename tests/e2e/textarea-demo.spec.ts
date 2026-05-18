@@ -356,7 +356,7 @@ async function openChatDemo(page: Page, testInfo: TestInfo): Promise<void> {
 async function showTextareaDemo(page: Page): Promise<void> {
   await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
   await expect(page.locator("[data-textarea-last-decision]")).toHaveText("Ready.");
-  await page.getByRole("button", { name: "Textarea Demo" }).click();
+  await page.getByRole("button", { name: /Textarea.*Demo/ }).click();
   await expect(page.getByTestId("textarea-demo-root")).toBeVisible();
   await expect(page.getByTestId("textarea-overlay")).toHaveCount(1);
 }

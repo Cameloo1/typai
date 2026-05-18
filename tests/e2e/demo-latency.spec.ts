@@ -116,7 +116,7 @@ test("reports textarea browser-path demo latency smoke metrics", async ({ page }
   await page.goto(`/?typaiDbName=typai-textarea-latency-${Date.now()}&storage=memory`);
   await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
   await expect(page.locator("[data-textarea-last-decision]")).toHaveText("Ready.");
-  await page.getByRole("button", { name: "Textarea Demo" }).click();
+  await page.getByRole("button", { name: /Textarea.*Demo/ }).click();
   await expect(page.getByTestId("textarea-demo-root")).toBeVisible();
   await page.evaluate(() => window.__typaiTextareaDebug?.clearLatencies());
 
@@ -165,7 +165,7 @@ test("reports textarea browser-path demo latency smoke metrics", async ({ page }
 test("reports CodeMirror browser-path demo latency smoke metrics", async ({ page }) => {
   await page.goto(`/?typaiDbName=typai-codemirror-latency-${Date.now()}&storage=memory`);
   await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
-  await page.getByRole("button", { name: "CodeMirror Demo" }).click();
+  await page.getByRole("button", { name: /CodeMirror.*Demo/ }).click();
   const root = page.getByTestId("codemirror-demo-root");
 
   await expect(root).toBeVisible();

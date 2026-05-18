@@ -32,6 +32,7 @@
     "@typai/ui": "workspace:*"
   },
   "devDependencies": {
+    "@typai/adapter-testkit": "workspace:*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "jsdom": "^27.0.0",

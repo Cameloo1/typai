@@ -1,6 +1,7 @@
 {
   "name": "@typai/ui",
   "version": "0.0.0-dev",
+  "description": "Internal unstable DOM UI utilities for typai adapters.",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",

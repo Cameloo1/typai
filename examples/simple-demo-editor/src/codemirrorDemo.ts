@@ -43,6 +43,7 @@ type CodeMirrorDemoDebug = {
   setText(text: string): void;
   getMarks(): CodeMirrorTypaiMark[];
   getMetrics(): CodeMirrorDemoMetrics;
+  clearLatencies(): void;
   openFirstRedPopover(): boolean;
   openFirstBluePopover(): boolean;
   applyFirstRedSuggestion(suggestion?: string): boolean;
@@ -91,6 +92,7 @@ const commandNames = new Set([
   "uv",
   "yarn",
 ]);
+const maxLatencySamples = 120;
 
 export function mountCodeMirrorDemo(mount: HTMLElement): void {
   void mountCodeMirrorSurface(mount, {
@@ -374,7 +376,7 @@ function startCodeMirrorSurface(
 
     metrics.lastLatency = elapsed;
     metrics.latencySamples.push(elapsed);
-    metrics.latencySamples = metrics.latencySamples.slice(-40);
+    metrics.latencySamples = metrics.latencySamples.slice(-maxLatencySamples);
     pendingStartedAt = null;
   };
 
@@ -607,6 +609,11 @@ function startCodeMirrorSurface(
         ...metrics,
         latencySamples: [...metrics.latencySamples],
       };
+    },
+    clearLatencies() {
+      metrics.latencySamples = [];
+      metrics.lastLatency = null;
+      updateDebug();
     },
     openFirstRedPopover() {
       return openFirstTypaiCodeMirrorRedPopover(view);

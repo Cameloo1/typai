@@ -36,6 +36,7 @@
     "@codemirror/language": "^6.0.0",
     "@codemirror/state": "^6.0.0",
     "@codemirror/view": "^6.0.0",
+    "@typai/adapter-testkit": "workspace:*",
     "jsdom": "^27.0.0"
   }
 }

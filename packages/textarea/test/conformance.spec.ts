@@ -21,6 +21,12 @@ runAdapterConformanceSuite(() => new TextareaConformanceDriver(), {
     compositionGuard: true,
     staleWriteSimulation: true,
     plainSourceText: true,
+    completionSurfaceCheck: true,
+  },
+  skipReasons: {
+    redSuggestionApply:
+      "unit conformance driver uses a minimal textarea double without popover DOM",
+    codeBlockProtection: "textarea adapter has no Markdown/code-block context model",
   },
 });
 
@@ -132,6 +138,14 @@ class TextareaConformanceDriver implements AdapterConformanceDriver {
 
     this.typeText("teh ");
     this.onDecision = null;
+  }
+
+  hasGhostTextCompletion(): boolean {
+    return false;
+  }
+
+  hasRemoteCompletionPath(): boolean {
+    return false;
   }
 
   private recordCorrection(event: TextareaCorrectionEvent): void {

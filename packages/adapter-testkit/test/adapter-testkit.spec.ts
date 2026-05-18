@@ -13,9 +13,14 @@ runAdapterConformanceSuite(() => new MemoryAdapterDriver(), {
   suiteName: "@typai/adapter-testkit self conformance",
   kind: "textarea",
   capabilities: {
+    redSuggestionApply: true,
     compositionGuard: true,
     staleWriteSimulation: true,
     plainSourceText: true,
+    completionSurfaceCheck: true,
+  },
+  skipReasons: {
+    codeBlockProtection: "memory self-test driver has no Markdown/code context model",
   },
 });
 
@@ -143,6 +148,52 @@ class MemoryAdapterDriver implements AdapterConformanceDriver {
     return [...this.transactions];
   }
 
+  chooseFirstRedSuggestion(): void {
+    const markIndex = this.marks.findIndex((mark) => mark.kind === "red_spelling_issue");
+    const mark = this.marks[markIndex];
+    const suggestion = mark?.suggestions?.[0];
+
+    if (mark === undefined || suggestion === undefined) {
+      return;
+    }
+
+    const original = mark.original ?? this.text.slice(mark.range.start, mark.range.end);
+
+    this.text = this.text.slice(0, mark.range.start) + suggestion + this.text.slice(mark.range.end);
+    this.version += 1;
+    this.marks.splice(markIndex, 1);
+
+    const transaction: AdapterCorrectionTransaction = {
+      id: this.createId("correction"),
+      documentVersion: this.version,
+      rangeBefore: {
+        start: mark.range.start,
+        end: mark.range.end,
+        text: original,
+      },
+      rangeAfter: {
+        start: mark.range.start,
+        end: mark.range.start + suggestion.length,
+        text: suggestion,
+      },
+      original,
+      replacement: suggestion,
+      trigger: "popover",
+      confidence: 1,
+      reasonCodes: [],
+      createdAt: Date.now(),
+    };
+
+    this.transactions.push(transaction);
+    this.marks.push({
+      id: this.createId("mark"),
+      range: transaction.rangeAfter,
+      kind: "blue_applied_correction",
+      original: transaction.original,
+      replacement: transaction.replacement,
+    });
+  }
+
   revertFirstBlueMark(): void {
     const markIndex = this.marks.findIndex((mark) => mark.kind === "blue_applied_correction");
     const mark = this.marks[markIndex];
@@ -188,6 +239,14 @@ class MemoryAdapterDriver implements AdapterConformanceDriver {
     ) {
       return;
     }
+  }
+
+  hasGhostTextCompletion(): boolean {
+    return false;
+  }
+
+  hasRemoteCompletionPath(): boolean {
+    return false;
   }
 
   private createId(prefix: string): string {

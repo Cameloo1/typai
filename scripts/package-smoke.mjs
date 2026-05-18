@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, delimiter, join, resolve } from "node:path";
 
@@ -16,8 +16,12 @@ try {
   const packedTextarea = resolve(".pack", "typai-textarea-0.0.0-dev.tgz");
   const packedUi = resolve(".pack", "typai-ui-0.0.0-dev.tgz");
   const packedReact = resolve(".pack", "typai-react-0.0.0-dev.tgz");
+  const packedCodeMirror = resolve(".pack", "typai-codemirror-0.0.0-dev.tgz");
   const localReact = resolve("packages/react/node_modules/react");
   const localReactDom = resolve("packages/react/node_modules/react-dom");
+  const localCodeMirrorLanguage = resolve("packages/codemirror/node_modules/@codemirror/language");
+  const localCodeMirrorState = resolve("packages/codemirror/node_modules/@codemirror/state");
+  const localCodeMirrorView = resolve("packages/codemirror/node_modules/@codemirror/view");
 
   mkdirSync(tarballRoot, { recursive: true });
   copyFileSync(packedCore, join(tarballRoot, basename(packedCore)));
@@ -25,6 +29,7 @@ try {
   copyFileSync(packedTextarea, join(tarballRoot, basename(packedTextarea)));
   copyFileSync(packedUi, join(tarballRoot, basename(packedUi)));
   copyFileSync(packedReact, join(tarballRoot, basename(packedReact)));
+  copyFileSync(packedCodeMirror, join(tarballRoot, basename(packedCodeMirror)));
   mkdirSync(appRoot, { recursive: true });
 
   writeFileSync(
@@ -43,11 +48,16 @@ try {
       join(tarballRoot, basename(packedTextarea)),
       join(tarballRoot, basename(packedUi)),
       join(tarballRoot, basename(packedReact)),
+      join(tarballRoot, basename(packedCodeMirror)),
       localReact,
       localReactDom,
     ],
     appRoot,
   );
+
+  linkPackage(appRoot, "@codemirror", "language", localCodeMirrorLanguage);
+  linkPackage(appRoot, "@codemirror", "state", localCodeMirrorState);
+  linkPackage(appRoot, "@codemirror", "view", localCodeMirrorView);
 
   writeFileSync(
     join(appRoot, "smoke.mjs"),
@@ -57,6 +67,7 @@ try {
       'import { attachContenteditable } from "@typai/contenteditable";',
       'import { attachTextarea } from "@typai/textarea";',
       'import * as TypaiReact from "@typai/react";',
+      'import * as TypaiCodeMirror from "@typai/codemirror";',
       "",
       "class SmokeTextarea extends EventTarget {",
       '  nodeName = "TEXTAREA";',
@@ -96,8 +107,22 @@ try {
       '  throw new Error("Expected @typai/react to export TypaiTextarea.");',
       "}",
       "",
+      'if (typeof TypaiCodeMirror.createTypaiCodeMirrorExtension !== "function") {',
+      '  throw new Error("Expected @typai/codemirror to export createTypaiCodeMirrorExtension.");',
+      "}",
+      "",
+      "const codeMirrorExtension = TypaiCodeMirror.createTypaiCodeMirrorExtension({ typai });",
+      "",
+      "if (!Array.isArray(codeMirrorExtension) || codeMirrorExtension.length === 0) {",
+      '  throw new Error("Expected @typai/codemirror extension factory to return CodeMirror extensions.");',
+      "}",
+      "",
       'if ("TypaiGhostText" in TypaiReact || "createCompletionRemote" in TypaiReact) {',
       '  throw new Error("Unexpected remote completion export from @typai/react.");',
+      "}",
+      "",
+      'if ("TypaiGhostText" in TypaiCodeMirror || "createCompletionRemote" in TypaiCodeMirror) {',
+      '  throw new Error("Unexpected remote completion export from @typai/codemirror.");',
       "}",
       "",
       "const corePackageJson = JSON.parse(",
@@ -159,6 +184,15 @@ function resolveCommand(command, args) {
   }
 
   return { command, args };
+}
+
+function linkPackage(appRoot, scope, name, source) {
+  const scopeRoot = join(appRoot, "node_modules", scope);
+  const target = join(scopeRoot, name);
+
+  mkdirSync(scopeRoot, { recursive: true });
+  rmSync(target, { recursive: true, force: true });
+  symlinkSync(source, target, process.platform === "win32" ? "junction" : "dir");
 }
 
 function createCommandEnv() {

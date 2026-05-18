@@ -12,8 +12,14 @@ runAdapterConformanceSuite(() => new ContenteditableConformanceDriver(), {
   suiteName: "@typai/contenteditable adapter conformance",
   kind: "contenteditable",
   capabilities: {
+    redSuggestionApply: true,
     compositionGuard: true,
     staleWriteSimulation: true,
+    completionSurfaceCheck: true,
+  },
+  skipReasons: {
+    plainSourceText: "contenteditable source is an HTMLElement text surface, not a textarea value",
+    codeBlockProtection: "contenteditable adapter has no Markdown/code-block context model",
   },
 });
 
@@ -154,6 +160,14 @@ class ContenteditableConformanceDriver implements AdapterConformanceDriver {
 
     this.typeText("teh ");
     this.onDecision = null;
+  }
+
+  hasGhostTextCompletion(): boolean {
+    return false;
+  }
+
+  hasRemoteCompletionPath(): boolean {
+    return false;
   }
 
   private clickMark(mark: AdapterMark | undefined): void {

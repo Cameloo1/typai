@@ -9,6 +9,7 @@ const packages = [
   "@typai/textarea",
   "@typai/ui",
   "@typai/react",
+  "@typai/codemirror",
 ];
 
 rmSync(outputDirectory, { recursive: true, force: true });

@@ -7,6 +7,7 @@ const packages = [
   { name: "@typai/textarea", directory: "packages/textarea" },
   { name: "@typai/ui", directory: "packages/ui" },
   { name: "@typai/react", directory: "packages/react" },
+  { name: "@typai/codemirror", directory: "packages/codemirror" },
 ];
 
 for (const pkg of packages) {
@@ -72,7 +73,7 @@ function validatePackedFiles(pkg, files) {
     }
   }
 
-  if (pkg.name === "@typai/react" || pkg.name === "@typai/ui") {
+  if (pkg.name === "@typai/react" || pkg.name === "@typai/codemirror" || pkg.name === "@typai/ui") {
     for (const requiredFile of ["dist/index.js", "dist/index.d.ts", "README.md"]) {
       if (!files.includes(requiredFile)) {
         throw new Error(`${pkg.name} dry-run is missing ${requiredFile}`);

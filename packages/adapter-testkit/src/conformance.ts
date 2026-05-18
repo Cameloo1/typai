@@ -16,9 +16,22 @@ import type {
 
 const defaultCapabilities: AdapterConformanceCapabilities = {
   blueRevert: true,
+  redSuggestionApply: false,
   compositionGuard: false,
   staleWriteSimulation: false,
   plainSourceText: false,
+  codeBlockProtection: false,
+  completionSurfaceCheck: true,
+};
+
+const defaultSkipReasons: Record<keyof AdapterConformanceCapabilities, string> = {
+  blueRevert: "driver does not expose a blue-mark revert action",
+  redSuggestionApply: "driver does not expose a red-suggestion apply action",
+  compositionGuard: "driver cannot simulate IME composition in this unit environment",
+  staleWriteSimulation: "driver cannot force an explicit stale-write race in this test harness",
+  plainSourceText: "driver source is not a textarea-like plain-text field",
+  codeBlockProtection: "driver does not model Markdown/code-block contexts",
+  completionSurfaceCheck: "driver does not expose completion-surface introspection",
 };
 
 export function runAdapterConformanceSuite(
@@ -29,9 +42,24 @@ export function runAdapterConformanceSuite(
     ...defaultCapabilities,
     ...options.capabilities,
   };
+  const skipReasons = {
+    ...defaultSkipReasons,
+    ...options.skipReasons,
+  };
   const suiteName = options.suiteName ?? `${options.kind ?? "typai"} adapter conformance`;
 
   describe(suiteName, () => {
+    it("documents unsupported optional conformance capabilities", () => {
+      const unsupported = Object.entries(capabilities).filter(
+        ([, supported]) => supported === false,
+      ) as Array<[keyof AdapterConformanceCapabilities, boolean]>;
+
+      for (const [capability] of unsupported) {
+        expect(skipReasons[capability]).toEqual(expect.any(String));
+        expect(skipReasons[capability]?.trim().length).toBeGreaterThan(0);
+      }
+    });
+
     it("corrects a common typo and creates a blue mark", async () => {
       await withDriver(driverFactory, async (driver) => {
         await driver.typeText("teh ");
@@ -86,6 +114,7 @@ export function runAdapterConformanceSuite(
         await driver.typeText("form ");
 
         expect(driver.getText()).toBe("form ");
+        expect(driver.getMarks()).toHaveLength(0);
         expectNoBlueMarks(driver.getMarks());
         expectNoTransactions(driver.getTransactions());
       });
@@ -101,6 +130,7 @@ export function runAdapterConformanceSuite(
         await driver.typeText(text);
 
         expect(driver.getText()).toBe(text);
+        expect(driver.getMarks()).toHaveLength(0);
         expectNoBlueMarks(driver.getMarks());
         expectNoTransactions(driver.getTransactions());
       });
@@ -151,10 +181,36 @@ export function runAdapterConformanceSuite(
         const mark = expectRedMark(driver.getMarks());
 
         expect(mark.original).toBe("reciept");
+        expect(mark.suggestions ?? []).toContain("receipt");
         expectNoBlueMarks(driver.getMarks());
         expectNoTransactions(driver.getTransactions());
       });
     });
+
+    it.skipIf(!capabilities.redSuggestionApply)(
+      "applies the first red suggestion through the adapter action",
+      async () => {
+        await withDriver(driverFactory, async (driver) => {
+          if (driver.chooseFirstRedSuggestion === undefined) {
+            throw new Error(`${driver.name} did not provide chooseFirstRedSuggestion().`);
+          }
+
+          await driver.typeText("reciept ");
+          await driver.chooseFirstRedSuggestion();
+
+          expect(driver.getText()).toBe("receipt ");
+          const mark = expectBlueMark(driver.getMarks());
+
+          expect(mark.original).toBe("reciept");
+          expect(mark.replacement).toBe("receipt");
+          expect(driver.getTransactions()).toHaveLength(1);
+          expect(driver.getTransactions()[0]).toMatchObject({
+            original: "reciept",
+            replacement: "receipt",
+          });
+        });
+      },
+    );
 
     it.skipIf(!capabilities.plainSourceText)(
       "does not insert markup into source text",
@@ -164,6 +220,40 @@ export function runAdapterConformanceSuite(
 
           expect(driver.getText()).toBe("the ");
           expectPlainSourceText(driver.getText());
+        });
+      },
+    );
+
+    it.skipIf(!capabilities.codeBlockProtection)(
+      "does not correct or mark inside fenced code blocks",
+      async () => {
+        await withDriver(driverFactory, async (driver) => {
+          await driver.typeText("```ts\nteh ");
+
+          expect(driver.getText()).toBe("```ts\nteh ");
+          expect(driver.getMarks()).toHaveLength(0);
+          expectNoTransactions(driver.getTransactions());
+        });
+      },
+    );
+
+    it.skipIf(!capabilities.completionSurfaceCheck)(
+      "does not expose ghost text or remote completion behavior",
+      async () => {
+        await withDriver(driverFactory, async (driver) => {
+          if (
+            driver.hasGhostTextCompletion === undefined ||
+            driver.hasRemoteCompletionPath === undefined
+          ) {
+            throw new Error(
+              `${driver.name} did not provide completion surface conformance methods.`,
+            );
+          }
+
+          await driver.typeText("zzzzword ");
+
+          expect(driver.hasGhostTextCompletion()).toBe(false);
+          expect(driver.hasRemoteCompletionPath()).toBe(false);
         });
       },
     );

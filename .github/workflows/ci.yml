@@ -53,6 +53,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Rich adapter conformance and package tests
+        run: |
+          pnpm --filter @typai/adapter-testkit test
+          pnpm --filter @typai/react test
+          pnpm --filter @typai/codemirror test
+
       - name: Lint
         run: pnpm lint
 
@@ -207,7 +213,7 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Browser benchmark smoke (contenteditable and textarea)
+      - name: Browser benchmark smoke (contenteditable, textarea, and CodeMirror)
         run: pnpm bench:browser
 
       - name: Upload Playwright report

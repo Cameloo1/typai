@@ -44,7 +44,7 @@ export type AdapterCorrectionTransaction = {
   };
   original: string;
   replacement: string;
-  trigger: "space" | "punctuation" | "newline";
+  trigger: "space" | "punctuation" | "newline" | "popover";
   confidence: number;
   reasonCodes: string[];
   createdAt: number;
@@ -67,6 +67,8 @@ export type AdapterConformanceDriver = {
   chooseFirstRedSuggestion?(): Promise<void> | void;
   setComposition?(active: boolean): Promise<void> | void;
   simulateStaleWrite?(): Promise<void> | void;
+  hasGhostTextCompletion?(): boolean;
+  hasRemoteCompletionPath?(): boolean;
 };
 
 export type AdapterConformanceDriverFactory = () =>
@@ -75,13 +77,21 @@ export type AdapterConformanceDriverFactory = () =>
 
 export type AdapterConformanceCapabilities = {
   blueRevert: boolean;
+  redSuggestionApply: boolean;
   compositionGuard: boolean;
   staleWriteSimulation: boolean;
   plainSourceText: boolean;
+  codeBlockProtection: boolean;
+  completionSurfaceCheck: boolean;
 };
+
+export type AdapterConformanceSkipReasons = Partial<
+  Record<keyof AdapterConformanceCapabilities, string>
+>;
 
 export type AdapterConformanceOptions = {
   kind?: TypaiAdapterKind;
   suiteName?: string;
   capabilities?: Partial<AdapterConformanceCapabilities>;
+  skipReasons?: AdapterConformanceSkipReasons;
 };

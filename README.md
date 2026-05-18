@@ -1,3 +1,5 @@
+![typai title image](./typai-title-pic.png)
+
 # typai
 
 typai is a deterministic writing intelligence layer embeddable in almost any
@@ -6,10 +8,10 @@ today; the same engine compiles natively for editor plugins, desktop
 applications, and other host environments.
 
 Status: alpha. Packages are local-ready and tested but not yet published to npm.
-Current phase: Rich Editor Adapter Foundation. React is now available as the
-app-level integration surface, and CodeMirror 6 is now the first serious editor
-integration with protected contexts, safe correction transactions, and V1B
-red/blue popovers. Deterministic correction remains local.
+Current phase: Rich Editor Adapter Foundation is complete for this checkpoint.
+React is available as the app-level integration surface, and CodeMirror 6 is
+the first serious editor integration with protected contexts, safe correction
+transactions, and V1B red/blue popovers. Deterministic correction remains local.
 
 ## What this is, structurally
 
@@ -139,26 +141,27 @@ Rich Editor Adapter Foundation phase.
 `textarea.value` remains the source of truth for textarea and chat-input usage.
 The overlay mirror is visual only and never inserts markup into the textarea.
 
-## What is deliberately out of scope
+## Current Scope Boundaries
 
-typai will not add:
+Typai's deterministic correction layer is intentionally local, in-page, and serverless.
 
-- LLM or remote model calls
-- Server, daemon, or localhost API
-- Browser extension
+The following are not part of `@typai/core`, `@typai/contenteditable`, `@typai/textarea`, or the current Rich Editor Adapter Foundation phase:
+
+- LLM or remote model calls in the correction hot path
+- Server, daemon, or localhost API requirements for correction
+- Browser extension runtime
 - Grammar, style, tone, or clarity checking
-- Edit-distance autocorrect; edit-distance is suggestions only
+- Edit-distance autocorrect; edit-distance remains suggestions-only
 - Next-edit logging
-- V4 remote completion, `@typai/completion-remote`, OpenAI/provider endpoints,
-  or ghost text completion
+- V4 remote completion, `@typai/completion-remote`, OpenAI/provider endpoints, or ghost-text completion
 - Real Codex integration
-- ProseMirror or Monaco implementation in the Rich Editor Adapter Foundation
-  phase
+- ProseMirror or Monaco implementation in the Rich Editor Adapter Foundation phase
 
-The scope is held tight because the value proposition depends on it. A
-deterministic, in-page, serverless correction layer is interesting precisely
-because it does not drift into being a general writing assistant. If you need
-those things, route to a different system at the application layer.
+These are phase boundaries, not permanent product exclusions.
+
+Planned later work includes optional remote completion through `@typai/completion-remote`, async grammar/style assistance, browser-extension or local-service runtimes if justified, Codex integration, ProseMirror/Monaco adapters, persistent writing memory, and next-writing-edit prediction.
+
+The rule is: keep deterministic correction local and trustworthy; add advanced capabilities as separate, explicit, opt-in packages or later phases.
 
 ## Quick start
 
@@ -204,13 +207,15 @@ pnpm bench:browser
 Browser benchmark gates warn above 20 ms p95 and fail above 100 ms p95. WebKit
 is intentionally skipped for this phase.
 
+Package readiness currently covers `@typai/core`, `@typai/contenteditable`,
+`@typai/textarea`, internal `@typai/ui`, `@typai/react`, and
+`@typai/codemirror` in local dry-run and smoke install. The smoke app imports
+React and CodeMirror entrypoints, initializes the deterministic core, and does
+not install or import remote completion packages.
+
 ## Docs
 
-- [docs/rich-editor-adapter-foundation.md](./docs/rich-editor-adapter-foundation.md) - current phase scope lock
-- [docs/AGENT_BRIEF.md](./docs/AGENT_BRIEF.md) — canonical brief for future agents
-- [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) — textarea completion audit
-- [docs/package-readiness.md](./docs/package-readiness.md) — local pack and smoke install details
-- [docs/examples.md](./docs/examples.md) — demo behavior and manual checks
+- [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) - textarea completion audit
 
 ## License
 

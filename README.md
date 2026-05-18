@@ -1,4 +1,4 @@
-![typai title image](./typai-title-pic.png)
+![typai title image](./docs/typai-title.png)
 
 # typai
 
@@ -8,10 +8,11 @@ today; the same engine compiles natively for editor plugins, desktop
 applications, and other host environments.
 
 Status: alpha. Packages are local-ready and tested but not yet published to npm.
-Current phase: Rich Editor Adapter Foundation is complete for this checkpoint.
-React is available as the app-level integration surface, and CodeMirror 6 is
-the first serious editor integration with protected contexts, safe correction
-transactions, and V1B red/blue popovers. Deterministic correction remains local.
+Current phase: V4 Remote Completion Prototype complete. Rich Editor Adapter
+Foundation is complete for this checkpoint. React is available as the app-level
+integration surface, and CodeMirror 6 is the first serious editor integration
+with protected contexts, safe correction transactions, and V1B red/blue
+popovers. Deterministic correction remains local.
 
 ## What this is, structurally
 
@@ -105,12 +106,18 @@ familiar with the embedded-engine pattern will already see where the slots are:
 - **Storage.** In-memory and IndexedDB today for the personal dictionary. Could
   be backed by the embedding application's own user state.
 
-What is not pluggable, intentionally, is the engine's deterministic contract.
-typai will not call out to LLMs, remote APIs, or local services. That constraint
-is what makes the latency and privacy properties hold. If a use case needs
-probabilistic correction, route to a different system at the application layer.
-V4 remote completion is future separate opt-in work and is not part of the
-Rich Editor Adapter Foundation phase.
+What is not pluggable, intentionally, is the deterministic correction contract.
+`@typai/core` and the correction adapters are local deterministic packages.
+Current correction packages do not require a server, daemon, localhost API,
+browser extension, LLM, remote model, Codex integration, or local service.
+
+That boundary is not a permanent product exclusion. Advanced work now starts
+with optional `@typai/completion-remote`; future planned work includes async
+grammar/style assistance, richer adapters, Codex integration, persistent
+memory, and next-writing-edit prediction.
+
+The rule is: deterministic correction remains local and trustworthy; advanced
+capabilities are separate, explicit, opt-in packages or later phases.
 
 ## What ships today
 
@@ -127,7 +134,8 @@ Rich Editor Adapter Foundation phase.
 **Developer-facing:**
 
 - Packages: `@typai/core`, `@typai/contenteditable`, `@typai/textarea`,
-  `@typai/react`, and initial `@typai/codemirror`
+  `@typai/react`, initial `@typai/codemirror`, and optional
+  `@typai/completion-remote`
 - Demos for contenteditable, textarea, React, CodeMirror 6, chat input, and a
   Codex-style mock prompt editor
 - Overlay mirror engine for safe rendering over native `<textarea>`
@@ -143,9 +151,14 @@ The overlay mirror is visual only and never inserts markup into the textarea.
 
 ## Current Scope Boundaries
 
-Typai's deterministic correction layer is intentionally local, in-page, and serverless.
+Typai's deterministic correction layer is intentionally local, in-page, and
+serverless. `@typai/core`, `@typai/contenteditable`, `@typai/textarea`,
+`@typai/react`, and `@typai/codemirror` remain local correction packages.
 
-The following are not part of `@typai/core`, `@typai/contenteditable`, `@typai/textarea`, or the current Rich Editor Adapter Foundation phase:
+Current correction packages do not require a server, daemon, localhost API,
+browser extension, LLM, remote model, Codex integration, or local service.
+
+The following are not part of deterministic correction packages:
 
 - LLM or remote model calls in the correction hot path
 - Server, daemon, or localhost API requirements for correction
@@ -153,15 +166,21 @@ The following are not part of `@typai/core`, `@typai/contenteditable`, `@typai/t
 - Grammar, style, tone, or clarity checking
 - Edit-distance autocorrect; edit-distance remains suggestions-only
 - Next-edit logging
-- V4 remote completion, `@typai/completion-remote`, OpenAI/provider endpoints, or ghost-text completion
 - Real Codex integration
 - ProseMirror or Monaco implementation in the Rich Editor Adapter Foundation phase
 
-These are phase boundaries, not permanent product exclusions.
+These are package and phase boundaries, not permanent product exclusions.
 
-Planned later work includes optional remote completion through `@typai/completion-remote`, async grammar/style assistance, browser-extension or local-service runtimes if justified, Codex integration, ProseMirror/Monaco adapters, persistent writing memory, and next-writing-edit prediction.
+V4 Remote Completion Prototype is complete as a separate, explicit, opt-in
+package named `@typai/completion-remote`. It is scoped to contenteditable first
+and is not imported by `@typai/core` or bundled implicitly into existing
+correction adapters.
 
-The rule is: keep deterministic correction local and trustworthy; add advanced capabilities as separate, explicit, opt-in packages or later phases.
+Future planned work also includes async grammar/style assistance, richer
+adapters, Codex integration, persistent memory, and next-writing-edit
+prediction. The rule is: keep deterministic correction local and trustworthy;
+add advanced capabilities as separate, explicit, opt-in packages or later
+phases.
 
 ## Quick start
 
@@ -171,6 +190,10 @@ Install dependencies and run the demo:
 pnpm install
 pnpm --filter simple-demo-editor dev
 ```
+
+The demo includes a `V4 Remote Completion` tab that uses
+`@typai/completion-remote` with a deterministic mock provider. It does not
+require a server, OpenAI call, or browser API key.
 
 Attach to a textarea:
 
@@ -204,17 +227,25 @@ pnpm smoke:install
 pnpm bench:browser
 ```
 
-Browser benchmark gates warn above 20 ms p95 and fail above 100 ms p95. WebKit
-is intentionally skipped for this phase.
+Browser benchmark gates keep deterministic correction and remote completion
+separate. Correction paths warn above 20 ms p95 and fail above 100 ms p95. The
+V4 mocked remote completion path warns above 800 ms p95 typing-pause-to-ghost
+latency and fails above 2000 ms p95. WebKit is intentionally skipped for this
+phase.
 
 Package readiness currently covers `@typai/core`, `@typai/contenteditable`,
 `@typai/textarea`, internal `@typai/ui`, `@typai/react`, and
-`@typai/codemirror` in local dry-run and smoke install. The smoke app imports
-React and CodeMirror entrypoints, initializes the deterministic core, and does
-not install or import remote completion packages.
+`@typai/codemirror`, plus optional `@typai/completion-remote`, in local dry-run
+and smoke install. The smoke app imports React, CodeMirror, and remote
+completion entrypoints, initializes the deterministic core, runs a mocked remote
+completion request, and verifies `@typai/core` does not depend on
+`@typai/completion-remote`.
 
 ## Docs
 
+- [docs/v4-remote-completion.md](./docs/v4-remote-completion.md) - V4 remote completion prototype scope
+- [docs/v4-remote-completion-complete.md](./docs/v4-remote-completion-complete.md) - V4 hardening audit and completion checkpoint
+- [docs/package-readiness.md](./docs/package-readiness.md) - local package, smoke install, CI, and benchmark gates
 - [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) - textarea completion audit
 
 ## License

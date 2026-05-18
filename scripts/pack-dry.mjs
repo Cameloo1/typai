@@ -8,6 +8,7 @@ const packages = [
   { name: "@typai/ui", directory: "packages/ui" },
   { name: "@typai/react", directory: "packages/react" },
   { name: "@typai/codemirror", directory: "packages/codemirror" },
+  { name: "@typai/completion-remote", directory: "packages/completion-remote" },
 ];
 
 for (const pkg of packages) {
@@ -63,7 +64,9 @@ function validatePackedFiles(pkg, files) {
     "test/",
     "tests/",
     "coverage/",
+    "examples/",
     "playwright-report/",
+    "reports/",
     "test-results/",
   ];
 
@@ -73,7 +76,12 @@ function validatePackedFiles(pkg, files) {
     }
   }
 
-  if (pkg.name === "@typai/react" || pkg.name === "@typai/codemirror" || pkg.name === "@typai/ui") {
+  if (
+    pkg.name === "@typai/react" ||
+    pkg.name === "@typai/codemirror" ||
+    pkg.name === "@typai/ui" ||
+    pkg.name === "@typai/completion-remote"
+  ) {
     for (const requiredFile of ["dist/index.js", "dist/index.d.ts", "README.md"]) {
       if (!files.includes(requiredFile)) {
         throw new Error(`${pkg.name} dry-run is missing ${requiredFile}`);

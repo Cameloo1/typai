@@ -10,6 +10,7 @@ const packages = [
   "@typai/ui",
   "@typai/react",
   "@typai/codemirror",
+  "@typai/completion-remote",
 ];
 
 rmSync(outputDirectory, { recursive: true, force: true });

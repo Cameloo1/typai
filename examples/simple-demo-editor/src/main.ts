@@ -86,7 +86,7 @@ if (app) {
         <div>
           <p class="eyebrow">typai V1A-dev</p>
           <h1 id="demo-title">typai MVP Demo</h1>
-          <p class="summary">Deterministic local typo correction through the core, contenteditable adapter, and native textarea adapter.</p>
+          <p class="summary">Deterministic local typo correction plus an opt-in mocked V4 remote completion prototype.</p>
         </div>
         <div class="intro-actions">
           <button class="reset-button" type="button" data-reset data-testid="reset-editor">Reset Editor</button>
@@ -100,6 +100,7 @@ if (app) {
         <button type="button" data-demo-tab="react" data-active="false">React Demo</button>
         <button type="button" data-demo-tab="codemirror" data-active="false">CodeMirror Demo</button>
         <button type="button" data-demo-tab="codex-mock" data-active="false">Codex Mock Demo</button>
+        <button type="button" data-demo-tab="remote-completion" data-active="false">V4 Remote Completion</button>
         <button type="button" data-demo-tab="chat" data-active="false">Chat Input Demo</button>
       </nav>
 
@@ -360,6 +361,10 @@ if (app) {
         <div data-codex-mock-demo-mount></div>
       </section>
 
+      <section class="remote-completion-demo-panel" aria-label="V4 remote completion demo" data-demo-panel="remote-completion" data-testid="remote-completion-demo-root" hidden>
+        <div data-remote-completion-demo-mount></div>
+      </section>
+
       <section class="chat-demo-panel" aria-label="Generic chat input demo" data-demo-panel="chat" data-testid="chat-demo-root" hidden>
         <div class="demo-panel-header">
           <div>
@@ -455,6 +460,9 @@ if (app) {
   const reactDemoMount = app.querySelector<HTMLElement>("[data-react-demo-mount]");
   const codeMirrorDemoMount = app.querySelector<HTMLElement>("[data-codemirror-demo-mount]");
   const codexMockDemoMount = app.querySelector<HTMLElement>("[data-codex-mock-demo-mount]");
+  const remoteCompletionDemoMount = app.querySelector<HTMLElement>(
+    "[data-remote-completion-demo-mount]",
+  );
 
   setupDemoTabs(app);
 
@@ -469,6 +477,8 @@ if (app) {
   if (codexMockDemoMount) {
     mountCodexMockDemo(codexMockDemoMount);
   }
+
+  setupRemoteCompletionDemo(app, remoteCompletionDemoMount);
 
   if (
     editor &&
@@ -596,6 +606,36 @@ function setupDemoTabs(root: HTMLElement): void {
   }
 
   showTab("contenteditable");
+}
+
+function setupRemoteCompletionDemo(root: HTMLElement, mount: HTMLElement | null): void {
+  if (mount === null) {
+    return;
+  }
+
+  const tab = root.querySelector<HTMLButtonElement>("[data-demo-tab='remote-completion']");
+  let mounted = false;
+  let mounting: Promise<void> | null = null;
+
+  const mountRemoteDemo = () => {
+    if (mounted) {
+      return;
+    }
+
+    mounting ??= import("./remoteCompletionDemo").then(({ mountRemoteCompletionDemo }) =>
+      mountRemoteCompletionDemo(mount),
+    );
+    mounting
+      .then(() => {
+        mounted = true;
+      })
+      .catch((error: unknown) => {
+        mounting = null;
+        mount.textContent = error instanceof Error ? error.message : String(error);
+      });
+  };
+
+  tab?.addEventListener("click", mountRemoteDemo);
 }
 
 async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> {

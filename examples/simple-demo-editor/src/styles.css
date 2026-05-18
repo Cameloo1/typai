@@ -65,6 +65,7 @@ textarea:focus-visible,
 .textarea-demo-panel,
 .react-demo-panel,
 .codemirror-demo-panel,
+.remote-completion-demo-panel,
 .chat-demo-panel {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #d9e0e8;
@@ -167,6 +168,7 @@ h2 {
 .textarea-demo-panel,
 .react-demo-panel,
 .codemirror-demo-panel,
+.remote-completion-demo-panel,
 .chat-demo-panel {
   padding: 20px;
 }
@@ -313,15 +315,75 @@ code {
 .textarea-demo-panel,
 .react-demo-panel,
 .codemirror-demo-panel,
+.remote-completion-demo-panel,
 .chat-demo-panel {
   grid-column: 1 / -1;
 }
 
 .textarea-demo-layout,
-.codemirror-demo-layout {
+.codemirror-demo-layout,
+.remote-completion-content {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 20px;
+}
+
+.remote-completion-editor-column {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.remote-completion-editor {
+  min-height: 300px;
+}
+
+.remote-completion-editor:empty::before {
+  color: #7b8794;
+  content: "Write a prompt or paragraph, then pause...";
+}
+
+.typai-ghost-text {
+  color: #6b7280;
+  text-decoration: none;
+  opacity: 0.72;
+}
+
+.remote-completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.remote-completion-side-panel {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.remote-setting-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  color: #334155;
+}
+
+.remote-setting-row output {
+  color: #111827;
+  font-weight: 700;
+}
+
+.settings-panel input[type="text"],
+.settings-panel input[type="number"] {
+  width: min(100%, 170px);
+  min-height: 34px;
+  border: 1px solid #b8c4d2;
+  border-radius: 6px;
+  color: #172033;
+  background: #ffffff;
 }
 
 .react-demo-content {
@@ -815,7 +877,8 @@ dd {
 
   .textarea-demo-layout,
   .react-demo-layout,
-  .codemirror-demo-layout {
+  .codemirror-demo-layout,
+  .remote-completion-content {
     grid-template-columns: 1fr;
   }
 }

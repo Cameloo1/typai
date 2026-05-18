@@ -14,6 +14,7 @@
     "@codemirror/state": "^6.0.0",
     "@codemirror/view": "^6.0.0",
     "@typai/codemirror": "workspace:*",
+    "@typai/completion-remote": "workspace:*",
     "@typai/contenteditable": "workspace:*",
     "@typai/core": "workspace:*",
     "@typai/react": "workspace:*",

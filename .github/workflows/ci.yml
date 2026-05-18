@@ -59,6 +59,11 @@ jobs:
           pnpm --filter @typai/react test
           pnpm --filter @typai/codemirror test
 
+      - name: Remote completion package tests
+        run: |
+          pnpm --filter @typai/completion-remote build
+          pnpm --filter @typai/completion-remote test
+
       - name: Lint
         run: pnpm lint
 
@@ -105,7 +110,7 @@ jobs:
         run: pnpm build
 
       - name: Playwright Chromium
-        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/textarea-demo.spec.ts tests/e2e/react-demo.spec.ts --project=chromium
+        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts tests/e2e/react-demo.spec.ts --project=chromium
 
       - name: Playwright CodeMirror Chromium
         run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=chromium
@@ -116,11 +121,8 @@ jobs:
       - name: Playwright React Firefox
         run: pnpm exec playwright test tests/e2e/react-demo.spec.ts --project=firefox
 
-      - name: Playwright Contenteditable Firefox
-        run: pnpm exec playwright test tests/e2e/simple-demo-editor.spec.ts --project=firefox
-
-      - name: Playwright Textarea Firefox
-        run: pnpm exec playwright test tests/e2e/textarea-demo.spec.ts --project=firefox
+      - name: Playwright Contenteditable, Remote Completion, and Textarea Firefox
+        run: pnpm exec playwright test tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts --project=firefox
 
       - name: Playwright CodeMirror Firefox
         run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=firefox

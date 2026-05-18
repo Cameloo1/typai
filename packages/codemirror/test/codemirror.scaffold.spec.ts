@@ -1,20 +1,30 @@
 // @vitest-environment jsdom
 
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { CorrectionDecision, CorrectionRule, TypaiCore } from "@typai/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  type CodeMirrorCompletionController,
+  type CodeMirrorCompletionEditor,
+  type CodeMirrorCompletionSnapshot,
+  type CodeMirrorGhostTextClearReason,
   createTypaiCodeMirrorExtension,
+  getTypaiCodeMirrorGhostTextContent,
   getTypaiCodeMirrorMarks,
   getTypaiCodeMirrorRuntimeSettings,
   getTypaiCodeMirrorViewTransactions,
+  isTypaiCodeMirrorGhostTextVisible,
   openFirstTypaiCodeMirrorBluePopover,
   openFirstTypaiCodeMirrorRedPopover,
   openTypaiCodeMirrorPopoverForMark,
+  renderTypaiCodeMirrorGhostText,
   revertFirstTypaiCodeMirrorCorrection,
   typaiCodeMirrorBlueCorrectedClass,
+  typaiCodeMirrorGhostTextClass,
   typaiCodeMirrorRedSpellingClass,
 } from "../src";
 
@@ -637,12 +647,186 @@ describe("@typai/codemirror scaffold", () => {
     expect(typaiCorrectionDocs).toEqual(["the "]);
   });
 
-  it("does not create ghost text decorations or remote completion exports", async () => {
+  it("renders completion ghost text through a CodeMirror decoration widget", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+
+    expect(getGhostElement(view)?.textContent).toBe(" there");
+    expect(getGhostElement(view)?.getAttribute("aria-hidden")).toBe("true");
+    expect(isTypaiCodeMirrorGhostTextVisible(view)).toBe(true);
+    expect(getTypaiCodeMirrorGhostTextContent(view)).toBe(" there");
+  });
+
+  it("does not include ghost text in the CodeMirror document before accept", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+
+    expect(getGhostElement(view)?.textContent).toBe(" there");
+    expect(view.state.doc.toString()).toBe("Hello");
+  });
+
+  it("dismisses CodeMirror ghost text with Escape", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Escape" }),
+    );
+    await flushMicrotasks();
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("escape");
+    expect(view.state.doc.toString()).toBe("Hello");
+  });
+
+  it("dismisses CodeMirror ghost text on further typing without accepting it", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    completion.renderOnInput = false;
+    await typeText(view, "!");
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("typing");
+    expect(view.state.doc.toString()).toBe("Hello!");
+  });
+
+  it("dismisses CodeMirror ghost text on selection change", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    view.dispatch({ selection: { anchor: 0 } });
+    await flushMicrotasks();
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("selection_change");
+  });
+
+  it("dismisses CodeMirror ghost text on compositionstart", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    view.contentDOM.dispatchEvent(new Event("compositionstart", { bubbles: true }));
+    await flushMicrotasks();
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("composition");
+    expect(completion.compositionStarts).toBe(1);
+  });
+
+  it("dismisses CodeMirror ghost text on blur and paste", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    view.contentDOM.dispatchEvent(new Event("blur", { bubbles: true }));
+    await flushMicrotasks();
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("blur");
+    expect(completion.blurs).toBe(1);
+
+    completion.editor?.renderGhostTextAtCaret(" again", completion.editor.getSnapshot());
+    expect(getGhostElement(view)?.textContent).toBe(" again");
+
+    view.contentDOM.dispatchEvent(new Event("paste", { bubbles: true }));
+    await flushMicrotasks();
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("paste");
+  });
+
+  it("drops stale CodeMirror ghost responses", async () => {
+    const completion = createMockCompletionController({
+      ghostText: " stale",
+      renderOnInput: false,
+    });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    const staleSnapshot = completion.editor?.getSnapshot();
+    await typeText(view, "!");
+
+    expect(
+      staleSnapshot === undefined
+        ? false
+        : completion.editor?.renderGhostTextAtCaret(" stale", staleSnapshot),
+    ).toBe(false);
+    expect(getGhostElement(view)).toBeNull();
+    expect(view.state.doc.toString()).toBe("Hello!");
+  });
+
+  it("dismisses CodeMirror ghost text on correction transactions", async () => {
+    const completion = createMockCompletionController({
+      ghostText: " there",
+      renderOnInput: false,
+    });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+    const snapshot = completion.editor?.getSnapshot();
+
+    expect(snapshot).toBeDefined();
+    expect(renderTypaiCodeMirrorGhostText(view, " there", snapshot)).toBe(true);
+    expect(getGhostElement(view)?.textContent).toBe(" there");
+
+    view.dispatch({
+      changes: { from: 0, to: 5, insert: "Hi" },
+      selection: { anchor: 2 },
+      userEvent: "input.typai.correct",
+    });
+    await flushMicrotasks();
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.dismissReasons).toContain("correction_transaction");
+    expect(completion.correctionTransactions).toBe(1);
+  });
+
+  it("suppresses CodeMirror completion in protected code contexts", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({
+      doc: "```ts\n",
+      extensions: [markdown()],
+      completion,
+    });
+
+    await typeText(view, "const value = 1");
+
+    expect(getGhostElement(view)).toBeNull();
+    expect(completion.inputSnapshots).toEqual([]);
+  });
+
+  it("does not create blue correction marks for CodeMirror ghost text", async () => {
+    const completion = createMockCompletionController({ ghostText: " there" });
+    const view = createEditor({ completion });
+
+    await typeText(view, "Hello");
+
+    expect(getTypaiCodeMirrorMarks(view.state)).toEqual([]);
+    expect(view.dom.querySelector(`.${typaiCodeMirrorBlueCorrectedClass}`)).toBeNull();
+  });
+
+  it("keeps @typai/core free of completion-remote imports", () => {
+    const coreSource = readSourceTree(join("..", "core", "src"));
+
+    expect(coreSource).not.toContain("@typai/completion-remote");
+    expect(coreSource).not.toContain("completion-remote");
+  });
+
+  it("does not create ghost text decorations without completion configured", async () => {
     const view = createEditor();
 
     await typeText(view, "zzzzword ");
 
-    expect(view.dom.querySelector(".typai-cm-ghost-text")).toBeNull();
+    expect(view.dom.querySelector(`.${typaiCodeMirrorGhostTextClass}`)).toBeNull();
     expect(view.dom.querySelector(".typai-cm-ghostText")).toBeNull();
   });
 });
@@ -650,16 +834,18 @@ describe("@typai/codemirror scaffold", () => {
 type TypaiExtensionOptions = Parameters<typeof createTypaiCodeMirrorExtension>[0];
 
 type CreateEditorOptions = Partial<TypaiExtensionOptions> & {
+  doc?: string;
   extensions?: Extension[];
 };
 
 function createEditor(options: CreateEditorOptions = {}): EditorView {
-  const { extensions = [], ...typaiOptions } = options;
+  const { doc = "", extensions = [], ...typaiOptions } = options;
   const parent = document.createElement("div");
   const view = new EditorView({
     parent,
     state: EditorState.create({
-      doc: "",
+      doc,
+      selection: { anchor: doc.length },
       extensions: [
         ...extensions,
         createTypaiCodeMirrorExtension({
@@ -674,6 +860,76 @@ function createEditor(options: CreateEditorOptions = {}): EditorView {
   views.push(view);
 
   return view;
+}
+
+type MockCompletionController = CodeMirrorCompletionController & {
+  editor: CodeMirrorCompletionEditor | null;
+  ghostText: string;
+  renderOnInput: boolean;
+  inputSnapshots: CodeMirrorCompletionSnapshot[];
+  selectionSnapshots: CodeMirrorCompletionSnapshot[];
+  dismissReasons: CodeMirrorGhostTextClearReason[];
+  compositionStarts: number;
+  blurs: number;
+  correctionTransactions: number;
+  disconnected: boolean;
+  destroyed: boolean;
+};
+
+function createMockCompletionController(
+  options: { ghostText?: string; renderOnInput?: boolean } = {},
+): MockCompletionController {
+  const controller: MockCompletionController = {
+    editor: null,
+    ghostText: options.ghostText ?? " completion",
+    renderOnInput: options.renderOnInput ?? true,
+    inputSnapshots: [],
+    selectionSnapshots: [],
+    dismissReasons: [],
+    compositionStarts: 0,
+    blurs: 0,
+    correctionTransactions: 0,
+    disconnected: false,
+    destroyed: false,
+    connectEditor(editor) {
+      controller.editor = editor;
+
+      return () => {
+        controller.disconnected = true;
+        controller.editor = null;
+      };
+    },
+    onEditorInput(snapshot) {
+      controller.inputSnapshots.push(snapshot);
+
+      if (controller.renderOnInput && !snapshot.protected) {
+        controller.editor?.renderGhostTextAtCaret(controller.ghostText, snapshot, {
+          requestId: "mock-codemirror-completion",
+          providerName: "mock",
+        });
+      }
+    },
+    onEditorSelectionChange(snapshot) {
+      controller.selectionSnapshots.push(snapshot);
+    },
+    onEditorCompositionStart() {
+      controller.compositionStarts += 1;
+    },
+    onEditorBlur() {
+      controller.blurs += 1;
+    },
+    onCorrectionTransaction() {
+      controller.correctionTransactions += 1;
+    },
+    onGhostTextDismiss(reason) {
+      controller.dismissReasons.push(reason);
+    },
+    destroy() {
+      controller.destroyed = true;
+    },
+  };
+
+  return controller;
 }
 
 async function typeText(view: EditorView, text: string): Promise<void> {
@@ -693,7 +949,12 @@ function typeTextWithoutFlush(view: EditorView, text: string): void {
   }
 }
 
+function getGhostElement(view: EditorView): HTMLElement | null {
+  return view.dom.querySelector<HTMLElement>(`.${typaiCodeMirrorGhostTextClass}`);
+}
+
 async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
 }
@@ -733,6 +994,24 @@ function getRequiredPopoverAction(testId: string, actionName: string): HTMLButto
 
 function clickPopoverAction(testId: string, actionName: string): void {
   getRequiredPopoverAction(testId, actionName).click();
+}
+
+function readSourceTree(root: string): string {
+  return readdirSync(root, { withFileTypes: true })
+    .flatMap((entry) => {
+      const child = join(root, entry.name);
+
+      if (entry.isDirectory()) {
+        return readSourceTree(child);
+      }
+
+      if (!entry.name.endsWith(".ts")) {
+        return [];
+      }
+
+      return readFileSync(child, "utf8");
+    })
+    .join("\n");
 }
 
 function createFakeTypaiCore(): TypaiCore {

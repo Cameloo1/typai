@@ -38,8 +38,76 @@ export type CodeMirrorTypaiCorrectionTransaction = {
   createdAt: number;
 };
 
+export type CodeMirrorCompletionMode = "prose" | "prompt" | "markdown" | "command" | "code";
+
+export type CodeMirrorCompletionSnapshot = {
+  text: string;
+  version: number;
+  selection: {
+    start: number;
+    end: number;
+  };
+  isComposingIME: boolean;
+  mode?: CodeMirrorCompletionMode;
+  protected?: boolean;
+};
+
+export type CodeMirrorGhostTextClearReason =
+  | "typing"
+  | "escape"
+  | "selection_change"
+  | "composition"
+  | "blur"
+  | "paste"
+  | "correction_transaction"
+  | "stale"
+  | "manual"
+  | "protected_context";
+
+export type CodeMirrorCompletionGhostMetadata = {
+  requestId?: string;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+};
+
+export type CodeMirrorCompletionGhost = {
+  text: string;
+  from: number;
+  snapshot: CodeMirrorCompletionSnapshot;
+  metadata?: CodeMirrorCompletionGhostMetadata;
+};
+
+export type CodeMirrorCompletionEditor = {
+  renderGhostTextAtCaret(
+    text: string,
+    snapshot?: CodeMirrorCompletionSnapshot,
+    metadata?: CodeMirrorCompletionGhostMetadata,
+  ): boolean;
+  clearGhostText(reason?: CodeMirrorGhostTextClearReason): boolean;
+  isGhostTextVisible(): boolean;
+  getGhostText(): string | null;
+  getSnapshot(): CodeMirrorCompletionSnapshot;
+};
+
+export type CodeMirrorCompletionController = {
+  connectEditor?(editor: CodeMirrorCompletionEditor): (() => void) | undefined;
+  onEditorInput?(snapshot: CodeMirrorCompletionSnapshot): void;
+  onEditorSelectionChange?(snapshot: CodeMirrorCompletionSnapshot): void;
+  onEditorBlur?(): void;
+  onEditorCompositionStart?(): void;
+  onCorrectionTransaction?(): void;
+  onGhostTextDismiss?(
+    reason: CodeMirrorGhostTextClearReason,
+    snapshot: CodeMirrorCompletionSnapshot,
+  ): void;
+  destroy?(): void;
+};
+
 export type TypaiCodeMirrorOptions = {
   typai: TypaiCore;
+  completion?: CodeMirrorCompletionController;
+  completionMode?: CodeMirrorCompletionMode;
   autocorrect?: boolean;
   spellcheck?: boolean;
   marks?: {
@@ -53,6 +121,8 @@ export type TypaiCodeMirrorOptions = {
 
 export type TypaiCodeMirrorResolvedOptions = {
   typai: TypaiCore;
+  completion?: CodeMirrorCompletionController;
+  completionMode?: CodeMirrorCompletionMode;
   autocorrect: boolean;
   spellcheck: boolean;
   marks: {

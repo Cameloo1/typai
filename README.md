@@ -10,12 +10,13 @@ applications, and other host environments.
 Status: alpha. Packages are local-ready and tested but not yet published to npm.
 Current phase: V4.1 Completion Surface Expansion. V4 Remote Completion
 Prototype is complete, and completion is now an optional package. Current
-completion support is contenteditable. Planned V4.1 completion support covers
-textarea, React, and CodeMirror. Rich Editor Adapter Foundation is complete for
-this checkpoint. React is available as the app-level integration surface, and
+completion support covers contenteditable, textarea, React wrappers, and
+CodeMirror ghost rendering/dismissal. CodeMirror completion accept/revert is
+still planned for V4.1. Rich Editor Adapter Foundation is complete for this
+checkpoint. React is available as the app-level integration surface, and
 CodeMirror 6 is the first serious editor integration with protected contexts,
-safe correction transactions, and V1B red/blue popovers. Deterministic
-correction remains local and no-remote.
+safe correction transactions, V1B red/blue popovers, and optional ghost
+decorations. Deterministic correction remains local and no-remote.
 
 ## What this is, structurally
 
@@ -41,7 +42,7 @@ narrow. New surfaces such as ProseMirror and Monaco are new adapters, not
 engine changes. React already composes the textarea and contenteditable
 adapters through React-specific lifecycle and provider APIs. CodeMirror now
 uses red unresolved spelling decorations, blue transaction-applied correction
-marks, and range-safe popover controls.
+marks, optional ghost text decorations, and range-safe popover controls.
 
 ## The pipeline
 
@@ -100,9 +101,8 @@ familiar with the embedded-engine pattern will already see where the slots are:
 - **Suggestion sources.** Edit-distance today. Could be SymSpell,
   keyboard-adjacency, contextual ranking, or anything that returns ranked
   candidates.
-- **Adapters.** Contenteditable, textarea, React, chat input, and the initial
-  CodeMirror 6 adapter exist today. ProseMirror and Monaco are planning-only
-  for the current phase.
+- **Adapters.** Contenteditable, textarea, React, chat input, and CodeMirror 6
+  exist today. ProseMirror and Monaco are planning-only for the current phase.
 - **Mark renderers.** Red/blue overlay marks today. Could be inline tooltips,
   margin annotations, accessibility-tree announcements, or custom UI per
   surface.
@@ -115,9 +115,10 @@ Current correction packages do not require a server, daemon, localhost API,
 browser extension, LLM, remote model, Codex integration, or local service.
 
 That boundary is not a permanent product exclusion. Advanced work now starts
-with optional `@typai/completion-remote`; current completion support is
-contenteditable, and planned V4.1 support covers textarea, React, and
-CodeMirror. Future planned work includes async grammar/style assistance, richer
+with optional `@typai/completion-remote`; current completion support covers
+contenteditable, textarea, React wrappers, and CodeMirror ghost
+rendering/dismissal. CodeMirror completion accept/revert is still planned for
+V4.1. Future planned work includes async grammar/style assistance, richer
 adapters, Codex integration, persistent memory, and next-writing-edit
 prediction.
 
@@ -139,8 +140,7 @@ capabilities are separate, explicit, opt-in packages or later phases.
 **Developer-facing:**
 
 - Packages: `@typai/core`, `@typai/contenteditable`, `@typai/textarea`,
-  `@typai/react`, initial `@typai/codemirror`, and optional
-  `@typai/completion-remote`
+  `@typai/react`, `@typai/codemirror`, and optional `@typai/completion-remote`
 - Demos for contenteditable, textarea, React, CodeMirror 6, chat input, and a
   Codex-style mock prompt editor
 - Overlay mirror engine for safe rendering over native `<textarea>`
@@ -181,8 +181,9 @@ package named `@typai/completion-remote`. It is scoped to contenteditable first
 and is not imported by `@typai/core` or bundled implicitly into existing
 correction adapters.
 
-V4.1 starts Completion Surface Expansion. The planned completion surfaces are
-textarea, React, and CodeMirror. Core correction remains local and no-remote.
+V4.1 expands completion to textarea, React, and CodeMirror. CodeMirror ghost
+rendering/dismissal exists now; accept/revert remains planned. Core correction
+remains local and no-remote.
 
 Future planned work also includes async grammar/style assistance, richer
 adapters, Codex integration, persistent memory, and next-writing-edit

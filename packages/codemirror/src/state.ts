@@ -7,8 +7,15 @@ import {
   type Text,
 } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
-import { collectTypaiMarks, createMarkDecoration, getTypaiMarkFromDecoration } from "./decorations";
+import {
+  collectTypaiCompletionGhosts,
+  collectTypaiMarks,
+  createGhostTextDecoration,
+  createMarkDecoration,
+  getTypaiMarkFromDecoration,
+} from "./decorations";
 import type {
+  CodeMirrorCompletionGhost,
   CodeMirrorTypaiCorrectionTransaction,
   CodeMirrorTypaiMark,
   TypaiCodeMirrorResolvedOptions,
@@ -25,6 +32,8 @@ export const clearTypaiCodeMirrorMarksEffect = StateEffect.define<void>();
 export const addTypaiCodeMirrorTransactionEffect =
   StateEffect.define<CodeMirrorTypaiCorrectionTransaction>();
 export const clearTypaiCodeMirrorTransactionsEffect = StateEffect.define<void>();
+export const setTypaiCodeMirrorGhostTextEffect = StateEffect.define<CodeMirrorCompletionGhost>();
+export const clearTypaiCodeMirrorGhostTextEffect = StateEffect.define<void>();
 export const setTypaiCodeMirrorRuntimeSettingsEffect =
   StateEffect.define<TypaiCodeMirrorRuntimeSettings>();
 
@@ -129,6 +138,44 @@ export const typaiCodeMirrorTransactionsField = StateField.define<
   },
 });
 
+export const typaiCodeMirrorGhostTextField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, transaction) {
+    let nextDecorations = transaction.docChanged
+      ? Decoration.none
+      : decorations.map(transaction.changes);
+
+    for (const effect of transaction.effects) {
+      if (effect.is(clearTypaiCodeMirrorGhostTextEffect)) {
+        nextDecorations = Decoration.none;
+        continue;
+      }
+
+      if (effect.is(setTypaiCodeMirrorGhostTextEffect)) {
+        const ghost = effect.value;
+
+        if (
+          ghost.text.length === 0 ||
+          ghost.from < 0 ||
+          ghost.from > transaction.state.doc.length
+        ) {
+          nextDecorations = Decoration.none;
+          continue;
+        }
+
+        nextDecorations = Decoration.set([createGhostTextDecoration(ghost).range(ghost.from)]);
+      }
+    }
+
+    return nextDecorations;
+  },
+  provide(field) {
+    return EditorView.decorations.from(field);
+  },
+});
+
 export function getTypaiCodeMirrorMarks(state: {
   field<T>(field: StateField<T>): T;
 }): CodeMirrorTypaiMark[] {
@@ -139,6 +186,18 @@ export function getTypaiCodeMirrorTransactions(state: {
   field<T>(field: StateField<T>): T;
 }): CodeMirrorTypaiCorrectionTransaction[] {
   return state.field(typaiCodeMirrorTransactionsField);
+}
+
+export function getTypaiCodeMirrorGhostText(state: {
+  field<T>(field: StateField<T>, require?: boolean): T;
+}): CodeMirrorCompletionGhost | null {
+  const decorations = state.field(typaiCodeMirrorGhostTextField, false);
+
+  if (decorations === undefined) {
+    return null;
+  }
+
+  return collectTypaiCompletionGhosts(decorations)[0] ?? null;
 }
 
 export function getTypaiCodeMirrorOptions(

@@ -8,14 +8,23 @@ import {
 import {
   addTypaiCodeMirrorMarkEffect,
   addTypaiCodeMirrorTransactionEffect,
+  clearTypaiCodeMirrorGhostTextEffect,
   clearTypaiCodeMirrorMarksEffect,
+  getTypaiCodeMirrorGhostText,
   getTypaiCodeMirrorMarks,
   getTypaiCodeMirrorOptions,
   getTypaiCodeMirrorTransactions,
   removeTypaiCodeMirrorMarkEffect,
+  setTypaiCodeMirrorGhostTextEffect,
   setTypaiCodeMirrorRuntimeSettingsEffect,
 } from "./state";
-import type { CodeMirrorTypaiCorrectionTransaction, CodeMirrorTypaiMark } from "./types";
+import type {
+  CodeMirrorCompletionGhostMetadata,
+  CodeMirrorCompletionSnapshot,
+  CodeMirrorGhostTextClearReason,
+  CodeMirrorTypaiCorrectionTransaction,
+  CodeMirrorTypaiMark,
+} from "./types";
 
 const activePopovers = new WeakMap<EditorView, TypaiPopoverHandle>();
 
@@ -35,6 +44,61 @@ export function getTypaiCodeMirrorViewTransactions(
   view: EditorView,
 ): CodeMirrorTypaiCorrectionTransaction[] {
   return getTypaiCodeMirrorTransactions(view.state);
+}
+
+export function renderTypaiCodeMirrorGhostText(
+  view: EditorView,
+  text: string,
+  snapshot?: CodeMirrorCompletionSnapshot,
+  metadata?: CodeMirrorCompletionGhostMetadata,
+): boolean {
+  const normalizedText = text.length === 0 ? "" : text;
+
+  if (normalizedText.length === 0) {
+    clearTypaiCodeMirrorGhostText(view);
+    return false;
+  }
+
+  const ghostSnapshot = snapshot ?? createCurrentCompletionSnapshot(view);
+
+  if (!completionSnapshotMatchesEditor(view, ghostSnapshot)) {
+    clearTypaiCodeMirrorGhostText(view);
+    return false;
+  }
+
+  view.dispatch({
+    effects: setTypaiCodeMirrorGhostTextEffect.of({
+      text: normalizedText,
+      from: ghostSnapshot.selection.end,
+      snapshot: ghostSnapshot,
+      metadata,
+    }),
+  });
+
+  return true;
+}
+
+export function clearTypaiCodeMirrorGhostText(
+  view: EditorView,
+  _reason: CodeMirrorGhostTextClearReason = "manual",
+): boolean {
+  if (getTypaiCodeMirrorGhostText(view.state) === null) {
+    return false;
+  }
+
+  view.dispatch({
+    effects: clearTypaiCodeMirrorGhostTextEffect.of(),
+  });
+
+  return true;
+}
+
+export function isTypaiCodeMirrorGhostTextVisible(view: EditorView): boolean {
+  return getTypaiCodeMirrorGhostText(view.state) !== null;
+}
+
+export function getTypaiCodeMirrorGhostTextContent(view: EditorView): string | null {
+  return getTypaiCodeMirrorGhostText(view.state)?.text ?? null;
 }
 
 export function revertFirstTypaiCodeMirrorCorrection(view: EditorView): boolean {
@@ -422,6 +486,36 @@ function wirePopoverKeyboardActivation(element: HTMLElement): void {
 
 function createCommandId(prefix: string): string {
   return `typai-cm-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createCurrentCompletionSnapshot(view: EditorView): CodeMirrorCompletionSnapshot {
+  const selection = view.state.selection.main;
+
+  return {
+    text: view.state.doc.toString(),
+    version: Date.now(),
+    selection: {
+      start: selection.from,
+      end: selection.to,
+    },
+    isComposingIME: view.composing,
+  };
+}
+
+function completionSnapshotMatchesEditor(
+  view: EditorView,
+  snapshot: CodeMirrorCompletionSnapshot,
+): boolean {
+  const selection = view.state.selection.main;
+
+  return (
+    snapshot.text === view.state.doc.toString() &&
+    snapshot.selection.start === selection.from &&
+    snapshot.selection.end === selection.to &&
+    selection.empty &&
+    !snapshot.isComposingIME &&
+    !view.composing
+  );
 }
 
 type RectLike = {

@@ -16,8 +16,9 @@ completion package with provider, scheduler, context, metrics, endpoint
 provider, contenteditable controller, mocked demo, E2E coverage, package
 readiness, and mocked benchmark coverage.
 
-Contenteditable completion exists today. Textarea, React, and CodeMirror
-completion are the next V4.1 expansion surfaces.
+Contenteditable, textarea, and React completion exist today. CodeMirror
+completion has ghost-text rendering and dismiss behavior; accept/revert remains
+the next V4.1 CodeMirror completion step.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -47,9 +48,10 @@ deterministic correction adapters in this phase.
 - `@typai/completion-remote` is optional and package-ready, but not imported by
   `@typai/core`.
 - Contenteditable completion exists and must be preserved.
-- Textarea completion is next in V4.1.
-- React completion wrappers/components are next in V4.1.
-- CodeMirror completion is next in V4.1.
+- Textarea completion exists and must be preserved.
+- React completion wrappers/components exist and must remain optional.
+- CodeMirror ghost completion exists; Tab accept and exact revert are still
+  next in V4.1.
 - Mock providers are used in tests, demos, E2E, and browser benchmark smoke.
 - Endpoint providers require an embedder backend; browser code must not call
   model providers directly.

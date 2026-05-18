@@ -8,12 +8,16 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: V4 Remote Completion Prototype complete.
+Current phase: V4.1 Completion Surface Expansion.
 
-The V4 package is `@typai/completion-remote`. It is a separate, opt-in remote
+V4.0 Remote Completion Prototype is complete. The V4 package is
+`@typai/completion-remote`. It is a separate, opt-in remote
 completion package with provider, scheduler, context, metrics, endpoint
 provider, contenteditable controller, mocked demo, E2E coverage, package
 readiness, and mocked benchmark coverage.
+
+Contenteditable completion exists today. Textarea, React, and CodeMirror
+completion are the next V4.1 expansion surfaces.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -31,7 +35,7 @@ deterministic correction adapters in this phase.
 - `examples/simple-demo-editor`
 - `tests/golden-corpus`
 
-## V4 Remote Completion Boundary
+## V4 / V4.1 Remote Completion Boundary
 
 - `@typai/core` must not import `@typai/completion-remote`.
 - Existing adapters must still work without completion installed or configured.
@@ -42,18 +46,21 @@ deterministic correction adapters in this phase.
   completion state.
 - `@typai/completion-remote` is optional and package-ready, but not imported by
   `@typai/core`.
+- Contenteditable completion exists and must be preserved.
+- Textarea completion is next in V4.1.
+- React completion wrappers/components are next in V4.1.
+- CodeMirror completion is next in V4.1.
 - Mock providers are used in tests, demos, E2E, and browser benchmark smoke.
 - Endpoint providers require an embedder backend; browser code must not call
   model providers directly.
 - Browser examples must not contain private provider API keys.
 - Browser package code calls an embedder endpoint; the embedder endpoint calls
   the provider.
-- No textarea ghost text in V4.0.
-- No React completion surface in V4.0.
-- No CodeMirror completion surface in V4.0.
-- No real Codex adapter in V4.0.
-- No browser extension in V4.0.
-- No local model inference in V4.0.
+- Optional streaming is allowed only after non-streaming V4.1 surfaces are
+  stable, behind a feature flag, and with mocked tests only.
+- No real Codex integration.
+- No browser extension.
+- No local model inference.
 - No next-edit logging.
 
 Deterministic correction runs first. Remote completion waits for debounce after
@@ -104,6 +111,8 @@ correction settles.
 - No real Codex integration.
 - No real OpenAI/provider calls in browser examples, tests, E2E, or benchmarks.
 - No next-edit logging.
+- No private provider key in browser code.
+- No local model inference.
 
 ## V4 Scope Reference
 
@@ -111,6 +120,11 @@ Use `docs/v4-remote-completion.md` as the V4 Remote Completion Prototype scope
 lock. It is the current boundary for completion planning.
 
 Use `docs/v4-remote-completion-complete.md` as the V4.0 hardening audit and
-completion checkpoint. Do not add V4.1 features such as streaming, textarea
-ghost text, React completion, CodeMirror completion, partial accept, local
-completion research, or next-edit prediction without a new explicit phase.
+completion checkpoint.
+
+Use `docs/v4-1-completion-surface-expansion.md` as the V4.1 Completion Surface
+Expansion scope lock. Do not add a real Codex adapter, ProseMirror/Monaco
+completion, browser extension behavior, local model inference, next-edit
+logging, private browser provider-key paths, real provider calls in tests or
+demos, completion auto-accept, silent rewrite, or streaming outside the V4.1
+feature-flag/mock-test gate.

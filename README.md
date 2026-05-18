@@ -8,11 +8,14 @@ today; the same engine compiles natively for editor plugins, desktop
 applications, and other host environments.
 
 Status: alpha. Packages are local-ready and tested but not yet published to npm.
-Current phase: V4 Remote Completion Prototype complete. Rich Editor Adapter
-Foundation is complete for this checkpoint. React is available as the app-level
-integration surface, and CodeMirror 6 is the first serious editor integration
-with protected contexts, safe correction transactions, and V1B red/blue
-popovers. Deterministic correction remains local.
+Current phase: V4.1 Completion Surface Expansion. V4 Remote Completion
+Prototype is complete, and completion is now an optional package. Current
+completion support is contenteditable. Planned V4.1 completion support covers
+textarea, React, and CodeMirror. Rich Editor Adapter Foundation is complete for
+this checkpoint. React is available as the app-level integration surface, and
+CodeMirror 6 is the first serious editor integration with protected contexts,
+safe correction transactions, and V1B red/blue popovers. Deterministic
+correction remains local and no-remote.
 
 ## What this is, structurally
 
@@ -112,9 +115,11 @@ Current correction packages do not require a server, daemon, localhost API,
 browser extension, LLM, remote model, Codex integration, or local service.
 
 That boundary is not a permanent product exclusion. Advanced work now starts
-with optional `@typai/completion-remote`; future planned work includes async
-grammar/style assistance, richer adapters, Codex integration, persistent
-memory, and next-writing-edit prediction.
+with optional `@typai/completion-remote`; current completion support is
+contenteditable, and planned V4.1 support covers textarea, React, and
+CodeMirror. Future planned work includes async grammar/style assistance, richer
+adapters, Codex integration, persistent memory, and next-writing-edit
+prediction.
 
 The rule is: deterministic correction remains local and trustworthy; advanced
 capabilities are separate, explicit, opt-in packages or later phases.
@@ -175,6 +180,9 @@ V4 Remote Completion Prototype is complete as a separate, explicit, opt-in
 package named `@typai/completion-remote`. It is scoped to contenteditable first
 and is not imported by `@typai/core` or bundled implicitly into existing
 correction adapters.
+
+V4.1 starts Completion Surface Expansion. The planned completion surfaces are
+textarea, React, and CodeMirror. Core correction remains local and no-remote.
 
 Future planned work also includes async grammar/style assistance, richer
 adapters, Codex integration, persistent memory, and next-writing-edit
@@ -245,6 +253,7 @@ completion request, and verifies `@typai/core` does not depend on
 
 - [docs/v4-remote-completion.md](./docs/v4-remote-completion.md) - V4 remote completion prototype scope
 - [docs/v4-remote-completion-complete.md](./docs/v4-remote-completion-complete.md) - V4 hardening audit and completion checkpoint
+- [docs/v4-1-completion-surface-expansion.md](./docs/v4-1-completion-surface-expansion.md) - V4.1 completion surface expansion scope
 - [docs/package-readiness.md](./docs/package-readiness.md) - local package, smoke install, CI, and benchmark gates
 - [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) - textarea completion audit
 

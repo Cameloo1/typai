@@ -8,6 +8,12 @@ mocked provider demo coverage, local metrics, package readiness checks, and
 Chromium/Firefox E2E coverage without changing the deterministic correction
 contract.
 
+V4.0 is complete. V4.1 starts Completion Surface Expansion for textarea, React,
+and CodeMirror while preserving the same package and safety boundaries. The V4.0
+boundaries still apply: `@typai/core` remains no-remote, provider calls stay in
+`@typai/completion-remote`, browser code must not contain private provider keys,
+and tests/demos/E2E must remain mocked.
+
 ## What Was Added
 
 - `@typai/completion-remote` as a separate opt-in package.
@@ -233,12 +239,20 @@ rewrite, or real Codex integration was found in the current V4 surface.
 - No next-edit logging or prediction away from the caret.
 - No partial accept.
 
-## Next Recommended V4.1 Options
+## V4.1 Handoff
 
-- Streaming provider support.
-- Textarea ghost text research.
-- React completion integration.
-- CodeMirror completion integration.
-- Provider error and rate-limit hardening.
-- Partial accept.
-- Path B local completion research.
+V4.1 should expand completion surfaces in this order:
+
+- Shared completion surface contracts and conformance tests.
+- Textarea non-streaming completion.
+- React wrappers/components for completion.
+- CodeMirror non-streaming completion.
+- Provider resilience basics.
+- Optional streaming only after non-streaming surfaces are stable, behind a
+  feature flag, and with mocked tests only.
+
+The following remain out of scope for the V4.1 handoff: real Codex integration,
+ProseMirror/Monaco completion, browser extension behavior, local model
+inference, Path B local completion engine, next-edit logging, private provider
+API keys in browser code, real provider calls in tests/demos/E2E, completion
+auto-accept, and silent rewrite.

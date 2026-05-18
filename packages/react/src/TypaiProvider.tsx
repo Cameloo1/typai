@@ -6,6 +6,7 @@ export const TypaiCoreContext = createContext<TypaiCoreContextValue>({
   typai: null,
   status: "idle",
   error: null,
+  completion: null,
   core: null,
   loading: false,
 });
@@ -20,6 +21,7 @@ export function TypaiProvider({
   typai,
   core,
   createCore,
+  completion,
 }: TypaiProviderProps): ReactElement {
   const providedCore = typai ?? core ?? null;
   const factoryCacheRef = useRef<CoreFactoryCache | null>(null);
@@ -27,6 +29,7 @@ export function TypaiProvider({
     typai: providedCore,
     status: providedCore !== null ? "ready" : createCore !== undefined ? "loading" : "idle",
     error: null,
+    completion: null,
     core: providedCore,
     loading: providedCore === null && createCore !== undefined,
   }));
@@ -37,6 +40,7 @@ export function TypaiProvider({
         typai: providedCore,
         status: "ready",
         error: null,
+        completion: null,
         core: providedCore,
         loading: false,
       });
@@ -48,6 +52,7 @@ export function TypaiProvider({
         typai: null,
         status: "idle",
         error: null,
+        completion: null,
         core: null,
         loading: false,
       });
@@ -69,6 +74,7 @@ export function TypaiProvider({
       typai: null,
       status: "loading",
       error: null,
+      completion: null,
       core: null,
       loading: true,
     });
@@ -83,6 +89,7 @@ export function TypaiProvider({
           typai: createdCore,
           status: "ready",
           error: null,
+          completion: null,
           core: createdCore,
           loading: false,
         });
@@ -96,6 +103,7 @@ export function TypaiProvider({
           typai: null,
           status: "error",
           error,
+          completion: null,
           core: null,
           loading: false,
         });
@@ -112,6 +120,7 @@ export function TypaiProvider({
       typai: contextValue.typai,
       status: contextValue.status,
       error: contextValue.error,
+      completion: completion ?? null,
       core: contextValue.core,
       loading: contextValue.loading,
     }),
@@ -119,6 +128,7 @@ export function TypaiProvider({
       contextValue.typai,
       contextValue.status,
       contextValue.error,
+      completion,
       contextValue.core,
       contextValue.loading,
     ],

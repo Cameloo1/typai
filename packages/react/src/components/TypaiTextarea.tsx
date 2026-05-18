@@ -9,6 +9,7 @@ export const TypaiTextarea = forwardRef<HTMLTextAreaElement, TypaiTextareaProps>
       textareaRef,
       textareaProps,
       typai,
+      completion,
       autocorrect,
       spellcheck,
       settings,
@@ -29,6 +30,7 @@ export const TypaiTextarea = forwardRef<HTMLTextAreaElement, TypaiTextareaProps>
     const hook = useTypaiTextarea({
       textareaRef,
       typai,
+      completion,
       autocorrect,
       spellcheck,
       settings,

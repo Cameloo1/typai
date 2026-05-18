@@ -9,6 +9,8 @@ export const TypaiContenteditable = forwardRef<HTMLDivElement, TypaiContentedita
       elementRef,
       contenteditableProps,
       typai,
+      completion,
+      completionMode,
       autocorrect,
       spellcheck,
       settings,
@@ -21,6 +23,8 @@ export const TypaiContenteditable = forwardRef<HTMLDivElement, TypaiContentedita
       onSettingsChange,
       onTextChange,
       onUserAction,
+      onCompletionAccepted,
+      onCompletionReverted,
       ...directContenteditableProps
     },
     forwardedRef,
@@ -32,6 +36,8 @@ export const TypaiContenteditable = forwardRef<HTMLDivElement, TypaiContentedita
     const hook = useTypaiContenteditable({
       elementRef,
       typai,
+      completion,
+      completionMode,
       autocorrect,
       spellcheck,
       settings,
@@ -44,6 +50,8 @@ export const TypaiContenteditable = forwardRef<HTMLDivElement, TypaiContentedita
       onSettingsChange,
       onTextChange,
       onUserAction,
+      onCompletionAccepted,
+      onCompletionReverted,
     });
     const ref = useComposedRefs<HTMLDivElement>(hook.ref as Ref<HTMLDivElement>, forwardedRef);
 

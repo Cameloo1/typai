@@ -16,6 +16,8 @@ This package is part of the Rich Editor Adapter Foundation phase.
   fallback, direct `typai` overrides, stable callback forwarding, and cleanup.
 - Prompt 53: React components for textarea, contenteditable, settings, and
   local debug display.
+- Prompt 83 / V4.1-6: optional completion controller integration for React
+  textarea and contenteditable hooks/components.
 
 ## Runtime Boundary
 
@@ -25,8 +27,12 @@ only. React is not added to `@typai/core` or to non-React adapter packages.
 
 No server, model call, LLM, local service, browser extension, production
 dictionary asset, ghost text completion, or remote completion provider is
-required. Remote completion is future V4 work in a separate opt-in package,
-`@typai/completion-remote`; it is not part of `@typai/react`.
+required for deterministic correction. Completion is optional and explicit:
+React hooks/components accept a structural completion controller from the
+embedder, but `@typai/react` does not construct remote providers and does not
+need provider API keys in browser code. Use `@typai/completion-remote` only from
+an embedder-owned path, such as a mock provider for tests/demos or an endpoint
+provider routed through the embedder's backend.
 
 ## Install
 
@@ -84,6 +90,57 @@ export function PromptBox({ typai }) {
 `"idle"`, `"loading"`, `"ready"`, and `"error"`. `useTypaiTextarea()` and
 `useTypaiContenteditable()` return a React ref, adapter status, attached adapter
 handle, local debug counters, settings, and `updateSettings()`.
+
+## Optional Completion
+
+Completion is not enabled by default. Pass a controller explicitly:
+
+```tsx
+<TypaiTextarea
+  typai={typai}
+  completion={textareaCompletion}
+  textareaProps={{ placeholder: "Write..." }}
+/>
+
+<TypaiContenteditable
+  typai={typai}
+  completion={contenteditableCompletion}
+  completionMode="prompt"
+/>
+```
+
+Hooks accept the same option:
+
+```tsx
+const textarea = useTypaiTextarea({
+  typai,
+  completion: textareaCompletion,
+});
+```
+
+`TypaiProvider` may also provide optional surface-specific controllers:
+
+```tsx
+<TypaiProvider
+  typai={typai}
+  completion={{
+    textarea: textareaCompletion,
+    contenteditable: contenteditableCompletion,
+  }}
+>
+  <TypaiTextarea />
+</TypaiProvider>
+```
+
+Completion controllers are structural objects. React forwards editor snapshots
+to them and, when they expose `connectEditor(editor)`, connects the attached
+adapter so the controller can render ghost text through adapter-owned APIs.
+Textarea completion enables the textarea overlay by default only when a
+completion controller is present; correction-only components keep the overlay
+opt-in behavior.
+
+Examples must use deterministic mock providers or an embedder endpoint. Do not
+put private provider keys in React components, browser bundles, or public demos.
 
 ## Component Example
 

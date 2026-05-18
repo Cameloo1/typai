@@ -19,9 +19,22 @@ const textareaBenchmarkTokens = [
   "/etc/passwd",
   "zzzzword",
 ] as const;
+const codeMirrorBenchmarkTokens = [
+  "teh",
+  "adn",
+  "reciept",
+  "user@example.com",
+  "/etc/passwd",
+  "zzzzword",
+] as const;
 const rounds = 10;
+const codeMirrorRounds = 6;
+const remoteCompletionRounds = 6;
 const warningTargetMs = 20;
 const hardFailureThresholdMs = 100;
+const remoteCompletionWarningTargetMs = 800;
+const remoteCompletionHardFailureThresholdMs = 2000;
+const remoteCompletionMockLatencyMs = 50;
 
 type LatencySummary = {
   count: number;
@@ -41,6 +54,15 @@ declare global {
     __typaiTextareaDebug?: {
       getMetrics(): { latencySamples: number[] };
       clearLatencies(): void;
+    };
+    __typaiCodeMirrorDemo?: {
+      getText(): string;
+      getMetrics(): { latencySamples: number[] };
+      clearLatencies(): void;
+    };
+    __typaiRemoteCompletionDebug?: {
+      getMetrics(): { ghostLatencySamples: number[] };
+      resetMetrics(): void;
     };
   }
 }
@@ -140,6 +162,110 @@ test("reports textarea browser-path demo latency smoke metrics", async ({ page }
   expect(summary.p95).toBeLessThan(hardFailureThresholdMs);
 });
 
+test("reports CodeMirror browser-path demo latency smoke metrics", async ({ page }) => {
+  await page.goto(`/?typaiDbName=typai-codemirror-latency-${Date.now()}&storage=memory`);
+  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await page.getByRole("button", { name: "CodeMirror Demo" }).click();
+  const root = page.getByTestId("codemirror-demo-root");
+
+  await expect(root).toBeVisible();
+  await expect(root.getByTestId("codemirror-core-status")).toHaveText("ready");
+  await page.evaluate(() => window.__typaiCodeMirrorDemo?.clearLatencies());
+
+  const editor = root.locator(".cm-content");
+
+  for (let round = 0; round < codeMirrorRounds; round += 1) {
+    for (const token of codeMirrorBenchmarkTokens) {
+      await clearCodeMirror(editor, page);
+      const previousCount = await getCodeMirrorLatencyCount(page);
+
+      await editor.click();
+      await page.keyboard.type(`${token} `);
+      await expect.poll(() => getCodeMirrorLatencyCount(page)).toBeGreaterThan(previousCount);
+    }
+  }
+
+  const samples = await page.evaluate(
+    () => window.__typaiCodeMirrorDemo?.getMetrics().latencySamples ?? [],
+  );
+  const summary = summarizeLatencies(samples);
+
+  console.log("typai CodeMirror browser latency smoke benchmark");
+  console.log(`tokens: ${codeMirrorBenchmarkTokens.join(", ")}`);
+  console.log(`count: ${summary.count}`);
+  console.log(`mean: ${formatMs(summary.mean)}`);
+  console.log(`p50: ${formatMs(summary.p50)}`);
+  console.log(`p95: ${formatMs(summary.p95)}`);
+  console.log(`p99: ${formatMs(summary.p99)}`);
+  console.log(`max: ${formatMs(summary.max)}`);
+
+  if (summary.p95 > warningTargetMs) {
+    console.warn(`warning: CodeMirror browser p95 exceeded ${warningTargetMs} ms target`);
+  }
+
+  if (summary.p95 > hardFailureThresholdMs) {
+    console.error(
+      `error: CodeMirror browser p95 exceeded ${hardFailureThresholdMs} ms hard failure threshold`,
+    );
+  }
+
+  expect(summary.count).toBeGreaterThanOrEqual(codeMirrorBenchmarkTokens.length * codeMirrorRounds);
+  expectFiniteSummary(summary);
+  expect(summary.p95).toBeLessThan(hardFailureThresholdMs);
+});
+
+test("reports V4 remote completion mocked ghost latency smoke metrics", async ({ page }) => {
+  await page.goto(`/?typaiDbName=typai-remote-completion-latency-${Date.now()}&storage=memory`);
+  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await page.getByRole("button", { name: "V4 Remote Completion" }).click();
+  await expect(page.getByTestId("remote-completion-demo-root")).toBeVisible();
+  await setRemoteCompletionMockLatency(page, remoteCompletionMockLatencyMs);
+
+  const editor = page.getByTestId("remote-completion-editor");
+  const samples: number[] = [];
+
+  for (let round = 0; round < remoteCompletionRounds; round += 1) {
+    await resetRemoteCompletionEditor(page);
+
+    await editor.click();
+    await page.keyboard.type(`Benchmark prompt ${round} for remote completion`);
+    await expect
+      .poll(() => getRemoteCompletionLatencyCount(page), { timeout: 5_000 })
+      .toBeGreaterThan(0);
+    await expect(remoteCompletionGhost(page)).toHaveCount(1);
+    samples.push(...(await getRemoteCompletionLatencySamples(page)));
+    await page.keyboard.press("Escape");
+    await expect(remoteCompletionGhost(page)).toHaveCount(0);
+  }
+
+  const summary = summarizeLatencies(samples);
+
+  console.log("Typai V4 remote completion mocked ghost latency smoke benchmark");
+  console.log(`mock provider latency: ${remoteCompletionMockLatencyMs} ms`);
+  console.log(`count: ${summary.count}`);
+  console.log(`mean: ${formatMs(summary.mean)}`);
+  console.log(`p50: ${formatMs(summary.p50)}`);
+  console.log(`p95: ${formatMs(summary.p95)}`);
+  console.log(`p99: ${formatMs(summary.p99)}`);
+  console.log(`max: ${formatMs(summary.max)}`);
+
+  if (summary.p95 > remoteCompletionWarningTargetMs) {
+    console.warn(
+      `warning: V4 remote completion p95 exceeded ${remoteCompletionWarningTargetMs} ms target`,
+    );
+  }
+
+  if (summary.p95 > remoteCompletionHardFailureThresholdMs) {
+    console.error(
+      `error: V4 remote completion p95 exceeded ${remoteCompletionHardFailureThresholdMs} ms hard failure threshold`,
+    );
+  }
+
+  expect(summary.count).toBeGreaterThanOrEqual(remoteCompletionRounds);
+  expectFiniteSummary(summary);
+  expect(summary.p95).toBeLessThan(remoteCompletionHardFailureThresholdMs);
+});
+
 async function clearEditor(editor: Locator, page: Page): Promise<void> {
   await editor.evaluate((element) => {
     element.textContent = "";
@@ -157,12 +283,57 @@ async function clearTextarea(textarea: Locator): Promise<void> {
   });
 }
 
+async function clearCodeMirror(editor: Locator, page: Page): Promise<void> {
+  await editor.click();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.press("Backspace");
+  await expect
+    .poll(() => page.evaluate(() => window.__typaiCodeMirrorDemo?.getText() ?? null))
+    .toBe("");
+}
+
 async function getLatencyCount(page: Page): Promise<number> {
   return page.evaluate(() => window.__typaiDebug?.getMetrics().latencySamples.length ?? 0);
 }
 
 async function getTextareaLatencyCount(page: Page): Promise<number> {
   return page.evaluate(() => window.__typaiTextareaDebug?.getMetrics().latencySamples.length ?? 0);
+}
+
+async function getCodeMirrorLatencyCount(page: Page): Promise<number> {
+  return page.evaluate(() => window.__typaiCodeMirrorDemo?.getMetrics().latencySamples.length ?? 0);
+}
+
+async function getRemoteCompletionLatencyCount(page: Page): Promise<number> {
+  return (await getRemoteCompletionLatencySamples(page)).length;
+}
+
+async function getRemoteCompletionLatencySamples(page: Page): Promise<number[]> {
+  return page.evaluate(
+    () => window.__typaiRemoteCompletionDebug?.getMetrics().ghostLatencySamples ?? [],
+  );
+}
+
+async function setRemoteCompletionMockLatency(page: Page, latencyMs: number): Promise<void> {
+  const input = page.getByTestId("remote-latency");
+
+  await input.fill(String(latencyMs));
+  await input.dispatchEvent("change");
+}
+
+function remoteCompletionGhost(page: Page): Locator {
+  return page.locator("[data-testid='remote-completion-editor'] [data-typai-ghost='true']");
+}
+
+async function resetRemoteCompletionEditor(page: Page): Promise<void> {
+  await page.getByTestId("remote-reset").click();
+  await page.evaluate(() => window.__typaiRemoteCompletionDebug?.resetMetrics());
+  await expect(remoteCompletionGhost(page)).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.getByTestId("remote-completion-editor").evaluate((element) => element.textContent ?? ""),
+    )
+    .toBe("");
 }
 
 function summarizeLatencies(samples: number[]): LatencySummary {

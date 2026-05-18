@@ -53,6 +53,17 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Rich adapter conformance and package tests
+        run: |
+          pnpm --filter @typai/adapter-testkit test
+          pnpm --filter @typai/react test
+          pnpm --filter @typai/codemirror test
+
+      - name: Remote completion package tests
+        run: |
+          pnpm --filter @typai/completion-remote build
+          pnpm --filter @typai/completion-remote test
+
       - name: Lint
         run: pnpm lint
 
@@ -99,10 +110,22 @@ jobs:
         run: pnpm build
 
       - name: Playwright Chromium
-        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/textarea-demo.spec.ts --project=chromium
+        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts tests/e2e/react-demo.spec.ts --project=chromium
 
-      - name: Playwright Firefox
-        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/textarea-demo.spec.ts --project=firefox
+      - name: Playwright CodeMirror Chromium
+        run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=chromium
+
+      - name: Playwright Accessibility Firefox
+        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts --project=firefox
+
+      - name: Playwright React Firefox
+        run: pnpm exec playwright test tests/e2e/react-demo.spec.ts --project=firefox
+
+      - name: Playwright Contenteditable, Remote Completion, and Textarea Firefox
+        run: pnpm exec playwright test tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts --project=firefox
+
+      - name: Playwright CodeMirror Firefox
+        run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=firefox
 
       - name: Upload Playwright report
         if: failure()
@@ -192,7 +215,7 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Browser benchmark smoke (contenteditable and textarea)
+      - name: Browser benchmark smoke (contenteditable, textarea, and CodeMirror)
         run: pnpm bench:browser
 
       - name: Upload Playwright report

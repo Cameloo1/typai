@@ -24,5 +24,8 @@
   },
   "dependencies": {
     "@typai/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@typai/adapter-testkit": "workspace:*"
   }
 }

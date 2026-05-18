@@ -10,8 +10,20 @@
     "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true});\""
   },
   "dependencies": {
+    "@codemirror/lang-markdown": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
+    "@typai/codemirror": "workspace:*",
+    "@typai/completion-remote": "workspace:*",
     "@typai/contenteditable": "workspace:*",
     "@typai/core": "workspace:*",
-    "@typai/textarea": "workspace:*"
+    "@typai/react": "workspace:*",
+    "@typai/textarea": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
   }
 }

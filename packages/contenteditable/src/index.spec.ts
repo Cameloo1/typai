@@ -1,8 +1,14 @@
+// @vitest-environment jsdom
+
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { CorrectionDecision, TypaiCore } from "@typai/core";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   attachContenteditable,
+  type CompletionEditorSnapshot,
+  type CompletionTransaction,
   type CorrectionTransaction,
   plainTextOffsetToDomPosition,
   rangeStillMatches,
@@ -10,6 +16,11 @@ import {
   type TypaiUserAction,
   type VisualMark,
 } from "./index";
+
+afterEach(() => {
+  document.body.innerHTML = "";
+  document.getSelection()?.removeAllRanges();
+});
 
 class TestEditable extends EventTarget {
   textContent: string | null = "";
@@ -610,6 +621,439 @@ describe("attachContenteditable", () => {
     expect(Number.isFinite(elapsed)).toBe(true);
     expect(elapsed).toBeGreaterThanOrEqual(0);
   });
+
+  it("notifies an optional structural completion controller on editor input", () => {
+    const element = new TestEditable();
+    const snapshots: CompletionEditorSnapshot[] = [];
+
+    attachContenteditable({
+      element: element as unknown as HTMLElement,
+      typai: createStubTypai(),
+      completionMode: "prompt",
+      completion: {
+        onEditorInput: (snapshot) => snapshots.push(snapshot),
+      },
+    });
+
+    element.textContent = "continue this";
+    element.dispatchEvent(inputEvent("s"));
+
+    expect(snapshots).toEqual([
+      expect.objectContaining({
+        text: "continue this",
+        version: 1,
+        selection: { start: 13, end: 13 },
+        isComposingIME: false,
+        mode: "prompt",
+      }),
+    ]);
+  });
+});
+
+describe("contenteditable ghost text", () => {
+  it("renders ghost text at the caret", () => {
+    const element = createDomEditable("Can you help me");
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+    });
+
+    detach.renderGhostTextAtCaret(" understand this", detach.getSnapshot());
+
+    const ghost = getGhostElement(element);
+
+    expect(ghost?.textContent).toBe(" understand this");
+    expect(detach.isGhostTextVisible()).toBe(true);
+    expect(detach.getGhostTextText()).toBe(" understand this");
+  });
+
+  it("does not include ghost text in getSnapshot().text", () => {
+    const element = createDomEditable("Can you help me");
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+    });
+
+    detach.renderGhostTextAtCaret(" understand this", detach.getSnapshot());
+
+    expect(element.textContent).toBe("Can you help me understand this");
+    expect(detach.getSnapshot().text).toBe("Can you help me");
+  });
+
+  it("marks ghost text as visual-only DOM", () => {
+    const element = createDomEditable("Prompt");
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+
+    const ghost = getGhostElement(element);
+
+    expect(ghost?.getAttribute("contenteditable")).toBe("false");
+    expect(ghost?.getAttribute("aria-hidden")).toBe("true");
+    expect(ghost?.className).toBe("typai-ghost-text");
+  });
+
+  it("removes ghost text on typing", () => {
+    const element = createDomEditable("Prompt");
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    element.textContent = "Prompt!";
+    element.dispatchEvent(inputEvent("!"));
+
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(dismissReasons).toEqual(["typing"]);
+  });
+
+  it("removes ghost text on selection change", () => {
+    const element = createDomEditable("Prompt");
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    placeDomSelection(element, 0);
+    document.dispatchEvent(new Event("selectionchange"));
+
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(dismissReasons).toEqual(["selection_change"]);
+  });
+
+  it("removes ghost text on compositionstart", () => {
+    const element = createDomEditable("Prompt");
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    element.dispatchEvent(new Event("compositionstart"));
+
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(dismissReasons).toEqual(["composition"]);
+  });
+
+  it("removes ghost text on blur", () => {
+    const element = createDomEditable("Prompt");
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    element.dispatchEvent(new Event("blur"));
+
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(dismissReasons).toEqual(["blur"]);
+  });
+
+  it("removes ghost text on Escape and emits dismissal", () => {
+    const element = createDomEditable("Prompt");
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+
+    const event = keyEvent("Escape");
+    element.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(dismissReasons).toEqual(["escape"]);
+  });
+
+  it("removes ghost text on paste", () => {
+    const element = createDomEditable("Prompt");
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    element.dispatchEvent(pasteEvent(" pasted"));
+
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(detach.getSnapshot().text).toBe("Prompt pasted");
+    expect(dismissReasons).toEqual(["paste"]);
+  });
+
+  it("leaves Tab alone when no ghost text is visible", () => {
+    const element = createDomEditable("Prompt");
+    attachContenteditable({
+      element,
+      typai: createStubTypai(),
+    });
+
+    const event = keyEvent("Tab");
+    element.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(element.textContent).toBe("Prompt");
+  });
+
+  it("accepts visible ghost text on Tab", () => {
+    const element = createDomEditable("Prompt");
+    const acceptedSnapshots: CompletionEditorSnapshot[] = [];
+    const acceptedTransactions: CompletionTransaction[] = [];
+    const marks: VisualMark[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      onMark: (mark) => marks.push(mark),
+      onCompletionAccepted: (transaction) => acceptedTransactions.push(transaction),
+      completion: {
+        onGhostTextAccept: (snapshot) => acceptedSnapshots.push(snapshot),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot(), {
+      requestId: "request-1",
+      providerName: "mock-provider",
+      model: "mock-model",
+      latencyMs: 42,
+    });
+
+    const event = keyEvent("Tab");
+    element.dispatchEvent(event);
+    const transaction = detach.getCompletionTransactions()[0];
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(detach.getSnapshot().text).toBe("Prompt draft");
+    expect(transaction).toMatchObject({
+      requestId: "request-1",
+      rangeBefore: { start: 6, end: 6, text: "" },
+      rangeAfter: { start: 6, end: 12, text: " draft" },
+      insertedText: " draft",
+      providerName: "mock-provider",
+      model: "mock-model",
+      latencyMs: 42,
+    });
+    expect(acceptedTransactions).toEqual([transaction]);
+    expect(marks).toHaveLength(0);
+    expect(acceptedSnapshots).toEqual([
+      expect.objectContaining({
+        text: "Prompt",
+        selection: { start: 6, end: 6 },
+      }),
+    ]);
+  });
+
+  it.each([" ", "Enter"])("does not accept visible ghost text on %s", (key) => {
+    const element = createDomEditable("Prompt");
+    const acceptedSnapshots: CompletionEditorSnapshot[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      completion: {
+        onGhostTextAccept: (snapshot) => acceptedSnapshots.push(snapshot),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+
+    const event = keyEvent(key);
+    element.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(detach.isGhostTextVisible()).toBe(true);
+    expect(detach.getSnapshot().text).toBe("Prompt");
+    expect(acceptedSnapshots).toHaveLength(0);
+  });
+
+  it("exactly reverts an accepted completion transaction", () => {
+    const element = createDomEditable("Prompt");
+    const revertedTransactions: CompletionTransaction[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      onCompletionReverted: (transaction) => revertedTransactions.push(transaction),
+      completion: {
+        onCompletionReverted: (transaction) => revertedTransactions.push(transaction),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot(), {
+      requestId: "request-2",
+    });
+    element.dispatchEvent(keyEvent("Tab"));
+
+    const transaction = detach.getCompletionTransactions()[0];
+    const result = detach.revertCompletion(transaction?.id ?? "");
+
+    expect(result).toEqual({ applied: true, transaction });
+    expect(detach.getSnapshot().text).toBe("Prompt");
+    expect(revertedTransactions).toEqual([transaction, transaction]);
+  });
+
+  it("blocks stale ghost accept safely", () => {
+    const element = createDomEditable("Prompt");
+    const acceptedTransactions: CompletionTransaction[] = [];
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      onCompletionAccepted: (transaction) => acceptedTransactions.push(transaction),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    element.textContent = "Prompt changed";
+
+    const event = keyEvent("Tab");
+    element.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(detach.getSnapshot().text).toBe("Prompt changed");
+    expect(detach.getCompletionTransactions()).toHaveLength(0);
+    expect(acceptedTransactions).toHaveLength(0);
+    expect(dismissReasons).toEqual(["stale"]);
+  });
+
+  it("fails completion revert safely when the accepted range changed", () => {
+    const element = createDomEditable("Prompt");
+    const revertedTransactions: CompletionTransaction[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      onCompletionReverted: (transaction) => revertedTransactions.push(transaction),
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    element.dispatchEvent(keyEvent("Tab"));
+
+    const transaction = detach.getCompletionTransactions()[0];
+    element.textContent = "Prompt changed draft";
+    const result = detach.revertCompletion(transaction?.id ?? "");
+
+    expect(result).toEqual({ applied: false, reason: "stale_range" });
+    expect(detach.getSnapshot().text).toBe("Prompt changed draft");
+    expect(revertedTransactions).toHaveLength(0);
+  });
+
+  it("typing after accepted completion resumes normal correction", () => {
+    const element = createDomEditable("Prompt");
+    const corrections: CorrectionTransaction[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      onCorrection: (transaction) => corrections.push(transaction),
+    });
+
+    detach.renderGhostTextAtCaret(" teh", detach.getSnapshot());
+    element.dispatchEvent(keyEvent("Tab"));
+
+    expect(detach.getSnapshot().text).toBe("Prompt teh");
+    expect(corrections).toHaveLength(0);
+
+    element.textContent = `${detach.getSnapshot().text} `;
+    placeDomSelection(element, element.textContent.length);
+    element.dispatchEvent(inputEvent(" "));
+
+    expect(detach.getSnapshot().text).toBe("Prompt the ");
+    expect(corrections).toHaveLength(1);
+    expect(detach.getCompletionTransactions()).toHaveLength(1);
+  });
+
+  it("removes ghost text on correction transaction", async () => {
+    const element = createDomEditable("reciept ");
+    const marks: VisualMark[] = [];
+    const popovers: Array<TypaiPopover | null> = [];
+    const dismissReasons: string[] = [];
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+      onMark: (mark) => marks.push(mark),
+      onPopover: (popover) => popovers.push(popover),
+      completion: {
+        onGhostTextDismiss: (reason) => dismissReasons.push(reason),
+      },
+    });
+
+    element.dispatchEvent(inputEvent(" "));
+    placeDomSelection(element, element.textContent?.length ?? 0);
+    detach.renderGhostTextAtCaret(" please", detach.getSnapshot());
+    clickMark(element, marks[0]);
+
+    const popover = expectPopoverKind(popovers.at(-1) ?? null, "red_spelling");
+    await popover.actions.applySuggestion("receipt");
+
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(getGhostElement(element)).toBeNull();
+    expect(dismissReasons).toEqual(["correction_transaction"]);
+
+    const event = keyEvent("Tab");
+    element.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(detach.getSnapshot().text).toBe("receipt ");
+  });
+
+  it("clearGhostText is idempotent", () => {
+    const element = createDomEditable("Prompt");
+    const detach = attachContenteditable({
+      element,
+      typai: createStubTypai(),
+    });
+
+    detach.renderGhostTextAtCaret(" draft", detach.getSnapshot());
+    detach.clearGhostText("manual");
+    detach.clearGhostText("manual");
+
+    expect(detach.isGhostTextVisible()).toBe(false);
+    expect(detach.getGhostTextText()).toBe("");
+  });
+
+  it("does not import completion-remote from contenteditable or core", () => {
+    const contenteditableSource = readFileSync("src/index.ts", "utf8");
+    const coreSource = readDirectoryText("../core/src");
+
+    expect(contenteditableSource).not.toContain("@typai/completion-remote");
+    expect(coreSource).not.toContain("@typai/completion-remote");
+  });
 });
 
 describe("rangeStillMatches", () => {
@@ -706,6 +1150,62 @@ function pasteEvent(plainText: string, html = ""): Event {
   });
 
   return event;
+}
+
+function createDomEditable(text: string): HTMLElement {
+  const element = document.createElement("div");
+
+  element.contentEditable = "true";
+  element.textContent = text;
+  document.body.append(element);
+  placeDomSelection(element, text.length);
+
+  return element;
+}
+
+function placeDomSelection(element: HTMLElement, offset: number): void {
+  const ownerDocument = element.ownerDocument;
+  let position = plainTextOffsetToDomPosition(element, offset);
+
+  if (position === null) {
+    const anchor = ownerDocument.createTextNode("");
+
+    element.append(anchor);
+    position = {
+      node: anchor,
+      offset: 0,
+    };
+  }
+
+  const range = ownerDocument.createRange();
+
+  range.setStart(position.node, position.offset);
+  range.collapse(true);
+  ownerDocument.getSelection()?.removeAllRanges();
+  ownerDocument.getSelection()?.addRange(range);
+}
+
+function getGhostElement(element: HTMLElement): HTMLElement | null {
+  return element.querySelector<HTMLElement>('[data-typai-ghost="true"]');
+}
+
+function readDirectoryText(root: string): string {
+  let text = "";
+
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const entryPath = join(root, entry.name);
+
+    if (entry.isDirectory()) {
+      text += readDirectoryText(entryPath);
+      continue;
+    }
+
+    if (entry.name.endsWith(".ts")) {
+      text += readFileSync(entryPath, "utf8");
+    }
+  }
+
+  return text;
 }
 
 type StubTypaiOptions = {
@@ -926,7 +1426,7 @@ function typeCompletedToken(element: TestEditable, text: string): void {
   element.dispatchEvent(inputEvent(text.at(-1) ?? " "));
 }
 
-function clickMark(element: TestEditable, mark: VisualMark | undefined): void {
+function clickMark(element: EventTarget, mark: VisualMark | undefined): void {
   if (mark === undefined) {
     throw new Error("Expected a mark to click.");
   }

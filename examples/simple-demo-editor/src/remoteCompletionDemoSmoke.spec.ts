@@ -1,0 +1,42 @@
+import { readFileSync } from "node:fs";
+
+import { describe, expect, it } from "vitest";
+
+const mainSource = readFileSync(new URL("./main.ts", import.meta.url), "utf8");
+const demoSource = readFileSync(new URL("./remoteCompletionDemo.ts", import.meta.url), "utf8");
+const packageJson = readFileSync(new URL("../package.json", import.meta.url), "utf8");
+
+describe("remote completion demo scaffold", () => {
+  it("adds the V4 remote completion tab and package dependency", () => {
+    expect(mainSource).toContain('data-demo-tab="remote-completion"');
+    expect(mainSource).toContain("mountRemoteCompletionDemo");
+    expect(packageJson).toContain('"@typai/completion-remote"');
+  });
+
+  it("uses a mock provider with contenteditable controls and metrics", () => {
+    expect(demoSource).toContain("createMockCompletionProvider");
+    expect(demoSource).toContain("createContenteditableCompletionController");
+
+    for (const selector of [
+      "remote-completion-editor",
+      "remote-enabled",
+      "remote-completion-text",
+      "remote-latency",
+      "remote-status",
+      "remote-request-count",
+      "remote-ghost-count",
+      "remote-accept-count",
+      "remote-dismiss-count",
+      "remote-revert-count",
+      "remote-p95-ghost-latency",
+    ]) {
+      expect(demoSource).toContain(selector);
+    }
+  });
+
+  it("does not add real provider keys or OpenAI browser calls", () => {
+    expect(demoSource).not.toMatch(/api[_-]?key/i);
+    expect(demoSource).not.toMatch(/\bopenai\b/i);
+    expect(demoSource).not.toContain("fetch(");
+  });
+});

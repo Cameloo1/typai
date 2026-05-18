@@ -1,9 +1,17 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { delimiter, resolve } from "node:path";
 
 const outputDirectory = resolve(".pack");
-const packages = ["@typai/core", "@typai/contenteditable", "@typai/textarea"];
+const packages = [
+  "@typai/core",
+  "@typai/contenteditable",
+  "@typai/textarea",
+  "@typai/ui",
+  "@typai/react",
+  "@typai/codemirror",
+  "@typai/completion-remote",
+];
 
 rmSync(outputDirectory, { recursive: true, force: true });
 mkdirSync(outputDirectory, { recursive: true });
@@ -19,6 +27,7 @@ function run(command, args) {
   const result = spawnSync(resolved.command, resolved.args, {
     cwd: resolve("."),
     stdio: "inherit",
+    env: createCommandEnv(),
   });
 
   if (result.status !== 0) {
@@ -35,4 +44,15 @@ function resolveCommand(command, args) {
   }
 
   return { command, args };
+}
+
+function createCommandEnv() {
+  const pathKey = process.platform === "win32" ? "Path" : "PATH";
+  const currentPath = process.env[pathKey] ?? process.env.PATH ?? "";
+  const localBins = [resolve(".codex-tools"), resolve("node_modules", ".bin")];
+
+  return {
+    ...process.env,
+    [pathKey]: [...localBins, currentPath].filter(Boolean).join(delimiter),
+  };
 }

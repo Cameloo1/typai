@@ -5,6 +5,49 @@ export const TYPAI_CONTENTEDITABLE_VERSION = "0.0.0-dev";
 
 export type CorrectionTrigger = "space" | "punctuation" | "newline" | "popover";
 
+export type ContenteditableCompletionMode = "prose" | "prompt" | "markdown" | "command" | "code";
+
+export type GhostTextClearReason =
+  | "typing"
+  | "escape"
+  | "selection_change"
+  | "blur"
+  | "composition"
+  | "paste"
+  | "correction_transaction"
+  | "stale"
+  | "manual";
+
+export type CompletionEditorSnapshot = {
+  text: string;
+  version: number;
+  selection: {
+    start: number;
+    end: number;
+  };
+  isComposingIME: boolean;
+  mode?: ContenteditableCompletionMode;
+};
+
+export type CompletionGhostMetadata = {
+  requestId?: string;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+};
+
+export type ContenteditableCompletionController = {
+  onEditorInput?(snapshot: CompletionEditorSnapshot): void;
+  onEditorSelectionChange?(snapshot: CompletionEditorSnapshot): void;
+  onEditorBlur?(): void;
+  onEditorCompositionStart?(): void;
+  onCorrectionTransaction?(): void;
+  onGhostTextAccept?(snapshot: CompletionEditorSnapshot, transaction?: CompletionTransaction): void;
+  onGhostTextDismiss?(reason: GhostTextClearReason, snapshot: CompletionEditorSnapshot): void;
+  onCompletionReverted?(transaction: CompletionTransaction): void;
+  destroy?(): void;
+};
+
 export interface TypaiSettings {
   autocorrect: boolean;
   spellcheck: boolean;
@@ -27,10 +70,25 @@ export interface AttachContenteditableOptions {
   onSettingsChange?: (settings: TypaiSettings) => void;
   onTextChange?: (change: TypaiTextChange) => void;
   onUserAction?: (action: TypaiUserAction) => void;
+  onCompletionAccepted?: (transaction: CompletionTransaction) => void;
+  onCompletionReverted?: (transaction: CompletionTransaction) => void;
+  completion?: ContenteditableCompletionController;
+  completionMode?: ContenteditableCompletionMode;
 }
 
 export type DetachContenteditable = (() => void) & {
   getSettings(): TypaiSettings;
+  getSnapshot(): CompletionEditorSnapshot;
+  renderGhostTextAtCaret(
+    text: string,
+    requestSnapshot?: CompletionEditorSnapshot,
+    metadata?: CompletionGhostMetadata,
+  ): void;
+  clearGhostText(reason?: GhostTextClearReason): void;
+  isGhostTextVisible(): boolean;
+  getGhostTextText(): string;
+  getCompletionTransactions(): CompletionTransaction[];
+  revertCompletion(transactionId: string): CompletionRevertResult;
   updateSettings(settings: Partial<TypaiSettings>): void;
 };
 
@@ -55,6 +113,37 @@ export interface CorrectionTransaction {
   createdAt: number;
 }
 
+export type CompletionTransaction = {
+  id: string;
+  requestId: string;
+  editorVersion: number;
+  rangeBefore: {
+    start: number;
+    end: number;
+    text: string;
+  };
+  rangeAfter: {
+    start: number;
+    end: number;
+    text: string;
+  };
+  insertedText: string;
+  createdAt: number;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+};
+
+export type CompletionRevertResult =
+  | {
+      applied: true;
+      transaction: CompletionTransaction;
+    }
+  | {
+      applied: false;
+      reason: "missing_transaction" | "stale_range";
+    };
+
 export interface VisualMark {
   id: string;
   range: TypaiRange;
@@ -69,7 +158,13 @@ export interface VisualMark {
 export interface TypaiTextChange {
   text: string;
   caretOffset: number;
-  reason: "auto_correct" | "revert" | "suggestion" | "paste";
+  reason:
+    | "auto_correct"
+    | "revert"
+    | "suggestion"
+    | "paste"
+    | "completion_accept"
+    | "completion_revert";
   transaction?: CorrectionTransaction;
 }
 
@@ -165,15 +260,28 @@ interface StoredVisualMark extends VisualMark {
   text: string;
 }
 
+interface GhostTextState {
+  element: HTMLElement;
+  text: string;
+  version: number;
+  selection: TypaiRange;
+  requestId: string;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+}
+
 interface AdapterState {
   documentVersion: number;
   isComposing: boolean;
   lastText: string;
   nextId: number;
   transactions: CorrectionTransaction[];
+  completionTransactions: CompletionTransaction[];
   marks: Map<string, StoredVisualMark>;
   settings: TypaiSettings;
   activePopover: TypaiPopover | null;
+  ghost: GhostTextState | null;
 }
 
 const defaultSettings: TypaiSettings = {
@@ -183,6 +291,7 @@ const defaultSettings: TypaiSettings = {
   usePersonalDictionary: true,
 };
 const textNodeType = 3;
+const ghostTextAttribute = "data-typai-ghost";
 
 export function attachContenteditable(
   options: AttachContenteditableOptions,
@@ -193,21 +302,30 @@ export function attachContenteditable(
     lastText: readElementText(options.element),
     nextId: 1,
     transactions: [],
+    completionTransactions: [],
     marks: new Map<string, StoredVisualMark>(),
     settings: resolveSettings(options),
     activePopover: null,
+    ghost: null,
   };
 
   const handleCompositionStart = () => {
+    clearGhostText(options, state, "composition");
+    options.completion?.onEditorCompositionStart?.();
     state.isComposing = true;
   };
 
   const handleCompositionEnd = () => {
     state.isComposing = false;
-    syncDocumentVersion(options.element, state);
+    const changed = syncDocumentVersion(options.element, state);
+
+    if (changed) {
+      options.completion?.onEditorInput?.(createCompletionEditorSnapshot(options, state));
+    }
   };
 
   const handleInput = (event: Event) => {
+    clearGhostText(options, state, "typing");
     const changed = syncDocumentVersion(options.element, state);
 
     if (changed) {
@@ -218,6 +336,8 @@ export function attachContenteditable(
     if (state.isComposing) {
       return;
     }
+
+    options.completion?.onEditorInput?.(createCompletionEditorSnapshot(options, state));
 
     const snapshot = readSnapshot(options.element, state.documentVersion);
     const offset = getCaretOffset(options.element, snapshot.text);
@@ -246,6 +366,18 @@ export function attachContenteditable(
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Tab" && state.ghost !== null) {
+      event.preventDefault();
+      acceptGhostText(options, state);
+      return;
+    }
+
+    if (event.key === "Escape" && state.ghost !== null) {
+      clearGhostText(options, state, "escape");
+      event.preventDefault();
+      return;
+    }
+
     if (event.key === "Escape" && state.activePopover !== null) {
       const activeMarkId = state.activePopover.mark.id;
 
@@ -270,6 +402,12 @@ export function attachContenteditable(
   };
 
   const handleDocumentKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && state.ghost !== null) {
+      clearGhostText(options, state, "escape");
+      event.preventDefault();
+      return;
+    }
+
     if (event.key !== "Escape" || state.activePopover === null) {
       return;
     }
@@ -283,6 +421,27 @@ export function attachContenteditable(
     event.preventDefault();
   };
 
+  const handleSelectionChange = () => {
+    const text = readElementText(options.element);
+    const selectedRange = getSelectedPlainTextRange(options.element, text);
+
+    if (
+      state.ghost !== null &&
+      (!isSelectionInsideElement(options.element) ||
+        selectedRange.start !== state.ghost.selection.start ||
+        selectedRange.end !== state.ghost.selection.end)
+    ) {
+      clearGhostText(options, state, "selection_change");
+    }
+
+    options.completion?.onEditorSelectionChange?.(createCompletionEditorSnapshot(options, state));
+  };
+
+  const handleBlur = () => {
+    clearGhostText(options, state, "blur");
+    options.completion?.onEditorBlur?.();
+  };
+
   const handlePaste = (event: Event) => {
     const pastedText = getPastePlainText(event);
 
@@ -292,6 +451,7 @@ export function attachContenteditable(
 
     event.preventDefault();
 
+    clearGhostText(options, state, "paste");
     const currentText = readElementText(options.element);
     const selectedRange = getSelectedPlainTextRange(options.element, currentText);
     const nextText =
@@ -308,7 +468,9 @@ export function attachContenteditable(
   options.element.addEventListener("click", handleClick);
   options.element.addEventListener("keydown", handleKeyDown);
   options.element.addEventListener("paste", handlePaste);
+  options.element.addEventListener("blur", handleBlur);
   options.element.ownerDocument?.addEventListener("keydown", handleDocumentKeyDown);
+  options.element.ownerDocument?.addEventListener("selectionchange", handleSelectionChange);
 
   const detach = (() => {
     options.element.removeEventListener("compositionstart", handleCompositionStart);
@@ -317,11 +479,33 @@ export function attachContenteditable(
     options.element.removeEventListener("click", handleClick);
     options.element.removeEventListener("keydown", handleKeyDown);
     options.element.removeEventListener("paste", handlePaste);
+    options.element.removeEventListener("blur", handleBlur);
     options.element.ownerDocument?.removeEventListener("keydown", handleDocumentKeyDown);
+    options.element.ownerDocument?.removeEventListener("selectionchange", handleSelectionChange);
+    clearGhostText(options, state, "manual", false);
     closePopover(options, state);
+    options.completion?.destroy?.();
   }) as DetachContenteditable;
 
   detach.getSettings = () => ({ ...state.settings });
+  detach.getSnapshot = () => createCompletionEditorSnapshot(options, state);
+  detach.renderGhostTextAtCaret = (
+    text: string,
+    requestSnapshot?: CompletionEditorSnapshot,
+    metadata?: CompletionGhostMetadata,
+  ) => {
+    renderGhostTextAtCaret(options, state, text, requestSnapshot, metadata);
+  };
+  detach.clearGhostText = (reason: GhostTextClearReason = "manual") => {
+    clearGhostText(options, state, reason);
+  };
+  detach.isGhostTextVisible = () => isGhostTextVisible(options, state);
+  detach.getGhostTextText = () =>
+    isGhostTextVisible(options, state) ? (state.ghost?.text ?? "") : "";
+  detach.getCompletionTransactions = () =>
+    state.completionTransactions.map((transaction) => cloneCompletionTransaction(transaction));
+  detach.revertCompletion = (transactionId: string) =>
+    revertCompletionTransaction(options, state, transactionId);
   detach.updateSettings = (settings: Partial<TypaiSettings>) => {
     updateSettings(options, state, settings);
   };
@@ -788,6 +972,15 @@ function commitText(
   caretOffset: number,
   reason: TypaiTextChange["reason"],
 ): void {
+  if (reason === "paste") {
+    clearGhostText(options, state, "paste");
+  } else if (reason === "completion_accept" || reason === "completion_revert") {
+    clearGhostText(options, state, "manual", false);
+  } else {
+    clearGhostText(options, state, "correction_transaction");
+    options.completion?.onCorrectionTransaction?.();
+  }
+
   writeElementText(options.element, text);
   state.documentVersion += 1;
   state.lastText = text;
@@ -1034,8 +1227,29 @@ function readSnapshot(element: HTMLElement, documentVersion: number): Contentedi
   };
 }
 
+function createCompletionEditorSnapshot(
+  options: AttachContenteditableOptions,
+  state: AdapterState,
+): CompletionEditorSnapshot {
+  const text = readElementText(options.element);
+
+  return {
+    text,
+    version: state.documentVersion,
+    selection: getSelectedPlainTextRange(options.element, text),
+    isComposingIME: state.isComposing,
+    mode: options.completionMode,
+  };
+}
+
 function readElementText(element: HTMLElement): string {
-  return element.textContent ?? "";
+  if (!hasNodeTree(element)) {
+    return element.textContent ?? "";
+  }
+
+  return getTextNodes(element)
+    .map((node) => node.textContent ?? "")
+    .join("");
 }
 
 function writeElementText(element: HTMLElement, text: string): void {
@@ -1135,6 +1349,248 @@ function getSelectedPlainTextRange(element: HTMLElement, fallbackText: string): 
   return selectedRange;
 }
 
+function renderGhostTextAtCaret(
+  options: AttachContenteditableOptions,
+  state: AdapterState,
+  text: string,
+  requestSnapshot?: CompletionEditorSnapshot,
+  metadata: CompletionGhostMetadata = {},
+): void {
+  if (text.length === 0) {
+    clearGhostText(options, state, "manual");
+    return;
+  }
+
+  const snapshot = requestSnapshot ?? createCompletionEditorSnapshot(options, state);
+
+  if (!canRenderGhostText(options, state, snapshot)) {
+    clearGhostText(options, state, "stale");
+    return;
+  }
+
+  const ownerDocument = options.element.ownerDocument;
+
+  if (ownerDocument === undefined) {
+    clearGhostText(options, state, "stale");
+    return;
+  }
+
+  let position = plainTextOffsetToDomPosition(options.element, snapshot.selection.end);
+
+  if (position === null) {
+    const anchor = ownerDocument.createTextNode("");
+
+    options.element.append(anchor);
+    position = {
+      node: anchor,
+      offset: 0,
+    };
+  }
+
+  const ghost = ownerDocument.createElement("span");
+
+  ghost.textContent = text;
+  ghost.className = "typai-ghost-text";
+  ghost.setAttribute("contenteditable", "false");
+  ghost.setAttribute(ghostTextAttribute, "true");
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.style.color = "rgba(107, 114, 128, 0.72)";
+  ghost.style.pointerEvents = "none";
+  ghost.style.textDecoration = "none";
+  ghost.style.userSelect = "none";
+  ghost.style.whiteSpace = "pre-wrap";
+
+  clearGhostText(options, state, "manual", false);
+
+  const range = ownerDocument.createRange();
+  range.setStart(position.node, position.offset);
+  range.collapse(true);
+  range.insertNode(ghost);
+  placeCaretAfterRange(options.element, snapshot.selection.end);
+
+  state.ghost = {
+    element: ghost,
+    text,
+    version: snapshot.version,
+    selection: {
+      start: snapshot.selection.start,
+      end: snapshot.selection.end,
+    },
+    requestId: metadata.requestId ?? createId(state, "completion-request"),
+    providerName: metadata.providerName,
+    model: metadata.model,
+    latencyMs: metadata.latencyMs,
+  };
+}
+
+function acceptGhostText(options: AttachContenteditableOptions, state: AdapterState): boolean {
+  const ghost = state.ghost;
+
+  if (ghost === null) {
+    return false;
+  }
+
+  if (!isGhostTextCurrent(options, state, ghost)) {
+    clearGhostText(options, state, "stale");
+    return false;
+  }
+
+  const snapshot = createCompletionEditorSnapshot(options, state);
+  const transactionId = createId(state, "completion");
+  const nextText =
+    snapshot.text.slice(0, ghost.selection.end) +
+    ghost.text +
+    snapshot.text.slice(ghost.selection.end);
+  const nextCaretOffset = ghost.selection.end + ghost.text.length;
+  const rangeBefore = {
+    start: ghost.selection.end,
+    end: ghost.selection.end,
+    text: "",
+  };
+  const rangeAfter = {
+    start: ghost.selection.end,
+    end: ghost.selection.end + ghost.text.length,
+    text: ghost.text,
+  };
+
+  commitText(options, state, nextText, nextCaretOffset, "completion_accept");
+
+  const transaction: CompletionTransaction = {
+    id: transactionId,
+    requestId: ghost.requestId,
+    editorVersion: state.documentVersion,
+    rangeBefore,
+    rangeAfter,
+    insertedText: ghost.text,
+    createdAt: Date.now(),
+    providerName: ghost.providerName,
+    model: ghost.model,
+    latencyMs: ghost.latencyMs,
+  };
+
+  state.completionTransactions.push(transaction);
+  options.onCompletionAccepted?.(transaction);
+  options.completion?.onGhostTextAccept?.(snapshot, transaction);
+
+  return true;
+}
+
+function revertCompletionTransaction(
+  options: AttachContenteditableOptions,
+  state: AdapterState,
+  transactionId: string,
+): CompletionRevertResult {
+  const transaction =
+    state.completionTransactions.find((candidate) => candidate.id === transactionId) ?? null;
+
+  if (transaction === null) {
+    return {
+      applied: false,
+      reason: "missing_transaction",
+    };
+  }
+
+  const currentText = readElementText(options.element);
+
+  if (
+    currentText.slice(transaction.rangeAfter.start, transaction.rangeAfter.end) !==
+    transaction.insertedText
+  ) {
+    return {
+      applied: false,
+      reason: "stale_range",
+    };
+  }
+
+  const nextText =
+    currentText.slice(0, transaction.rangeAfter.start) +
+    currentText.slice(transaction.rangeAfter.end);
+
+  commitText(options, state, nextText, transaction.rangeBefore.start, "completion_revert");
+  options.onCompletionReverted?.(transaction);
+  options.completion?.onCompletionReverted?.(transaction);
+
+  return {
+    applied: true,
+    transaction,
+  };
+}
+
+function canRenderGhostText(
+  options: AttachContenteditableOptions,
+  state: AdapterState,
+  snapshot: CompletionEditorSnapshot,
+): boolean {
+  if (state.isComposing || snapshot.version !== state.documentVersion) {
+    return false;
+  }
+
+  const currentText = readElementText(options.element);
+  const selectedRange = getSelectedPlainTextRange(options.element, currentText);
+
+  return (
+    snapshot.text === currentText &&
+    snapshot.selection.start === snapshot.selection.end &&
+    selectedRange.start === snapshot.selection.start &&
+    selectedRange.end === snapshot.selection.end &&
+    isSelectionInsideElement(options.element)
+  );
+}
+
+function isGhostTextCurrent(
+  options: AttachContenteditableOptions,
+  state: AdapterState,
+  ghost: GhostTextState,
+): boolean {
+  const currentText = readElementText(options.element);
+  const selectedRange = getSelectedPlainTextRange(options.element, currentText);
+
+  return (
+    ghost.version === state.documentVersion &&
+    currentText === state.lastText &&
+    selectedRange.start === ghost.selection.start &&
+    selectedRange.end === ghost.selection.end &&
+    isSelectionInsideElement(options.element)
+  );
+}
+
+function clearGhostText(
+  options: AttachContenteditableOptions,
+  state: AdapterState,
+  reason: GhostTextClearReason,
+  notifyController = true,
+): void {
+  if (state.ghost === null) {
+    return;
+  }
+
+  state.ghost.element.remove();
+  state.ghost = null;
+
+  if (notifyController) {
+    options.completion?.onGhostTextDismiss?.(
+      reason,
+      createCompletionEditorSnapshot(options, state),
+    );
+  }
+}
+
+function isGhostTextVisible(options: AttachContenteditableOptions, state: AdapterState): boolean {
+  return state.ghost !== null && options.element.contains(state.ghost.element);
+}
+
+function isSelectionInsideElement(element: HTMLElement): boolean {
+  const selection = element.ownerDocument?.getSelection?.();
+
+  if (selection === undefined || selection === null || selection.rangeCount === 0) {
+    return false;
+  }
+
+  const range = selection.getRangeAt(0);
+
+  return element.contains(range.startContainer) && element.contains(range.endContainer);
+}
+
 function getPlainTextOffsetForRangeBoundary(
   root: HTMLElement,
   container: Node,
@@ -1183,14 +1639,33 @@ function getTextNodes(root: Node): Node[] {
 }
 
 function collectTextNodes(node: Node, textNodes: Node[]): void {
+  if (isGhostTextElement(node)) {
+    return;
+  }
+
   if (node.nodeType === textNodeType) {
     textNodes.push(node);
     return;
   }
 
-  for (const child of Array.from(node.childNodes)) {
+  for (const child of Array.from(node.childNodes ?? [])) {
     collectTextNodes(child, textNodes);
   }
+}
+
+function isGhostTextElement(node: Node): boolean {
+  const getAttribute = (node as { getAttribute?: unknown }).getAttribute;
+
+  return (
+    typeof getAttribute === "function" && getAttribute.call(node, ghostTextAttribute) === "true"
+  );
+}
+
+function hasNodeTree(value: unknown): boolean {
+  return (
+    typeof (value as { nodeType?: unknown }).nodeType === "number" &&
+    (value as { childNodes?: unknown }).childNodes !== undefined
+  );
 }
 
 function stripStoredMark(mark: StoredVisualMark): VisualMark {
@@ -1203,6 +1678,14 @@ function stripStoredMark(mark: StoredVisualMark): VisualMark {
     replacement: mark.replacement,
     suggestions: mark.suggestions,
     reasonCodes: mark.reasonCodes,
+  };
+}
+
+function cloneCompletionTransaction(transaction: CompletionTransaction): CompletionTransaction {
+  return {
+    ...transaction,
+    rangeBefore: { ...transaction.rangeBefore },
+    rangeAfter: { ...transaction.rangeAfter },
   };
 }
 

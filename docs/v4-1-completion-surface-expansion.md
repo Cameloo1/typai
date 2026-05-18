@@ -122,12 +122,29 @@ Recommended V4.1 sequence:
 7. V4.1-6: React mocked tests and demo wiring.
 8. V4.1-7: CodeMirror ghost-text decoration layer and dismiss behavior.
 9. V4.1-8: CodeMirror accept, transaction, and revert.
-10. V4.1-9: cross-surface conformance audit.
-11. V4.1-10: optional streaming experiment behind a feature flag, mocked only,
+10. V4.1-9: completion demo expansion for textarea, React, and CodeMirror.
+11. V4.1-10: cross-surface conformance audit.
+12. V4.1-11: optional streaming experiment behind a feature flag, mocked only,
     after non-streaming surfaces are stable.
 
 Each implementation prompt should preserve contenteditable completion behavior
 and keep tests mocked.
+
+## V4.1 Demo Expansion
+
+The simple demo editor now exposes mocked completion paths for all V4.1
+completion surfaces:
+
+- Contenteditable through the existing `V4 Remote Completion` tab.
+- Native textarea through the `Textarea Completion Demo` tab.
+- React textarea and contenteditable components through the `React Completion
+  Demo` tab.
+- CodeMirror through the `CodeMirror Completion Demo` tab.
+
+Each demo uses mock providers by default, includes request/ghost/accept/dismiss/
+revert metrics, reports status, and documents manual Tab accept, Escape
+dismiss, typing dismiss, and exact revert checks. Browser demos do not include
+private provider keys or real provider calls.
 
 ## Safety Contract
 

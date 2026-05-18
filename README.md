@@ -140,8 +140,9 @@ capabilities are separate, explicit, opt-in packages or later phases.
 
 - Packages: `@typai/core`, `@typai/contenteditable`, `@typai/textarea`,
   `@typai/react`, `@typai/codemirror`, and optional `@typai/completion-remote`
-- Demos for contenteditable, textarea, React, CodeMirror 6, chat input, and a
-  Codex-style mock prompt editor
+- Demos for contenteditable, textarea, React, CodeMirror 6, chat input, a
+  Codex-style mock prompt editor, and mocked V4.1 completion across
+  contenteditable, textarea, React, and CodeMirror
 - Overlay mirror engine for safe rendering over native `<textarea>`
 - Protected-token guards for URLs, emails, paths, identifiers, and CVEs
 - Snapshot/version-locked transactions; stale writes are blocked
@@ -199,9 +200,9 @@ pnpm install
 pnpm --filter simple-demo-editor dev
 ```
 
-The demo includes a `V4 Remote Completion` tab that uses
-`@typai/completion-remote` with a deterministic mock provider. It does not
-require a server, OpenAI call, or browser API key.
+The demo includes mocked completion tabs for contenteditable, textarea, React,
+and CodeMirror. They use `@typai/completion-remote` with deterministic mock
+providers and do not require a server, OpenAI call, or browser API key.
 
 Attach to a textarea:
 

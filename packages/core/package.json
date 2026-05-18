@@ -1,0 +1,30 @@
+{
+  "name": "@typai/core",
+  "version": "0.0.0-dev",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "pkg"
+  ],
+  "scripts": {
+    "build": "pnpm run build:wasm && tsup",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "bench": "node scripts/bench.mjs",
+    "generate:mock-dictionary": "node scripts/generate-mock-dictionary.mjs",
+    "prepack": "pnpm run build",
+    "test": "vitest run && pnpm run test:native && pnpm run test:wasm",
+    "test:native": "node scripts/test-native.mjs",
+    "test:wasm": "node scripts/test-wasm.mjs",
+    "clean": "node -e \"const fs=require('node:fs'); for (const p of ['dist','pkg']) fs.rmSync(p,{recursive:true,force:true});\""
+  }
+}

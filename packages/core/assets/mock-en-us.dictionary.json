@@ -1,0 +1,112 @@
+{
+  "format": "Typai Dictionary Blob v1",
+  "language": "en-US",
+  "magic": "TYPAIDIC",
+  "version": 1,
+  "flags": {
+    "technicalWord": 1
+  },
+  "note": "Generated mock fixture for loader tests only. Not a production dictionary asset.",
+  "entries": [
+    {
+      "word": "address",
+      "frequency": 40000,
+      "flags": 0
+    },
+    {
+      "word": "and",
+      "frequency": 900000,
+      "flags": 0
+    },
+    {
+      "word": "because",
+      "frequency": 250000,
+      "flags": 0
+    },
+    {
+      "word": "correct",
+      "frequency": 34000,
+      "flags": 0
+    },
+    {
+      "word": "correction",
+      "frequency": 35000,
+      "flags": 0
+    },
+    {
+      "word": "form",
+      "frequency": 700000,
+      "flags": 0
+    },
+    {
+      "word": "from",
+      "frequency": 800000,
+      "flags": 0
+    },
+    {
+      "word": "lead",
+      "frequency": 100000,
+      "flags": 0
+    },
+    {
+      "word": "led",
+      "frequency": 90000,
+      "flags": 0
+    },
+    {
+      "word": "message",
+      "frequency": 20000,
+      "flags": 0
+    },
+    {
+      "word": "nmap",
+      "frequency": 1000,
+      "flags": 1
+    },
+    {
+      "word": "prompt",
+      "frequency": 15000,
+      "flags": 0
+    },
+    {
+      "word": "receipt",
+      "frequency": 45000,
+      "flags": 0
+    },
+    {
+      "word": "receive",
+      "frequency": 50000,
+      "flags": 0
+    },
+    {
+      "word": "recipe",
+      "frequency": 30000,
+      "flags": 0
+    },
+    {
+      "word": "spelling",
+      "frequency": 30000,
+      "flags": 0
+    },
+    {
+      "word": "the",
+      "frequency": 1000000,
+      "flags": 0
+    },
+    {
+      "word": "their",
+      "frequency": 240000,
+      "flags": 0
+    },
+    {
+      "word": "there",
+      "frequency": 230000,
+      "flags": 0
+    },
+    {
+      "word": "typing",
+      "frequency": 20000,
+      "flags": 0
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "golden-corpus",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --filter @typai/core build && vitest run",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('coverage',{recursive:true,force:true});\""
+  },
+  "dependencies": {
+    "@typai/core": "workspace:*"
+  }
+}

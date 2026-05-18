@@ -1,0 +1,47 @@
+export const TypaiReasonFlag = {
+  KNOWN_VALID_WORD: 1 << 0,
+  COMMON_TYPO_MATCH: 1 << 1,
+  UNKNOWN_NON_WORD: 1 << 2,
+  PROTECTED_LOOKING_TOKEN: 1 << 3,
+  INVALID_INPUT: 1 << 4,
+  REPLACEMENT_TRUNCATED: 1 << 5,
+  EDIT_DISTANCE_SUGGESTIONS: 1 << 6,
+  NO_SUGGESTIONS: 1 << 7,
+  DICTIONARY_LOADED: 1 << 8,
+  DICTIONARY_INVALID_MAGIC: 1 << 9,
+  DICTIONARY_UNSUPPORTED_VERSION: 1 << 10,
+  DICTIONARY_BOUNDS_ERROR: 1 << 11,
+  DICTIONARY_EMPTY: 1 << 12,
+  DICTIONARY_CLEARED: 1 << 13,
+  DYNAMIC_DICTIONARY_MATCH: 1 << 14,
+} as const;
+
+const reasonFlagEntries = [
+  ["KNOWN_VALID_WORD", TypaiReasonFlag.KNOWN_VALID_WORD],
+  ["COMMON_TYPO_MATCH", TypaiReasonFlag.COMMON_TYPO_MATCH],
+  ["UNKNOWN_NON_WORD", TypaiReasonFlag.UNKNOWN_NON_WORD],
+  ["PROTECTED_LOOKING_TOKEN", TypaiReasonFlag.PROTECTED_LOOKING_TOKEN],
+  ["INVALID_INPUT", TypaiReasonFlag.INVALID_INPUT],
+  ["REPLACEMENT_TRUNCATED", TypaiReasonFlag.REPLACEMENT_TRUNCATED],
+  ["EDIT_DISTANCE_SUGGESTIONS", TypaiReasonFlag.EDIT_DISTANCE_SUGGESTIONS],
+  ["NO_SUGGESTIONS", TypaiReasonFlag.NO_SUGGESTIONS],
+  ["DICTIONARY_LOADED", TypaiReasonFlag.DICTIONARY_LOADED],
+  ["DICTIONARY_INVALID_MAGIC", TypaiReasonFlag.DICTIONARY_INVALID_MAGIC],
+  ["DICTIONARY_UNSUPPORTED_VERSION", TypaiReasonFlag.DICTIONARY_UNSUPPORTED_VERSION],
+  ["DICTIONARY_BOUNDS_ERROR", TypaiReasonFlag.DICTIONARY_BOUNDS_ERROR],
+  ["DICTIONARY_EMPTY", TypaiReasonFlag.DICTIONARY_EMPTY],
+  ["DICTIONARY_CLEARED", TypaiReasonFlag.DICTIONARY_CLEARED],
+  ["DYNAMIC_DICTIONARY_MATCH", TypaiReasonFlag.DYNAMIC_DICTIONARY_MATCH],
+] as const;
+
+export function reasonFlagsToCodes(reasonFlags: number): string[] {
+  const reasonCodes: string[] = [];
+
+  for (const [code, flag] of reasonFlagEntries) {
+    if ((reasonFlags & flag) !== 0) {
+      reasonCodes.push(code);
+    }
+  }
+
+  return reasonCodes;
+}

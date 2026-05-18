@@ -1,0 +1,27 @@
+{
+  "name": "@typai/contenteditable",
+  "version": "0.0.0-dev",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "prepack": "pnpm run build",
+    "test": "vitest run --passWithNoTests",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true});\""
+  },
+  "dependencies": {
+    "@typai/core": "workspace:*"
+  }
+}

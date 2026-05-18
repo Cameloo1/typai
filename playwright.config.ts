@@ -25,7 +25,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm --filter simple-demo-editor dev -- --port 5173 --strictPort",
+    command:
+      "corepack pnpm --filter simple-demo-editor exec vite --host 127.0.0.1 --port 5173 --strictPort",
     url: "http://127.0.0.1:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

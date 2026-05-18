@@ -1,6 +1,6 @@
 # Package Readiness
 
-Typai is package-ready for local packing and install smoke tests, but it is not
+typai is package-ready for local packing and install smoke tests, but it is not
 published to npm yet.
 
 ## Local Dry Run
@@ -16,6 +16,8 @@ This runs `npm pack --dry-run` for:
 - `@typai/core`
 - `@typai/contenteditable`
 - `@typai/textarea`
+- internal `@typai/ui`, because `@typai/react` depends on it
+- `@typai/react`
 
 The dry run reports tarball file contents without writing package tarballs.
 
@@ -40,13 +42,18 @@ The smoke script:
 
 - Builds local tarballs.
 - Creates a temporary package outside the repo.
-- Installs `@typai/core`, `@typai/contenteditable`, and `@typai/textarea` from
-  tarballs.
+- Installs `@typai/core`, `@typai/contenteditable`, `@typai/textarea`,
+  internal `@typai/ui`, and `@typai/react` from tarballs.
+- Installs React as a peer dependency for the smoke app.
 - Imports `createTypaiCore`.
-- Initializes Typai.
+- Initializes typai.
 - Verifies `checkCompletedToken({ token: "teh" })` returns `the`.
 - Imports `attachContenteditable`.
 - Imports `attachTextarea`.
+- Imports `TypaiProvider`, `useTypaiCore`, and `TypaiTextarea` from
+  `@typai/react`.
+- Verifies `@typai/core` does not depend on React.
+- Verifies `@typai/react` does not expose remote completion or ghost-text APIs.
 - Attaches `@typai/textarea` to a minimal textarea-like `EventTarget` with the
   overlay disabled.
 - Dispatches a delimiter input for `teh ` and verifies the textarea value
@@ -86,6 +93,24 @@ toolchain to install the packed package.
 initialized `TypaiCore` instance and uses shared core token/protected-span types.
 It does not bundle a Wasm package of its own.
 
+Internal `@typai/ui` includes:
+
+- `dist/`
+- `README.md`
+- package metadata automatically included by npm
+
+It is internal/unstable and is packed only so local dependent-package smoke
+tests can install `@typai/react`.
+
+`@typai/react` includes:
+
+- `dist/`
+- `README.md`
+- package metadata automatically included by npm
+
+React and React DOM are peer dependencies of `@typai/react`. They are not
+dependencies or peer dependencies of `@typai/core`.
+
 The packages intentionally exclude:
 
 - `src/`
@@ -121,6 +146,21 @@ const detach = attachTextarea({
 The adapter uses overlay mirror mode. `textarea.value` remains the source of
 truth, native form submission reads that value, and the overlay never inserts
 markup into the control.
+
+## React Package API
+
+Consumers install React alongside core and the React adapter:
+
+```sh
+npm install @typai/core @typai/react react react-dom
+```
+
+The package exports `TypaiProvider`, `useTypaiCore`, `useTypaiTextarea`,
+`useTypaiContenteditable`, `TypaiTextarea`, `TypaiContenteditable`,
+`TypaiSettingsPanel`, and `TypaiDebugTable`.
+
+`@typai/react` builds on the existing textarea and contenteditable adapters and
+does not add remote completion, ghost text, provider endpoints, or model calls.
 
 ## Not Published Yet
 

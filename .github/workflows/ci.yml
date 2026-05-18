@@ -99,10 +99,25 @@ jobs:
         run: pnpm build
 
       - name: Playwright Chromium
-        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/textarea-demo.spec.ts --project=chromium
+        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/textarea-demo.spec.ts tests/e2e/react-demo.spec.ts --project=chromium
 
-      - name: Playwright Firefox
-        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/textarea-demo.spec.ts --project=firefox
+      - name: Playwright CodeMirror Chromium
+        run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=chromium
+
+      - name: Playwright Accessibility Firefox
+        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts --project=firefox
+
+      - name: Playwright React Firefox
+        run: pnpm exec playwright test tests/e2e/react-demo.spec.ts --project=firefox
+
+      - name: Playwright Contenteditable Firefox
+        run: pnpm exec playwright test tests/e2e/simple-demo-editor.spec.ts --project=firefox
+
+      - name: Playwright Textarea Firefox
+        run: pnpm exec playwright test tests/e2e/textarea-demo.spec.ts --project=firefox
+
+      - name: Playwright CodeMirror Firefox
+        run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=firefox
 
       - name: Upload Playwright report
         if: failure()

@@ -47,6 +47,35 @@ test("chat input demo has no serious axe violations", async ({ page }, testInfo)
   await expectNoSeriousAxeViolations(page, ["[data-testid='chat-demo-root']"]);
 });
 
+test("React demo has no serious axe violations", async ({ page }, testInfo) => {
+  await openDemo(page, testInfo);
+  await page.getByRole("button", { name: "React Demo" }).click();
+  await expect(page.getByTestId("react-demo-root")).toBeVisible();
+  await expect(page.getByTestId("react-core-status")).toHaveText("ready");
+
+  await expectNoSeriousAxeViolations(page, ["[data-testid='react-demo-root']"]);
+});
+
+test("CodeMirror demo has no serious axe violations", async ({ page }, testInfo) => {
+  await openDemo(page, testInfo);
+  await page.getByRole("button", { name: "CodeMirror Demo" }).click();
+  const root = page.getByTestId("codemirror-demo-root");
+
+  await expect(root).toBeVisible();
+  await expect(root.getByTestId("codemirror-core-status")).toHaveText("ready");
+  await expectNoSeriousAxeViolations(page, ["[data-testid='codemirror-demo-root']"]);
+});
+
+test("Codex mock demo has no serious axe violations", async ({ page }, testInfo) => {
+  await openDemo(page, testInfo);
+  await page.getByRole("button", { name: "Codex Mock Demo" }).click();
+  const root = page.getByTestId("codex-mock-demo-root");
+
+  await expect(root).toBeVisible();
+  await expect(root.getByTestId("codemirror-core-status")).toHaveText("ready");
+  await expectNoSeriousAxeViolations(page, ["[data-testid='codex-mock-demo-root']"]);
+});
+
 async function openDemo(page: Page, testInfo: TestInfo): Promise<void> {
   const url = `/?typaiDbName=${encodeURIComponent(uniqueDbName(testInfo))}`;
 

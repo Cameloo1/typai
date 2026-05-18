@@ -27,6 +27,8 @@ select:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 .typai-mark:focus-visible,
+.typai-cm-red-spelling:focus-visible,
+.typai-cm-blue-corrected:focus-visible,
 .file-action:focus-within {
   outline: 3px solid rgba(46, 111, 149, 0.42);
   outline-offset: 3px;
@@ -61,6 +63,8 @@ textarea:focus-visible,
 .memory-panel,
 .debug-panel,
 .textarea-demo-panel,
+.react-demo-panel,
+.codemirror-demo-panel,
 .chat-demo-panel {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #d9e0e8;
@@ -161,6 +165,8 @@ h2 {
 .memory-panel,
 .debug-panel,
 .textarea-demo-panel,
+.react-demo-panel,
+.codemirror-demo-panel,
 .chat-demo-panel {
   padding: 20px;
 }
@@ -305,20 +311,229 @@ code {
 }
 
 .textarea-demo-panel,
+.react-demo-panel,
+.codemirror-demo-panel,
 .chat-demo-panel {
   grid-column: 1 / -1;
 }
 
-.textarea-demo-layout {
+.textarea-demo-layout,
+.codemirror-demo-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 20px;
+}
+
+.react-demo-content {
+  display: grid;
+  gap: 16px;
+}
+
+.codemirror-demo-content {
+  display: grid;
+  gap: 16px;
+}
+
+.react-demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.react-demo-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.react-demo-status span {
+  color: #526173;
+  font-size: 0.86rem;
+}
+
+.react-demo-status output {
+  color: #111827;
+  font-weight: 700;
+}
+
+.react-demo-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+}
+
+.react-editor-column {
+  display: grid;
+  gap: 14px;
+}
+
+.react-textarea {
+  min-height: 220px;
+}
+
+.react-contenteditable {
+  min-height: 220px;
+}
+
+.react-contenteditable:empty::before {
+  color: #7b8794;
+  content: "Write in the React contenteditable...";
+}
+
+.react-memory-output {
+  width: 100%;
+  min-height: 92px;
+  padding: 10px;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  color: #334155;
+  background: #f8fafc;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.78rem;
+  resize: vertical;
+}
+
+[data-typai-react-settings-panel="true"] {
+  display: grid;
+  gap: 8px;
+}
+
+[data-typai-react-debug-table="true"] dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+}
+
+[data-typai-react-debug-table="true"] table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+[data-typai-react-debug-table="true"] th,
+[data-typai-react-debug-table="true"] td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: top;
 }
 
 .textarea-workspace {
   display: grid;
   gap: 12px;
   margin: 0;
+}
+
+.codemirror-workspace {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.codemirror-toolbar,
+.codemirror-review-actions,
+.codex-mock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.codemirror-toolbar {
+  justify-content: space-between;
+}
+
+.codemirror-mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.codemirror-mode-toggle button[data-active="true"] {
+  border-color: #2e6f95;
+  color: #102033;
+  background: #edf4f8;
+}
+
+.codemirror-editor-shell {
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid #b9c7d5;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.codemirror-editor-host,
+.codemirror-editor-host .cm-editor {
+  min-height: 360px;
+}
+
+.codemirror-editor-host .cm-editor {
+  color: #111827;
+  background: #ffffff;
+  font-size: 1rem;
+}
+
+.codemirror-editor-host .cm-content {
+  min-height: 360px;
+  padding: 16px;
+  font-family: "Cascadia Code", Consolas, monospace;
+}
+
+.codemirror-editor-host .cm-focused {
+  outline: none;
+}
+
+.codemirror-editor-shell:focus-within {
+  border-color: #2e6f95;
+  box-shadow: 0 0 0 3px rgba(46, 111, 149, 0.18);
+}
+
+.typai-cm-red-spelling {
+  cursor: pointer;
+}
+
+.typai-cm-blue-corrected {
+  cursor: pointer;
+}
+
+.codex-mock-label {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 10px;
+  border: 1px solid #b8c4d2;
+  border-radius: 6px;
+  color: #254a63;
+  background: #edf4f8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.codex-mock-editor-shell,
+.codex-mock-editor-shell .codemirror-editor-host,
+.codex-mock-editor-shell .cm-editor,
+.codex-mock-editor-shell .cm-content {
+  min-height: 420px;
+}
+
+.codex-mock-output {
+  flex: 1 1 280px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  color: #334155;
+  background: #f8fafc;
+  overflow-wrap: anywhere;
 }
 
 .textarea-form-actions {
@@ -596,5 +811,11 @@ dd {
 
   .intro-actions {
     width: 100%;
+  }
+
+  .textarea-demo-layout,
+  .react-demo-layout,
+  .codemirror-demo-layout {
+    grid-template-columns: 1fr;
   }
 }

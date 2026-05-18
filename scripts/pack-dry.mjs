@@ -1,10 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { delimiter, resolve } from "node:path";
 
 const packages = [
   { name: "@typai/core", directory: "packages/core" },
   { name: "@typai/contenteditable", directory: "packages/contenteditable" },
   { name: "@typai/textarea", directory: "packages/textarea" },
+  { name: "@typai/ui", directory: "packages/ui" },
+  { name: "@typai/react", directory: "packages/react" },
 ];
 
 for (const pkg of packages) {
@@ -13,6 +15,7 @@ for (const pkg of packages) {
   const result = spawnSync(npmCommand.command, npmCommand.args, {
     cwd,
     encoding: "utf8",
+    env: createCommandEnv(),
   });
 
   if (result.status !== 0) {
@@ -22,6 +25,9 @@ for (const pkg of packages) {
   }
 
   const packed = parsePackJson(result.stdout)[0];
+  const files = packed.files.map((file) => file.path);
+
+  validatePackedFiles(pkg, files);
 
   console.log(`\n${pkg.name} dry-run tarball`);
   console.log(`filename: ${packed.filename}`);
@@ -50,6 +56,31 @@ function parsePackJson(stdout) {
   return JSON.parse(match[0]);
 }
 
+function validatePackedFiles(pkg, files) {
+  const forbiddenPrefixes = [
+    "src/",
+    "test/",
+    "tests/",
+    "coverage/",
+    "playwright-report/",
+    "test-results/",
+  ];
+
+  for (const file of files) {
+    if (forbiddenPrefixes.some((prefix) => file.startsWith(prefix))) {
+      throw new Error(`${pkg.name} dry-run includes forbidden package file: ${file}`);
+    }
+  }
+
+  if (pkg.name === "@typai/react" || pkg.name === "@typai/ui") {
+    for (const requiredFile of ["dist/index.js", "dist/index.d.ts", "README.md"]) {
+      if (!files.includes(requiredFile)) {
+        throw new Error(`${pkg.name} dry-run is missing ${requiredFile}`);
+      }
+    }
+  }
+}
+
 function resolveCommand(command, args) {
   if (process.platform === "win32") {
     return {
@@ -59,4 +90,15 @@ function resolveCommand(command, args) {
   }
 
   return { command, args };
+}
+
+function createCommandEnv() {
+  const pathKey = process.platform === "win32" ? "Path" : "PATH";
+  const currentPath = process.env[pathKey] ?? process.env.PATH ?? "";
+  const localBins = [resolve(".codex-tools"), resolve("node_modules", ".bin")];
+
+  return {
+    ...process.env,
+    [pathKey]: [...localBins, currentPath].filter(Boolean).join(delimiter),
+  };
 }

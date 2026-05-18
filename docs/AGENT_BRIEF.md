@@ -1,20 +1,26 @@
-# Typai Agent Brief
+# typai Agent Brief
 
 This is the canonical current-state instruction file for future coding agents.
 Archived planning docs are historical context only.
 
 ## Project Summary
 
-Typai is an open-source embeddable writing intelligence layer. Codex is a future
+typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture. Alpha Foundation and Public
 Alpha Readiness are complete.
 
-Current phase: Textarea Adapter Foundation complete. `@typai/textarea` exists
-and is wired into package readiness, smoke install, CI, E2E, and browser
-benchmark coverage. Overlay mirror is the selected mode because native
-`<textarea>` cannot render per-word inline marks inside the control. Native
-textarea remains the source of truth. Do not implement a replacement editor or
-degraded-only mode for this phase.
+Current phase: Rich Editor Adapter Foundation. Prompts 48-60 have completed
+the scope lock, shared adapter testkit, internal shared UI, React package,
+React hooks/components, React demo/package readiness, the CodeMirror 6 adapter
+package with red/blue marks, Markdown/code protected contexts, safe correction
+transactions, V1B red/blue popovers, the CodeMirror/Codex mock demos, and
+planning-only docs for future ProseMirror and Monaco adapters.
+
+Textarea Adapter Foundation is complete. `@typai/textarea` exists and is wired
+into package readiness, smoke install, CI, E2E, and browser benchmark coverage.
+Overlay mirror is the selected mode because native `<textarea>` cannot render
+per-word inline marks inside the control. Native textarea remains the source of
+truth.
 
 ## Current Architecture
 
@@ -33,8 +39,21 @@ degraded-only mode for this phase.
 - `@typai/core`
 - `@typai/contenteditable`
 - `@typai/textarea`
+- Internal private `@typai/adapter-testkit`
+- Internal private `@typai/ui`
+- `@typai/react`
+- `@typai/codemirror`
 - `examples/simple-demo-editor`
 - `tests/golden-corpus`
+
+## New Planned Packages
+
+- Future planning-only adapters: `@typai/prosemirror` and `@typai/monaco`.
+  See `docs/prosemirror-adapter-plan.md` and
+  `docs/monaco-adapter-plan.md`; no packages, implementations, or dependencies
+  exist for either editor.
+
+Do not create `@typai/completion-remote` during Rich Editor Adapter Foundation.
 
 ## Product Laws
 
@@ -91,11 +110,95 @@ degraded-only mode for this phase.
 - No `localStorage`.
 - No server/local-service/API storage path.
 - No project dictionary.
+- No production dictionary.
 - No background scan.
 - No next-edit logging.
 - No full document text in memory exports.
 - No grammar/style/tone/clarity.
-- No React/ProseMirror/CodeMirror/Monaco/Codex adapter.
+- No real Codex integration.
+- No ProseMirror implementation.
+- No Monaco implementation.
+- No `@typai/completion-remote`.
+- No V4 remote completion.
+- No OpenAI/provider endpoint.
+- No ghost text completion.
+
+## Rich Editor Adapter Foundation Scope
+
+See `docs/rich-editor-adapter-foundation.md` for the locked scope.
+
+- Shared adapter contracts and conformance tests come first.
+- Prompt 49 created private internal `@typai/adapter-testkit` conformance
+  coverage for `@typai/contenteditable` and `@typai/textarea`.
+- Prompt 50 created private internal `@typai/ui` framework-free DOM utilities
+  for popovers, settings, debug summaries, live regions, focus helpers, and
+  prefixed styles.
+- Existing contenteditable and textarea adapters were not migrated to
+  `@typai/ui` during Prompt 50.
+- Internal shared UI comes before public UI API commitments.
+- Prompt 51 created `@typai/react` as a real React adapter package scaffold,
+  not just thin wrappers.
+- React API is staged: `useTypaiTextarea`, `useTypaiContenteditable`,
+  `TypaiTextarea`, `TypaiContenteditable`, provider/settings/debug UI.
+- Prompt 52 implemented React hook attachment behavior for textarea and
+  contenteditable adapters.
+- React hooks attach adapters in effects, detach on cleanup, use provider
+  context when a direct `typai` option is not passed, and keep textarea overlay
+  behavior opt-in so React retains normal element ownership by default.
+- Prompt 53 implemented React components over those hooks:
+  `TypaiTextarea`, `TypaiContenteditable`, `TypaiSettingsPanel`, and
+  `TypaiDebugTable`.
+- React components accept direct native props plus `textareaProps` or
+  `contenteditableProps`, forward refs, use provider context when `typai` is
+  omitted, and let explicit `typai` props override provider context.
+- React settings/debug components are local deterministic correction UI only;
+  they must not add completion settings, completion metrics, provider metrics,
+  next-edit logging, or full-document text collection.
+- React is a peer dependency of `@typai/react` only; do not add React to core or
+  non-React packages.
+- Prompt 54 added the React tab to `examples/simple-demo-editor`, React E2E
+  coverage, React accessibility smoke coverage, and local package dry-run/smoke
+  install coverage for `@typai/react`.
+- Prompt 55 created `@typai/codemirror` for CodeMirror 6 only with
+  decoration-only red unresolved spelling marks as the first step.
+- Prompt 56 added Markdown/code protected-context detection. Existing typai
+  token helpers still run first; when a CodeMirror syntax tree is available,
+  inline code, fenced code blocks, URL/link-destination nodes, and other
+  code-like syntax nodes are skipped. Without a syntax tree, conservative
+  heuristics skip fenced code, inline code, Markdown link destinations, and
+  command-looking shell lines.
+- Prompt 57 added safe CodeMirror correction transactions for common typo map
+  autocorrection only. The adapter verifies document version, document length,
+  cursor state, and token text before dispatching a CodeMirror transaction,
+  records a CodeMirror correction transaction, renders blue
+  `typai-cm-blue-corrected` marks for applied corrections, and exposes exact
+  revert commands.
+- Prompt 58 added CodeMirror V1B popovers and controls. Blue correction marks
+  support revert, always-correct, never-correct, and add-original-to-dictionary.
+  Red spelling marks support suggestion application, ignore once,
+  add-to-dictionary, and disable-autocorrect while spellcheck can remain
+  available. Popover text mutations use CodeMirror transactions and verify the
+  current range text before dispatch.
+- CodeMirror edit-distance suggestions remain red suggestion marks only and are
+  never autocorrected.
+- CodeMirror modes are plain text, Markdown, and code-block awareness.
+- CodeMirror protected spans start with existing typai helpers and may add
+  syntax-tree awareness where available.
+- ProseMirror and Monaco remain planning-only future work. Planning docs exist
+  in `docs/prosemirror-adapter-plan.md` and
+  `docs/monaco-adapter-plan.md`; no packages, implementations, or dependencies
+  exist.
+- Codex gets a Codex-style mock demo only.
+- There is no real Codex integration in this phase.
+- Keep publishable-alpha metadata current, but do not publish.
+- Keep production dictionary blocked.
+- Do not add a production dictionary asset.
+- Do not implement SymSpell.
+- Do not add next-edit logging.
+- Do not implement V4 remote completion.
+- Do not create `@typai/completion-remote`.
+- Do not add an OpenAI/provider endpoint.
+- Do not add ghost text completion.
 
 ## Alpha Foundation Checkpoint
 
@@ -157,9 +260,16 @@ Textarea Adapter Foundation is complete. See
 - Do not add LLM/model calls.
 - Do not add next-edit prediction logging.
 - Do not implement replacement-editor or degraded-only textarea mode.
-- Do not implement React/ProseMirror/CodeMirror/Monaco/Codex adapters.
+- Do not implement ProseMirror or Monaco adapters; Rich Editor Adapter
+  Foundation only plans them.
+- Do not implement real Codex integration; Rich Editor Adapter Foundation only
+  allows a Codex-style mock demo.
+- Do not implement V4 remote completion.
+- Do not create `@typai/completion-remote`.
+- Do not add OpenAI/provider endpoints.
+- Do not add ghost text completion.
 - Do not create `packages/codex` or any Codex adapter implementation during
-  Public Alpha Readiness.
+  Rich Editor Adapter Foundation.
 - Do not add server/local-service/API.
 - Do not add a browser extension.
 - Do not add background paragraph scanning.
@@ -204,5 +314,8 @@ Textarea Adapter Foundation is complete. See
 - Do not autocorrect edit-distance candidates.
 - Do not autocorrect protected spans.
 - Do not apply corrections without version/token safety.
-- Do not introduce future adapters before core is stable.
+- Do not introduce adapters beyond the current phase scope without an explicit
+  phase update.
+- Do not add remote completion, ghost text, or provider calls to deterministic
+  correction packages.
 - Do not treat old planning docs as current source of truth.

@@ -24,8 +24,9 @@ import {
   type TextareaMarkRemovedEvent,
   type TextareaProtectedSkipEvent,
 } from "@typai/textarea";
-
+import { mountCodeMirrorDemo, mountCodexMockDemo } from "./codemirrorDemo";
 import { type DemoMark, pruneStaleMarks, renderMarkedText } from "./markRendering";
+import { mountReactDemo } from "./reactDemo";
 import "./styles.css";
 
 type MetricState = {
@@ -83,8 +84,8 @@ if (app) {
     <main class="demo-shell">
       <section class="intro-panel" aria-labelledby="demo-title">
         <div>
-          <p class="eyebrow">Typai V1A-dev</p>
-          <h1 id="demo-title">Typai MVP Demo</h1>
+          <p class="eyebrow">typai V1A-dev</p>
+          <h1 id="demo-title">typai MVP Demo</h1>
           <p class="summary">Deterministic local typo correction through the core, contenteditable adapter, and native textarea adapter.</p>
         </div>
         <div class="intro-actions">
@@ -96,6 +97,9 @@ if (app) {
       <nav class="demo-tabs" aria-label="Demo surfaces">
         <button type="button" data-demo-tab="contenteditable" data-active="true">Contenteditable Demo</button>
         <button type="button" data-demo-tab="textarea" data-active="false">Textarea Demo</button>
+        <button type="button" data-demo-tab="react" data-active="false">React Demo</button>
+        <button type="button" data-demo-tab="codemirror" data-active="false">CodeMirror Demo</button>
+        <button type="button" data-demo-tab="codex-mock" data-active="false">Codex Mock Demo</button>
         <button type="button" data-demo-tab="chat" data-active="false">Chat Input Demo</button>
       </nav>
 
@@ -114,12 +118,12 @@ if (app) {
         </ul>
       </section>
 
-      <section class="editor-panel" aria-label="Typai demo editor" data-demo-panel="contenteditable">
+      <section class="editor-panel" aria-label="typai demo editor" data-demo-panel="contenteditable">
         <div
           class="editor-surface"
           contenteditable="true"
           role="textbox"
-          aria-label="Typai contenteditable demo editor"
+          aria-label="typai contenteditable demo editor"
           aria-describedby="editor-instructions"
           aria-multiline="true"
           spellcheck="false"
@@ -131,7 +135,7 @@ if (app) {
           class="typai-popover"
           role="dialog"
           aria-modal="false"
-          aria-label="Typai correction actions"
+          aria-label="typai correction actions"
           data-popover
           data-testid="typai-popover"
           hidden
@@ -139,7 +143,7 @@ if (app) {
         <div class="sr-only" aria-live="polite" aria-atomic="true" data-live-region data-testid="live-region"></div>
       </section>
 
-      <section class="settings-panel" aria-label="Typai settings" data-demo-panel="contenteditable">
+      <section class="settings-panel" aria-label="typai settings" data-demo-panel="contenteditable">
         <h2>Settings</h2>
         <label>
           Storage mode
@@ -166,7 +170,7 @@ if (app) {
         </label>
       </section>
 
-      <section class="memory-panel" aria-label="Typai memory controls" data-demo-panel="contenteditable">
+      <section class="memory-panel" aria-label="typai memory controls" data-demo-panel="contenteditable">
         <h2>Memory</h2>
         <div class="memory-actions">
           <button class="reset-button" type="button" data-export-memory data-testid="export-memory">Export Memory</button>
@@ -229,7 +233,7 @@ if (app) {
         <h3>Local event table</h3>
         <div class="debug-table-wrap">
           <table class="debug-table" data-debug-table data-testid="debug-table">
-            <caption>Recent local Typai actions</caption>
+            <caption>Recent local typai actions</caption>
             <thead>
               <tr>
                 <th>Time</th>
@@ -249,7 +253,7 @@ if (app) {
         <div class="demo-panel-header">
           <div>
             <h2>Native Textarea Demo</h2>
-            <p>Typai attaches to a real <code>textarea</code>. The textarea value stays plain text; red and blue marks render in the overlay mirror.</p>
+            <p>typai attaches to a real <code>textarea</code>. The textarea value stays plain text; red and blue marks render in the overlay mirror.</p>
           </div>
           <button class="reset-button" type="button" data-textarea-reset data-testid="textarea-reset">Reset Textarea</button>
         </div>
@@ -258,7 +262,7 @@ if (app) {
           <form class="textarea-workspace" data-textarea-form data-testid="textarea-form">
             <textarea
               class="textarea-editor"
-              aria-label="Typai native textarea demo"
+              aria-label="typai native textarea demo"
               data-textarea-editor
               data-testid="textarea-editor"
               placeholder="Type here..."
@@ -344,11 +348,23 @@ if (app) {
         </div>
       </section>
 
+      <section class="react-demo-panel" aria-label="React adapter demo" data-demo-panel="react" data-testid="react-demo-root" hidden>
+        <div data-react-demo-mount></div>
+      </section>
+
+      <section class="codemirror-demo-panel" aria-label="CodeMirror adapter demo" data-demo-panel="codemirror" data-testid="codemirror-demo-root" hidden>
+        <div data-codemirror-demo-mount></div>
+      </section>
+
+      <section class="codemirror-demo-panel codex-mock-demo-panel" aria-label="Codex mock prompt editor demo" data-demo-panel="codex-mock" data-testid="codex-mock-demo-root" hidden>
+        <div data-codex-mock-demo-mount></div>
+      </section>
+
       <section class="chat-demo-panel" aria-label="Generic chat input demo" data-demo-panel="chat" data-testid="chat-demo-root" hidden>
         <div class="demo-panel-header">
           <div>
             <h2>Generic Chat Input Demo</h2>
-            <p>Native textarea composer with Typai correcting before send. Enter sends, Shift+Enter inserts a newline.</p>
+            <p>Native textarea composer with typai correcting before send. Enter sends, Shift+Enter inserts a newline.</p>
           </div>
         </div>
 
@@ -436,8 +452,23 @@ if (app) {
   const chatForm = app.querySelector<HTMLFormElement>("[data-chat-form]");
   const chatInput = app.querySelector<HTMLTextAreaElement>("[data-chat-input]");
   const sentMessages = app.querySelector<HTMLElement>("[data-sent-messages]");
+  const reactDemoMount = app.querySelector<HTMLElement>("[data-react-demo-mount]");
+  const codeMirrorDemoMount = app.querySelector<HTMLElement>("[data-codemirror-demo-mount]");
+  const codexMockDemoMount = app.querySelector<HTMLElement>("[data-codex-mock-demo-mount]");
 
   setupDemoTabs(app);
+
+  if (reactDemoMount) {
+    mountReactDemo(reactDemoMount);
+  }
+
+  if (codeMirrorDemoMount) {
+    mountCodeMirrorDemo(codeMirrorDemoMount);
+  }
+
+  if (codexMockDemoMount) {
+    mountCodexMockDemo(codexMockDemoMount);
+  }
 
   if (
     editor &&
@@ -1244,7 +1275,7 @@ async function startDemo(
       lastMemoryExport = JSON.stringify(memory, null, 2);
       metrics.lastUserAction = "export_memory";
       metrics.lastDecision = "Memory exported.";
-      announce("Typai memory exported.");
+      announce("typai memory exported.");
       downloadMemoryExport(lastMemoryExport);
       logDebugEvent({
         actionType: "export_memory",
@@ -1290,7 +1321,7 @@ async function startDemo(
       await core.resetTypaiMemory();
       metrics.lastUserAction = "reset_memory";
       resetEditor("Memory reset. Ready.");
-      announce("Typai memory reset.");
+      announce("typai memory reset.");
       await refreshMemoryCounts();
       logDebugEvent({
         actionType: "reset_memory",
@@ -1312,7 +1343,7 @@ async function startDemo(
     await core.importTypaiMemory(data);
     metrics.lastUserAction = "import_memory";
     metrics.lastDecision = "Memory imported.";
-    announce("Typai memory imported.");
+    announce("typai memory imported.");
     await refreshMemoryCounts();
     logDebugEvent({
       actionType: "import_memory",
@@ -1422,7 +1453,7 @@ function renderPopover(
         <p id="${escapeAttribute(titleId)}" class="popover-title">${escapeHtml(popover.label)}</p>
         <p id="${escapeAttribute(
           descriptionId,
-        )}" class="popover-description">Choose how Typai should handle this correction.</p>
+        )}" class="popover-description">Choose how typai should handle this correction.</p>
         <div class="popover-actions">
           <button type="button" data-popover-action="revert" data-testid="revert-action">Revert</button>
           <button type="button" data-popover-action="always" data-testid="always-correct-action">Always correct</button>
@@ -1651,7 +1682,7 @@ function liveMessageFromUserAction(action: TypaiUserAction): string {
   }
 
   if (action.type === "never_correct") {
-    return `Typai will not correct ${action.original} to ${action.replacement} again.`;
+    return `typai will not correct ${action.original} to ${action.replacement} again.`;
   }
 
   if (action.type === "add_to_dictionary") {

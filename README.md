@@ -1,16 +1,19 @@
-# Typai
+# typai
 
-Typai is a deterministic writing intelligence layer for the browser. It runs
-entirely in the page through a C++ core compiled to Wasm, with no server, no
-remote model call, no daemon, and no extension. The user types, Typai corrects
-or marks the text in real time, and the embedding application stays in full
-control of what gets corrected and how.
+typai is a deterministic writing intelligence layer embeddable in almost any
+text editor or writing surface. The C++ core compiled to Wasm runs in browsers
+today; the same engine compiles natively for editor plugins, desktop
+applications, and other host environments.
 
 Status: alpha. Packages are local-ready and tested but not yet published to npm.
+Current phase: Rich Editor Adapter Foundation. React is now available as the
+app-level integration surface, and CodeMirror 6 is now the first serious editor
+integration with protected contexts, safe correction transactions, and V1B
+red/blue popovers. Deterministic correction remains local.
 
 ## What this is, structurally
 
-Typai is built as three layers:
+typai is built as three layers:
 
 A **C++ correction engine** that owns the hot path. Deterministic,
 sub-millisecond on typical inputs, no allocations during steady-state
@@ -21,14 +24,18 @@ exposes a typed API. The bridge handles the async loading boundary and the
 memory contract between the engine and the host page.
 
 A set of **TypeScript adapters** that wire the engine into specific editor
-surfaces: `contenteditable`, native `<textarea>`, and chat-input patterns. Each
-adapter handles the surface-specific weirdness like caret preservation, IME
-guards, snapshot/revert, and overlay rendering, so the engine does not have to.
+surfaces: `contenteditable`, native `<textarea>`, React components/hooks,
+CodeMirror 6 decorations, and chat-input patterns. Each adapter handles the
+surface-specific weirdness like caret preservation, IME guards,
+snapshot/revert, and overlay rendering, so the engine does not have to.
 
 The engine does not know about the DOM. The adapters do not know about C++.
 The bridge is the only place those two worlds meet, and it is deliberately
-narrow. New surfaces such as React, ProseMirror, CodeMirror, and Monaco are new
-adapters, not engine changes.
+narrow. New surfaces such as ProseMirror and Monaco are new adapters, not
+engine changes. React already composes the textarea and contenteditable
+adapters through React-specific lifecycle and provider APIs. CodeMirror now
+uses red unresolved spelling decorations, blue transaction-applied correction
+marks, and range-safe popover controls.
 
 ## The pipeline
 
@@ -71,7 +78,7 @@ sets.
 **No installation, no extension.** The user does not have to install anything.
 They just type in your editor and the corrections happen.
 Browser-extension-based spellcheckers cannot reach into web app text fields
-cleanly; Typai is already inside the field.
+cleanly; typai is already inside the field.
 
 **Predictable revert.** Every applied correction is recorded as a transaction.
 The user can undo the autocorrection exactly, with caret and selection
@@ -87,8 +94,9 @@ familiar with the embedded-engine pattern will already see where the slots are:
 - **Suggestion sources.** Edit-distance today. Could be SymSpell,
   keyboard-adjacency, contextual ranking, or anything that returns ranked
   candidates.
-- **Adapters.** Three today: `contenteditable`, `textarea`, and chat input.
-  Could be React, ProseMirror, CodeMirror, Monaco, or custom editor frameworks.
+- **Adapters.** Contenteditable, textarea, React, chat input, and the initial
+  CodeMirror 6 adapter exist today. ProseMirror and Monaco are planning-only
+  for the current phase.
 - **Mark renderers.** Red/blue overlay marks today. Could be inline tooltips,
   margin annotations, accessibility-tree announcements, or custom UI per
   surface.
@@ -96,9 +104,11 @@ familiar with the embedded-engine pattern will already see where the slots are:
   be backed by the embedding application's own user state.
 
 What is not pluggable, intentionally, is the engine's deterministic contract.
-Typai will not call out to LLMs, remote APIs, or local services. That constraint
+typai will not call out to LLMs, remote APIs, or local services. That constraint
 is what makes the latency and privacy properties hold. If a use case needs
 probabilistic correction, route to a different system at the application layer.
+V4 remote completion is future separate opt-in work and is not part of the
+Rich Editor Adapter Foundation phase.
 
 ## What ships today
 
@@ -106,7 +116,7 @@ probabilistic correction, route to a different system at the application layer.
 
 - Common-typo autocorrection, such as `teh` -> `the`
 - Red marks for unresolved spelling issues
-- Blue marks for words Typai changed
+- Blue marks for words typai changed
 - Exact revert for any applied correction
 - Suggestion popovers for unresolved words
 - Per-word controls: always-correct, never-correct, ignore once, add to
@@ -114,7 +124,10 @@ probabilistic correction, route to a different system at the application layer.
 
 **Developer-facing:**
 
-- Three adapters: `@typai/core`, `@typai/contenteditable`, `@typai/textarea`
+- Packages: `@typai/core`, `@typai/contenteditable`, `@typai/textarea`,
+  `@typai/react`, and initial `@typai/codemirror`
+- Demos for contenteditable, textarea, React, CodeMirror 6, chat input, and a
+  Codex-style mock prompt editor
 - Overlay mirror engine for safe rendering over native `<textarea>`
 - Protected-token guards for URLs, emails, paths, identifiers, and CVEs
 - Snapshot/version-locked transactions; stale writes are blocked
@@ -128,7 +141,7 @@ The overlay mirror is visual only and never inserts markup into the textarea.
 
 ## What is deliberately out of scope
 
-Typai will not add:
+typai will not add:
 
 - LLM or remote model calls
 - Server, daemon, or localhost API
@@ -136,8 +149,11 @@ Typai will not add:
 - Grammar, style, tone, or clarity checking
 - Edit-distance autocorrect; edit-distance is suggestions only
 - Next-edit logging
-- React/ProseMirror/CodeMirror/Monaco adapters yet; these are future adapter
-  work, not engine work
+- V4 remote completion, `@typai/completion-remote`, OpenAI/provider endpoints,
+  or ghost text completion
+- Real Codex integration
+- ProseMirror or Monaco implementation in the Rich Editor Adapter Foundation
+  phase
 
 The scope is held tight because the value proposition depends on it. A
 deterministic, in-page, serverless correction layer is interesting precisely
@@ -190,6 +206,7 @@ is intentionally skipped for this phase.
 
 ## Docs
 
+- [docs/rich-editor-adapter-foundation.md](./docs/rich-editor-adapter-foundation.md) - current phase scope lock
 - [docs/AGENT_BRIEF.md](./docs/AGENT_BRIEF.md) — canonical brief for future agents
 - [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) — textarea completion audit
 - [docs/package-readiness.md](./docs/package-readiness.md) — local pack and smoke install details

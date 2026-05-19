@@ -90,8 +90,8 @@
     "attribution": "Frequency scores derived from Google Books Ngram Viewer data, American English 2019, version 20200217."
   },
   "transform": {
-    "script": "scripts/build-production-dictionary.mjs",
-    "version": "not implemented",
+    "script": "packages/core/scripts/build-production-dictionary.mjs",
+    "version": "prompt-110-production-transform-v1",
     "filters": [
       "read pinned ESDB/SCOWL en_US size 60 Hunspell files",
       "strip Hunspell flags or model supported flags explicitly",
@@ -112,6 +112,6 @@
   "review": {
     "status": "blocked",
     "reviewedAt": "2026-05-19",
-    "reviewNotes": "Source path is approved for future pipeline work, but production asset ingestion remains blocked. Google Ngram raw source hashes, deterministic transform script, generated output hash, generated size evidence, quality evidence, and final review signoff are missing."
+    "reviewNotes": "Source path is approved for future pipeline work, but production asset ingestion remains blocked. Google Ngram raw source hashes, pinned local production input paths, generated output hash, generated size evidence, quality evidence, and final review signoff are missing."
   }
 }

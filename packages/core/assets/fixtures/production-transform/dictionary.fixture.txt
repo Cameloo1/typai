@@ -1,0 +1,18 @@
+# Typai production transform fixture dictionary.
+alpha
+Alpha
+bravo
+bravo
+Gamma
+typai
+delta/AB
+can't
+user@example.com
+https://example.com
+C:\Users\typai\dictionary.txt
+/etc/passwd
+snake_case_identifier
+camelCaseIdentifier
+CVE-2024-1234
+abc123
+path/to/file

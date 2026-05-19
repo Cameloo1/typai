@@ -26,8 +26,9 @@ Every production dictionary, frequency table, or combined asset must provide:
   normalization, and binary transformation are allowed.
 - Attribution text: exact package-ready notice text, including source URLs and
   required copyright/license text.
-- Deterministic transform script: checked-in script that fetches or reads pinned
-  inputs and emits deterministic outputs from an empty cache.
+- Deterministic transform script: checked-in script that reads pinned local
+  inputs, verifies hashes before processing, and emits deterministic outputs.
+  It must not fetch from the network by default.
 - Manifest metadata: JSON manifest with source, license, transform, count, size,
   hash, package, and reviewer fields.
 - Package inclusion policy: explicit decision for `none`, `optional`, or
@@ -63,7 +64,7 @@ fields:
   "modificationAllowed": true,
   "attributionRequired": true,
   "attributionText": "Package-ready attribution text.",
-  "transformScript": "scripts/build-production-dictionary.mjs",
+  "transformScript": "packages/core/scripts/build-production-dictionary.mjs",
   "outputFormat": "Typai Dictionary Blob v1",
   "wordCount": 0,
   "byteSize": 0,
@@ -114,7 +115,13 @@ host-provided asset path instead of bundling it in `@typai/core`.
    and `docs/dictionary-production-approval.md`.
 2. Pin official source URLs, release identifiers, retrieval dates, and raw input
    hashes.
-3. Run the deterministic transform script from an empty cache.
+3. Record pinned local input file paths and run the deterministic transform
+   script from an empty cache:
+
+   ```sh
+   pnpm --filter @typai/core build:dictionary:production
+   ```
+
 4. Commit or attach the manifest and license/attribution files.
 5. Run loader tests, package smoke, docs checks, and spell quality gates.
 6. Review false-positive and valid-word behavior before package inclusion.
@@ -137,6 +144,18 @@ The generated scaled mock lives under `packages/core/assets/generated/`, is
 ignored by Git, and must be labeled `mockOnly: true` and `production: false`.
 It stress-tests loader memory, bounds checks, frequency ranking, and
 host-provided loading without bundling third-party language data.
+
+Prompt 110 adds a production transform pipeline with fixture-mode validation:
+
+```sh
+pnpm --filter @typai/core validate:dictionary:production
+```
+
+When production approval is blocked, this command confirms the production build
+gate and runs the same transform against repo-local fixtures under
+`packages/core/assets/fixtures/production-transform/`. Generated fixture output
+stays under ignored `packages/core/assets/generated/` paths and is not a
+production language asset.
 
 A host-provided asset path may be implemented before production bundling if it
 keeps provenance outside the package and still validates manifests before

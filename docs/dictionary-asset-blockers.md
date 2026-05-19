@@ -33,22 +33,28 @@ fixture.
 - Evidence present: blocked template at
   `packages/core/assets/production/MANIFEST.template.json`.
 - Evidence still needed: approved manifest with complete frequency source
-  hashes, transform, generated output counts, generated output size, output
-  hash, package-inclusion decision, and review signoff.
+  hashes, pinned local production input paths, generated output counts,
+  generated output size, output hash, package-inclusion decision, and review
+  signoff.
 - Owner/action: production asset pipeline implementer.
 - Can pipeline proceed with scaled mock or host-provided asset? Yes. Loader and
   manifest validation work can proceed without committing a production asset.
 
-### Deterministic Transform Script Missing
+### Deterministic Transform Script Gated To Fixtures
 
 - Source affected: ESDB/SCOWL and Google Books Ngram.
-- Evidence needed: checked-in script that fetches or reads pinned inputs,
-  verifies raw SHA-256 values, normalizes them deterministically, intersects
-  frequency with accepted dictionary words, and emits Typai Dictionary Blob v1
-  plus manifest.
-- Owner/action: production asset pipeline work.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes. Prompt 101
-  should harden the loader and host-provided path first.
+- Evidence present: checked-in transform script at
+  `packages/core/scripts/build-production-dictionary.mjs`, fixture inputs under
+  `packages/core/assets/fixtures/production-transform/`, and gated validation
+  via `pnpm --filter @typai/core validate:dictionary:production`.
+- Evidence still needed: approved production manifest, pinned local production
+  source files, complete raw SHA-256 values, generated output hash, generated
+  size evidence, and review signoff before
+  `pnpm --filter @typai/core build:dictionary:production` can run.
+- Owner/action: asset-pipeline PR plus final approval review.
+- Can pipeline proceed with scaled mock or host-provided asset? Yes. The
+  fixture path can validate transform behavior without committing a production
+  asset.
 
 ### Frequency Raw Source Hashes Not Captured
 
@@ -130,13 +136,13 @@ fixture.
 
 ## Current Safe Path
 
-Prompt 101 should implement or harden:
+Current blocked-phase work may continue on:
 
 - manifest validation
-- deterministic transform scaffolding
+- deterministic transform fixture coverage
 - host-provided dictionary loading
 - scaled mock asset generation for performance and loader tests
 - package scans that exclude raw source files and generated production outputs
 
-Prompt 101 should not commit generated production assets unless the manifest,
+No prompt should commit generated production assets unless the manifest,
 hash, attribution, size, quality, and review gates all pass.

@@ -6,8 +6,12 @@ Source approval status: **APPROVED for the candidate source path**.
 
 Asset ingestion status: **BLOCKED**.
 
+Transform pipeline status: **AVAILABLE in gated fixture mode**.
+
 Prompt 109 verifies and pins the first production source path. It does not
 ingest, commit, package, publish, or ship generated production assets.
+Prompt 110 adds the deterministic transform entrypoint, but production mode
+still refuses to run while the manifest review status is blocked.
 
 ## Approved Dictionary Source
 
@@ -122,11 +126,46 @@ It records:
 - missing generated output counts and byte size as `null`
 - `output.packageInclusion: "blocked"`
 - `review.status: "blocked"`
+- transform script path:
+  `packages/core/scripts/build-production-dictionary.mjs`
 
 The placeholder license and attribution files are:
 
 - `packages/core/assets/production/LICENSES/README.md`
 - `packages/core/assets/production/ATTRIBUTION.md`
+
+## Transform Pipeline Status
+
+The Prompt 110 transform command is:
+
+```sh
+pnpm --filter @typai/core build:dictionary:production
+```
+
+Current behavior:
+
+- Reads the production manifest.
+- Fails immediately when `review.status` is `blocked`.
+- Does not download sources or make network calls by default.
+- Requires pinned local input files and SHA-256 hashes before processing.
+- Verifies source hashes before reading dictionary or frequency rows.
+- Normalizes lowercase ASCII alphabetic words.
+- Strips Hunspell-style flags when present.
+- Excludes protected-looking URL, email, path, identifier, numeric, hyphenated,
+  and non-alpha tokens.
+- Deduplicates words, aggregates frequency rows, sorts deterministically, and
+  emits Typai Dictionary Blob v1 plus metadata.
+
+The validation command:
+
+```sh
+pnpm --filter @typai/core validate:dictionary:production
+```
+
+passes in the blocked state by confirming the production build is gated and by
+running the same transform path against repo-local fixtures. Fixture outputs are
+written under ignored `packages/core/assets/generated/` paths and are not
+production assets.
 
 ## Exact Source Pinning Required Next
 
@@ -134,8 +173,11 @@ Before any production output can enter the package, the asset PR must record:
 
 - Google Ngram raw file SHA-256 for `totalcounts-1` and every fetched 1-gram
   partition.
+- Pinned local source file paths for the ESDB/SCOWL input and each Google Ngram
+  input.
 - Retrieval date for every raw source file.
-- Transform script path and command.
+- Transform command output from
+  `pnpm --filter @typai/core build:dictionary:production`.
 - Generated output SHA-256.
 - Word count, frequency row count, compressed size, and uncompressed size.
 - Review status, reviewer, and review date.
@@ -146,7 +188,9 @@ Source path approval is not package inclusion approval. Asset ingestion remains
 blocked because:
 
 - Google Ngram raw source hashes are not captured.
-- No deterministic production transform script exists.
+- The production manifest is still `MANIFEST.template.json` with
+  `review.status: "blocked"`.
+- Pinned local production source file paths are not recorded.
 - No generated output hash exists.
 - No generated word count, frequency row count, compressed size, or
   uncompressed byte size exists.

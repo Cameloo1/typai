@@ -15,8 +15,9 @@ state from:
 
 Source approval status: **APPROVED** for the first source path.
 
-Asset ingestion status: **BLOCKED until frequency source hashes, transform,
-generated output hash, attribution, size, quality, and review gates pass**.
+Asset ingestion status: **BLOCKED until frequency source hashes, pinned local
+production inputs, generated output hash, attribution, size, quality, and
+review gates pass**.
 
 No production dictionary, frequency table, raw corpus, or generated production
 language asset is bundled in this repository state.
@@ -38,7 +39,7 @@ frequency table, package asset, or npm release.
 Production bundling remains blocked because the repository does not yet have:
 
 - approved production asset manifest under `packages/core/assets/production/`
-- deterministic production transform script and command
+- pinned local production input file paths
 - raw Google Ngram input SHA-256 values
 - generated output SHA-256
 - final package-visible attribution and full applicable notices
@@ -72,6 +73,16 @@ Ngram American English 2019 1-gram source URLs. It intentionally keeps Google
 Ngram raw source hashes as `null`, generated output counts and byte size as
 `null`, `output.packageInclusion` as `blocked`, and `review.status` as
 `blocked`.
+
+Prompt 110 adds the deterministic transform script and command:
+
+- `packages/core/scripts/build-production-dictionary.mjs`
+- `pnpm --filter @typai/core build:dictionary:production`
+- `pnpm --filter @typai/core validate:dictionary:production`
+
+The production build command fails while `review.status` is `blocked`. The
+validation command runs the same transform path against repo-local fixtures and
+writes ignored output under `packages/core/assets/generated/`.
 
 The placeholder license and attribution files are:
 

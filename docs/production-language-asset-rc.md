@@ -18,6 +18,8 @@ The Intelligence Quality Foundation is complete. Typai currently has:
 - quality benchmark gates for protected-token writes, valid-word safety,
   autocorrect precision, suggestion recall, and direct core latency
 - scaled mock and host-provided asset loading paths
+- a deterministic production dictionary transform entrypoint that currently
+  runs only against repo-local fixtures while production approval is blocked
 - manual/env-gated real-provider demo support through a secure proxy
 
 The current implementation does not bundle a production dictionary or frequency
@@ -30,6 +32,7 @@ Production asset ingestion remains blocked until the asset PR proves:
 
 - exact upstream source pins and retrieval dates
 - raw input SHA-256 hashes
+- pinned local source file paths for every production input
 - generated output SHA-256 hashes
 - full license and redistribution evidence
 - package-visible attribution
@@ -42,6 +45,12 @@ Production asset ingestion remains blocked until the asset PR proves:
 No generated production dictionary, frequency table, raw corpus, or derived
 asset may be committed, packed, published, or claimed as shipped until those
 gates pass.
+
+The Prompt 110 transform pipeline exists at
+`packages/core/scripts/build-production-dictionary.mjs`. In the current blocked
+state, `pnpm --filter @typai/core build:dictionary:production` fails before
+processing and `pnpm --filter @typai/core validate:dictionary:production`
+validates the fixture/mock path only.
 
 ## Phase Scope
 
@@ -120,8 +129,9 @@ If any gate is missing, unclear, or contradictory, package inclusion remains
 2. Refresh the production asset recap and gate-status check.
 3. Reconfirm the approved ESDB/SCOWL and Google Books Ngram source pins before
    any generated output is promoted.
-4. Add or complete a deterministic transform pipeline that can run from an
-   empty cache and record raw hashes.
+4. Use the deterministic transform pipeline to process only approved pinned
+   local inputs. While blocked, keep the fixture transform as the only runnable
+   path.
 5. Emit manifest and attribution artifacts for review before package inclusion.
 6. Load the generated asset through the existing C++/Rust/Wasm dictionary blob
    boundary and keep malformed-load recovery intact.

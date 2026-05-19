@@ -169,6 +169,53 @@ fn mock_word_count(blob: &[u8]) -> u32 {
     u32::from_le_bytes(blob[16..20].try_into().expect("word count bytes"))
 }
 
+fn dictionary_blob(entries: &[(&str, u32, u32)], language: &str) -> Vec<u8> {
+    const HEADER_LEN: usize = 24;
+    const ENTRY_LEN: usize = 14;
+
+    let language_bytes = language.as_bytes();
+    let string_table_len = entries.iter().map(|(word, _, _)| word.len()).sum::<usize>();
+    let byte_len = HEADER_LEN + entries.len() * ENTRY_LEN + string_table_len + language_bytes.len();
+    let mut output = vec![0_u8; byte_len];
+    let mut offset = 0;
+
+    output[offset..offset + 8].copy_from_slice(b"TYPAIDIC");
+    offset += 8;
+    output[offset..offset + 4].copy_from_slice(&1_u32.to_le_bytes());
+    offset += 4;
+    output[offset..offset + 2].copy_from_slice(&(language_bytes.len() as u16).to_le_bytes());
+    offset += 2;
+    output[offset..offset + 2].copy_from_slice(&0_u16.to_le_bytes());
+    offset += 2;
+    output[offset..offset + 4].copy_from_slice(&(entries.len() as u32).to_le_bytes());
+    offset += 4;
+    output[offset..offset + 4].copy_from_slice(&(string_table_len as u32).to_le_bytes());
+    offset += 4;
+
+    let mut word_offset = 0_u32;
+
+    for (word, frequency, flags) in entries {
+        output[offset..offset + 4].copy_from_slice(&word_offset.to_le_bytes());
+        offset += 4;
+        output[offset..offset + 2].copy_from_slice(&(word.len() as u16).to_le_bytes());
+        offset += 2;
+        output[offset..offset + 4].copy_from_slice(&frequency.to_le_bytes());
+        offset += 4;
+        output[offset..offset + 4].copy_from_slice(&flags.to_le_bytes());
+        offset += 4;
+        word_offset += word.len() as u32;
+    }
+
+    for (word, _, _) in entries {
+        output[offset..offset + word.len()].copy_from_slice(word.as_bytes());
+        offset += word.len();
+    }
+
+    output[offset..offset + language_bytes.len()].copy_from_slice(language_bytes);
+
+    output
+}
+
 #[test]
 fn common_typos_are_deterministic_auto_corrections() {
     clear_loaded_dictionary();
@@ -416,6 +463,47 @@ fn truncated_dictionary_blob_is_rejected() {
     let blob = mock_dictionary_blob();
     let truncated = &blob[..blob.len() - 1];
     let (code, word_count, reason_flags) = load_dictionary_blob(truncated);
+
+    assert_eq!(code, TYPAI_DICTIONARY_LOAD_BOUNDS_ERROR);
+    assert_eq!(word_count, 0);
+    assert_ne!(reason_flags & TYPAI_REASON_DICTIONARY_BOUNDS_ERROR, 0);
+    assert_eq!(loaded_dictionary_word_count(), 0);
+}
+
+#[test]
+fn duplicate_dictionary_words_are_rejected_without_replacing_current_dictionary() {
+    clear_loaded_dictionary();
+    let mock = mock_dictionary_blob();
+    assert_eq!(load_dictionary_blob(&mock).0, TYPAI_DICTIONARY_LOAD_OK);
+
+    let duplicate = dictionary_blob(&[("alpha", 100, 0), ("alpha", 90, 0)], "en-US");
+    let (code, word_count, reason_flags) = load_dictionary_blob(&duplicate);
+
+    assert_eq!(code, TYPAI_DICTIONARY_LOAD_BOUNDS_ERROR);
+    assert_eq!(word_count, 0);
+    assert_ne!(reason_flags & TYPAI_REASON_DICTIONARY_BOUNDS_ERROR, 0);
+    assert_eq!(loaded_dictionary_word_count(), mock_word_count(&mock));
+
+    clear_loaded_dictionary();
+}
+
+#[test]
+fn protected_looking_dictionary_words_are_rejected() {
+    clear_loaded_dictionary();
+    let blob = dictionary_blob(&[("abc123", 100, 0)], "en-US");
+    let (code, word_count, reason_flags) = load_dictionary_blob(&blob);
+
+    assert_eq!(code, TYPAI_DICTIONARY_LOAD_BOUNDS_ERROR);
+    assert_eq!(word_count, 0);
+    assert_ne!(reason_flags & TYPAI_REASON_DICTIONARY_BOUNDS_ERROR, 0);
+    assert_eq!(loaded_dictionary_word_count(), 0);
+}
+
+#[test]
+fn unsupported_dictionary_language_is_rejected() {
+    clear_loaded_dictionary();
+    let blob = dictionary_blob(&[("alpha", 100, 0)], "en-GB");
+    let (code, word_count, reason_flags) = load_dictionary_blob(&blob);
 
     assert_eq!(code, TYPAI_DICTIONARY_LOAD_BOUNDS_ERROR);
     assert_eq!(word_count, 0);

@@ -11,15 +11,17 @@ Public Alpha Readiness loader work.
 - C++ ingests the blob into internal dictionary/trie structures during
   initialization.
 
-This format is for proving runtime loading architecture first. The current asset
-is a generated mock fixture, not a production dictionary.
+This format is for proving runtime loading architecture first. The current
+checked-in asset is a generated mock fixture, not a production dictionary.
+Prompt 101 also adds an ignored scaled mock generator for loader stress tests.
 
 ## Constraints
 
 - No JavaScript string arrays cross the typing hot path.
 - No full document text is passed into C++.
 - No C++ memory is returned to JavaScript or Rust for them to free.
-- C++ may use RAII-owned internal containers during dictionary initialization.
+- C++ uses fixed internal storage during dictionary initialization and does not
+  expose ownership across FFI.
 - Do not use raw `new`, `malloc`, or `free` in the loader. Prefer
   `std::vector` and `std::string` internally when useful, and never expose that
   ownership across FFI.
@@ -29,7 +31,7 @@ is a generated mock fixture, not a production dictionary.
 ## Encoding
 
 - Encoding is UTF-8.
-- Words are lowercase.
+- Words are lowercase ASCII alphabetic tokens in v1.
 - Initial language is English `en-US` only.
 - Initial mock data is ASCII-first.
 - Integers are little-endian.
@@ -96,15 +98,18 @@ Loaders must validate:
 - Version is supported exactly.
 - Reserved field is zero.
 - Header, entry table, string table, and language code bounds are valid.
+- Language is exactly `en-US` for v1.
 - Entry word offsets and lengths stay inside the string table.
 - Words are non-empty.
+- Words are lowercase ASCII alphabetic tokens.
 - UTF-8 is valid.
 - Duplicate words are rejected.
 - Sorted words are recommended for deterministic builds, but the format does not
   require sorted order.
 
-Invalid UTF-8 should reject the blob. Future C++ ingestion may choose a stricter
-ASCII-only validation mode for the first production loader.
+Invalid UTF-8 rejects the blob. The Prompt 101 C++ loader also rejects
+unsupported languages, protected-looking words, and duplicate entries without
+replacing the previously loaded dictionary.
 
 ## Versioning
 
@@ -113,7 +118,7 @@ silently accept an unknown version.
 
 ## Mock Asset
 
-The generated mock asset lives at:
+The checked-in tiny mock asset lives at:
 
 - `packages/core/assets/mock-en-us.dictionary.bin`
 - `packages/core/assets/mock-en-us.dictionary.json`
@@ -126,3 +131,41 @@ pnpm --filter @typai/core generate:mock-dictionary
 
 The mock contains a tiny fixed word/frequency list for tests. It is not a real
 dictionary, not a production corpus, and not a licensing decision.
+
+## Scaled Mock Asset
+
+Prompt 101 adds a generated scaled mock path for loader, benchmark, and
+host-provided asset tests. It writes ignored local files under:
+
+- `packages/core/assets/generated/scaled-mock-en-us.dictionary.bin`
+- `packages/core/assets/generated/scaled-mock-en-us.dictionary.meta.json`
+
+Generate it with:
+
+```sh
+pnpm --filter @typai/core build:dictionary
+```
+
+Validate it with:
+
+```sh
+pnpm --filter @typai/core validate:dictionary
+```
+
+The scaled mock defaults to 3,600 deterministic lowercase words and synthetic
+frequency scores. Its metadata is explicitly `mockOnly: true` and
+`production: false`. It is ignored by Git and must not be treated as a
+production dictionary or frequency asset.
+
+## Host-Provided Loading
+
+Host applications may provide dictionary bytes at initialization through the
+existing `createTypaiCore({ dictionary })` option:
+
+- `dictionary.bytes`
+- `dictionary.load`
+- `dictionary.url`
+
+The bytes still have to pass Typai Dictionary Blob v1 validation. Host-provided
+assets are separate from user/personal dictionaries and must not loosen
+protected-token, valid-word, or autocorrect gates.

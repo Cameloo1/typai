@@ -42,6 +42,8 @@ The current local spell intelligence is intentionally thin:
 - a tiny built-in valid-word list
 - a 20-entry mock dictionary/frequency fixture used for loader and ranking
   tests
+- an ignored Prompt 101 scaled mock dictionary generator for loader stress
+  testing only
 - edit-distance suggestions over tiny word sources only
 - no production dictionary or frequency asset
 - no SymSpell/delete index or equivalent scalable candidate generation
@@ -136,19 +138,21 @@ Future quality gates should target:
 
 1. Prompt 99: Intelligence Quality Foundation scope, baseline diagnosis, and
    quality gates.
-2. Prompt 100: approve dictionary/frequency source inputs and create the
-   license-gated asset pipeline without committing production assets.
-3. Prompt 101: add scalable C++ candidate generation using SymSpell/delete
+2. Prompt 100: approve dictionary/frequency source inputs and define the
+   license-gated asset policy without committing production assets.
+3. Prompt 101: harden dictionary blob loading and add the blocked-branch scaled
+   mock plus host-provided asset pipeline without production ingestion.
+4. Prompt 102: add scalable C++ candidate generation using SymSpell/delete
    index or an equivalent deterministic lookup.
-4. Prompt 102: add ranking, conservative confidence gates, and expanded common
+5. Prompt 103: add ranking, conservative confidence gates, and expanded common
    typo coverage.
-5. Prompt 103: add casing preservation, contraction handling, and plural
+6. Prompt 104: add casing preservation, contraction handling, and plural
    handling without valid-word autocorrect.
-6. Prompt 104: add cross-surface spell quality tests for contenteditable,
+7. Prompt 105: add cross-surface spell quality tests for contenteditable,
    textarea, React, and CodeMirror.
-7. Prompt 105: add a real proxy completion demo mode through secure server-side
+8. Prompt 106: add a real proxy completion demo mode through secure server-side
    rails, still disabled from CI by default.
-8. Prompt 106: add quality benchmarks, false-positive review, and release
+9. Prompt 107: add quality benchmarks, false-positive review, and release
    readiness evidence for the intelligence phase.
 
 ## Acceptance Gates
@@ -171,6 +175,10 @@ Future phase acceptance:
   asset is committed, packed, or published
 - generated assets include source URLs, retrieval dates, notices, manifest,
   counts, hashes, and deterministic transform commands
+- scaled mock assets remain explicitly mock-only and ignored unless a later
+  policy explicitly promotes them
+- host-provided dictionary loading validates the same blob bounds and does not
+  change autocorrect behavior
 - scalable candidate generation is measured against direct core latency budgets
 - broad common misspellings receive suggestions without opening autocorrect
   beyond the approved common-typo/high-confidence gate

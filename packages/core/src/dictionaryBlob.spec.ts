@@ -110,4 +110,27 @@ describe("Typai Dictionary Blob v1", () => {
       }),
     ).toThrow(/Duplicate dictionary word/);
   });
+
+  it.each([
+    "user@example.com",
+    "snake_case_identifier",
+    "camelCaseIdentifier",
+    "abc123",
+  ])("rejects protected-looking dictionary word %s during encoding", (word) => {
+    expect(() =>
+      encodeTypaiDictionaryBlob({
+        language: "en-US",
+        entries: [{ word, frequency: 1, flags: 0 }],
+      }),
+    ).toThrow(/lowercase/);
+  });
+
+  it("rejects unsupported dictionary languages", () => {
+    expect(() =>
+      encodeTypaiDictionaryBlob({
+        language: "en-GB",
+        entries: [{ word: "the", frequency: 1, flags: 0 }],
+      }),
+    ).toThrow(/Unsupported dictionary language/);
+  });
 });

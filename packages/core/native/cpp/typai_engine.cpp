@@ -17,6 +17,7 @@ constexpr unsigned int kMaxDynamicDictionaryWords = 4096;
 constexpr unsigned int kMaxDynamicDictionaryStringBytes = 65536;
 constexpr unsigned int kMaxDynamicDictionaryTrieNodes = 32768;
 constexpr char kDictionaryBlobMagic[] = {'T', 'Y', 'P', 'A', 'I', 'D', 'I', 'C'};
+constexpr char kSupportedDictionaryLanguage[] = {'e', 'n', '-', 'U', 'S'};
 
 struct WordView {
   const char* word;
@@ -550,6 +551,20 @@ bool dictionary_magic_matches(const unsigned char* data, unsigned int data_len) 
   return true;
 }
 
+bool dictionary_language_matches(const unsigned char* data, unsigned int language_len) {
+  if (language_len != sizeof(kSupportedDictionaryLanguage)) {
+    return false;
+  }
+
+  for (unsigned int index = 0; index < sizeof(kSupportedDictionaryLanguage); ++index) {
+    if (data[index] != static_cast<unsigned char>(kSupportedDictionaryLanguage[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool checked_dictionary_payload_bounds(
     unsigned int data_len,
     unsigned int word_count,
@@ -655,6 +670,14 @@ int load_dictionary_blob(
           entries_offset,
           string_table_offset,
           language_offset)) {
+    return reject_dictionary_blob(
+        word_count_out,
+        reason_flags_out,
+        TYPAI_DICTIONARY_LOAD_BOUNDS_ERROR,
+        TYPAI_REASON_DICTIONARY_BOUNDS_ERROR);
+  }
+
+  if (!dictionary_language_matches(data + language_offset, language_len)) {
     return reject_dictionary_blob(
         word_count_out,
         reason_flags_out,

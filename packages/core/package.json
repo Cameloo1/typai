@@ -27,6 +27,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "pnpm run build:wasm && tsup",
+    "build:dictionary": "node scripts/build-dictionary-asset.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
     "bench": "node scripts/bench.mjs",
     "generate:mock-dictionary": "node scripts/generate-mock-dictionary.mjs",
@@ -34,6 +35,7 @@
     "test": "vitest run && pnpm run test:native && pnpm run test:wasm",
     "test:native": "node scripts/test-native.mjs",
     "test:wasm": "node scripts/test-wasm.mjs",
+    "validate:dictionary": "node scripts/validate-dictionary-asset.mjs",
     "clean": "node -e \"const fs=require('node:fs'); for (const p of ['dist','pkg']) fs.rmSync(p,{recursive:true,force:true});\""
   }
 }

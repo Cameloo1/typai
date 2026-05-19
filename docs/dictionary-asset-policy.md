@@ -126,6 +126,18 @@ host-provided asset path instead of bundling it in `@typai/core`.
 generated fixtures only. They are not production dictionary or frequency
 assets, and they do not represent a source/license decision.
 
+Prompt 101 adds a scaled mock generator:
+
+```sh
+pnpm --filter @typai/core build:dictionary
+pnpm --filter @typai/core validate:dictionary
+```
+
+The generated scaled mock lives under `packages/core/assets/generated/`, is
+ignored by Git, and must be labeled `mockOnly: true` and `production: false`.
+It stress-tests loader memory, bounds checks, frequency ranking, and
+host-provided loading without bundling third-party language data.
+
 A host-provided asset path may be implemented before production bundling if it
 keeps provenance outside the package and still validates manifests before
 loading. Host-provided assets must not weaken protected-token, valid-word, or

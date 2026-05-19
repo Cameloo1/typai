@@ -46,3 +46,7 @@ provider credentials stay on the embedder's server.
 - [V4.2 completion checkpoint](./v4-2-provider-public-beta-readiness-complete.md)
 - [Intelligence Quality Foundation](./intelligence-quality-foundation.md)
 - [Spell quality baseline](./spell-quality-baseline.md)
+- [Dictionary source selection](./dictionary-source-selection.md)
+- [Dictionary asset policy](./dictionary-asset-policy.md)
+- [Dictionary production approval](./dictionary-production-approval.md)
+- [Dictionary asset blockers](./dictionary-asset-blockers.md)

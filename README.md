@@ -58,6 +58,8 @@ will be added after a real npm publish.
 - [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
 - [Intelligence Quality Foundation](./docs/intelligence-quality-foundation.md)
 - [Spell quality baseline](./docs/spell-quality-baseline.md)
+- [Dictionary source selection](./docs/dictionary-source-selection.md)
+- [Dictionary production approval](./docs/dictionary-production-approval.md)
 
 ## Verification
 

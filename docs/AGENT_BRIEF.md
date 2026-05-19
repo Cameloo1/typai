@@ -43,6 +43,11 @@ commit, pack, publish, or claim production dictionary/frequency assets until an
 approved asset PR includes source URLs, retrieval dates, notices, attribution,
 manifest counts, hashes, and deterministic transform commands.
 
+Prompt 100 approved the first source path only: ESDB/SCOWL `en-US` size 60 for
+dictionary data and Google Books Ngram American English 2019 unigrams for
+frequency data. Asset ingestion is still blocked until manifest, transform,
+hash, attribution, size, quality, and review gates pass.
+
 No local model inference or next-edit logging is active in this phase.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
@@ -179,6 +184,11 @@ Use `docs/intelligence-quality-foundation.md` as the Prompt 99 scope lock.
 Use `docs/spell-quality-baseline.md` as the current spell quality diagnosis.
 It is a baseline report, not evidence that Typai has product-grade spell
 coverage.
+
+Use `docs/dictionary-source-selection.md`,
+`docs/dictionary-asset-policy.md`, `docs/dictionary-production-approval.md`,
+and `docs/dictionary-asset-blockers.md` for Prompt 100 source approval and
+asset-ingestion gates.
 
 ## V4 Scope Reference
 

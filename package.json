@@ -16,6 +16,7 @@
     "smoke:public-beta": "node scripts/public-beta-smoke.mjs",
     "smoke:real-provider:manual": "node scripts/manual-real-provider-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
+    "dictionary:check-policy": "node scripts/dictionary-check-policy.mjs",
     "scan:package-secrets": "node scripts/scan-package-secrets.mjs",
     "release:check": "node scripts/release-check.mjs",
     "release:version:dry": "node scripts/release-version-dry.mjs",

@@ -22,10 +22,11 @@ accept, completion transactions, and exact revert. Package dry-run, smoke
 install, V4.1 E2E, browser benchmark gates, and the hardening audit cover these
 surfaces.
 
-V4.2 does not add new editor surfaces. It prepares provider endpoint contracts,
-server-side-only provider examples, consumer install docs, release dry-runs,
-beta API boundaries, security/privacy review, and public-beta smoke gates.
-Provider examples must keep private keys server-side.
+V4.2 does not add new editor surfaces. Provider/proxy/security work is active:
+API stability labels, source-level API export snapshot tests, provider endpoint
+contracts, security/privacy baselines, future server-side-only provider
+examples, consumer install docs, release dry-runs, beta API boundaries, and
+public-beta smoke gates. Provider examples must keep private keys server-side.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -60,6 +61,7 @@ deterministic correction adapters in this phase.
 - CodeMirror completion exists and must keep accepted completions separate from
   blue correction marks.
 - Mock providers are used in tests, demos, E2E, and browser benchmark smoke.
+- API export snapshot tests must stay explicit when public exports change.
 - Endpoint providers require an embedder backend; browser code must not call
   model providers directly.
 - Browser examples must not contain private provider API keys.
@@ -83,6 +85,7 @@ deterministic correction adapters in this phase.
 - No grammar, style, tone, or clarity expansion in V4.2.
 - No SymSpell/delete index or production dictionary asset in V4.2.
 - No direct browser OpenAI/provider calls.
+- No npm publish in V4.2 unless a later prompt explicitly opens publishing.
 
 Deterministic correction runs first. Remote completion waits for debounce after
 correction settles.
@@ -157,3 +160,7 @@ Use `docs/v4-2-provider-public-beta-readiness.md` as the V4.2 Provider + Public
 Beta Readiness scope lock. Do not implement provider examples until the relevant
 V4.2 prompt opens them. Keep real provider calls out of tests, demos, E2E,
 benchmarks, and CI unless explicitly env-gated for a manual script.
+
+Use `docs/api-stability.md` for public API labels. Use
+`docs/provider-proxy-security-contract.md`, `docs/security-threat-model.md`, and
+`docs/privacy-model.md` for V4.2 provider, security, and privacy boundaries.

@@ -11,7 +11,8 @@ Status: alpha. Packages are local-ready and tested but not yet published to npm.
 Current phase: V4.2 Provider + Public Beta Readiness. V4.1 Completion Surface
 Expansion is complete, and completion remains optional through
 `@typai/completion-remote`. Deterministic correction remains local and
-no-remote. V4.2 prepares secure server-side provider endpoint examples,
+no-remote. V4.2 defines beta API stability labels, provider proxy security,
+privacy boundaries, future server-side-only provider endpoint examples,
 consumer install docs, release dry-runs, and beta smoke gates; there is still
 no npm publish, no browser API-key path, and no direct browser provider calls.
 Current completion support covers contenteditable, textarea, React wrappers,
@@ -191,11 +192,12 @@ transaction/revert-safe, accepted completions are not blue correction marks, and
 core correction remains local and no-remote.
 
 V4.2 is the Provider + Public Beta Readiness phase. It prepares provider proxy
-contracts, server-side-only provider examples, consumer install docs,
-versioning/changelog/release dry-runs, security/privacy review, and public beta
-smoke gates. It does not add new editor surfaces, local inference, real Codex,
-grammar/style features, next-edit logging, npm publish, browser API keys, or
-direct browser OpenAI/provider calls.
+contracts, API stability labels, API export snapshot tests,
+security/privacy review, server-side-only provider examples, consumer install
+docs, versioning/changelog/release dry-runs, and public beta smoke gates. It
+does not add new editor surfaces, local inference, real Codex, grammar/style
+features, next-edit logging, npm publish, browser API keys, or direct browser
+OpenAI/provider calls.
 
 Future planned work also includes async grammar/style assistance, richer
 adapters, Codex integration, persistent memory, and next-writing-edit
@@ -272,6 +274,10 @@ CodeMirror, and verifies `@typai/core` does not depend on
 - [docs/v4-1-completion-surface-expansion.md](./docs/v4-1-completion-surface-expansion.md) - V4.1 completion surface expansion scope
 - [docs/v4-1-completion-surface-expansion-complete.md](./docs/v4-1-completion-surface-expansion-complete.md) - V4.1 hardening audit and completion checkpoint
 - [docs/v4-2-provider-public-beta-readiness.md](./docs/v4-2-provider-public-beta-readiness.md) - V4.2 provider and public beta readiness scope
+- [docs/api-stability.md](./docs/api-stability.md) - beta API stability labels and package export classifications
+- [docs/provider-proxy-security-contract.md](./docs/provider-proxy-security-contract.md) - provider proxy security contract
+- [docs/security-threat-model.md](./docs/security-threat-model.md) - V4.2 security threat model baseline
+- [docs/privacy-model.md](./docs/privacy-model.md) - local correction and optional remote completion privacy model
 - [docs/package-readiness.md](./docs/package-readiness.md) - local package, smoke install, CI, and benchmark gates
 - [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) - textarea completion audit
 

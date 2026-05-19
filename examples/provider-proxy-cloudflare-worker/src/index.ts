@@ -1,4 +1,8 @@
 import {
+  callOpenAIResponses,
+  type OpenAIResponsesFetch,
+} from "@typai/provider-proxy-example-utils";
+import {
   createSafeErrorResponse,
   mapProviderErrorToSafeError,
   validateCompletionProxyRequest,
@@ -12,6 +16,7 @@ import {
 } from "./validateEnv";
 
 export type TypaiWorkerHandlerOptions = {
+  fetchImpl?: OpenAIResponsesFetch;
   simulateProviderFailure?: boolean;
 };
 
@@ -59,9 +64,14 @@ export async function handleTypaiWorkerRequest(
   }
 
   try {
-    const completion = await completeWithMockProvider(validation.request, {
-      fail: options.simulateProviderFailure,
-    });
+    const completion =
+      config.providerMode === "openai" && config.openai !== undefined
+        ? await callOpenAIResponses(validation.request, config.openai, {
+            fetchImpl: options.fetchImpl,
+          })
+        : await completeWithMockProvider(validation.request, {
+            fail: options.simulateProviderFailure,
+          });
 
     return jsonResponse(200, completion, corsHeaders);
   } catch (error) {

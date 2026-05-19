@@ -13,6 +13,7 @@
     "pack:dry": "node scripts/pack-dry.mjs",
     "pack:local": "node scripts/pack-local.mjs",
     "smoke:install": "node scripts/package-smoke.mjs",
+    "smoke:real-provider:manual": "node scripts/manual-real-provider-smoke.mjs",
     "lint": "biome check .",
     "format": "biome format . --write",
     "dev": "turbo run dev",

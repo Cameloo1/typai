@@ -31,6 +31,8 @@ When completion is configured:
 - context extraction is bounded by character limits.
 - the browser calls an embedder-controlled endpoint.
 - provider credentials stay server-side.
+- OpenAI Responses example calls are server-side only and disabled unless
+  explicit environment gates are set.
 - returned text is rendered as ghost text first.
 - editor text mutates only after explicit user acceptance.
 - accepted completions are transactions and remain revertible.
@@ -84,6 +86,8 @@ For V4.2 public beta readiness:
 - completion remains optional.
 - no real provider calls run in tests, demos, E2E, browser benchmarks, smoke,
   or CI.
+- the manual real-provider smoke is opt-in, env-gated, and does not log raw
+  context or generated text.
 - no browser examples include provider API keys.
 - no direct browser OpenAI/provider calls are allowed.
 - no next-edit logging or local model inference is introduced.

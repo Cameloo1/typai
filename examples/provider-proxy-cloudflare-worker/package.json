@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@typai/completion-remote": "workspace:*",
+    "@typai/provider-proxy-example-utils": "workspace:*",
     "@typai/provider-proxy-testkit": "workspace:*"
   }
 }

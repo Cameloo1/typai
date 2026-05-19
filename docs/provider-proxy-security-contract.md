@@ -137,18 +137,26 @@ extension object and is bounded by serialized JSON byte size. This keeps public
 beta examples from silently accepting private provider-key fields or
 unreviewed prompt-control fields.
 
-## Reference Mock Proxy Examples
+## Reference Proxy Examples
 
-The V4.2 mock-only reference proxy examples are:
+The V4.2 reference proxy examples are:
 
 - `examples/provider-proxy-express`
 - `examples/provider-proxy-next`
 - `examples/provider-proxy-cloudflare-worker`
 
 Each example defaults to `PROVIDER_MODE=mock`, uses the shared proxy validation
-utilities, passes the shared provider proxy contract suite, and does not include
-a provider SDK or external provider call. They are reference server-side proxy
-shapes only; provider-specific server integration is a later V4.2 prompt.
+utilities, passes the shared provider proxy contract suite, and requires no
+provider credentials by default.
+
+Each example also supports an env-gated, server-side OpenAI Responses path via
+`@typai/provider-proxy-example-utils`. It is enabled only when
+`PROVIDER_MODE=openai` and `OPENAI_API_KEY` are present on the server. Automated
+tests mock the Responses fetch path and do not make real provider calls.
+
+The root `pnpm smoke:real-provider:manual` script is disabled by default and
+requires explicit opt-in before it sends a small request through the server-side
+proxy path. It must not run in CI.
 
 ## Safe Logging Policy
 

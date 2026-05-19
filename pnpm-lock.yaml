@@ -41,6 +41,9 @@ importers:
       '@typai/completion-remote':
         specifier: workspace:*
         version: link:../../packages/completion-remote
+      '@typai/provider-proxy-example-utils':
+        specifier: workspace:*
+        version: link:../provider-proxy-shared
       '@typai/provider-proxy-testkit':
         specifier: workspace:*
         version: link:../../packages/provider-proxy-testkit
@@ -50,11 +53,26 @@ importers:
       '@typai/completion-remote':
         specifier: workspace:*
         version: link:../../packages/completion-remote
+      '@typai/provider-proxy-example-utils':
+        specifier: workspace:*
+        version: link:../provider-proxy-shared
       '@typai/provider-proxy-testkit':
         specifier: workspace:*
         version: link:../../packages/provider-proxy-testkit
 
   examples/provider-proxy-next:
+    dependencies:
+      '@typai/completion-remote':
+        specifier: workspace:*
+        version: link:../../packages/completion-remote
+      '@typai/provider-proxy-example-utils':
+        specifier: workspace:*
+        version: link:../provider-proxy-shared
+      '@typai/provider-proxy-testkit':
+        specifier: workspace:*
+        version: link:../../packages/provider-proxy-testkit
+
+  examples/provider-proxy-shared:
     dependencies:
       '@typai/completion-remote':
         specifier: workspace:*

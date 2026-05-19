@@ -39,6 +39,10 @@ readiness. It covers current packages and the planned provider-proxy boundary.
 - Completion is optional and routed through `@typai/completion-remote`.
 - Tests, demos, E2E, browser benchmarks, and package smoke use mock providers.
 - Browser package code calls embedder endpoints, not provider APIs directly.
+- Reference proxy examples default to mock mode and include an env-gated
+  server-side OpenAI Responses path only.
+- The manual real-provider smoke requires explicit opt-in flags and is not a CI
+  gate.
 - No real Codex adapter, local model inference, next-edit logging, browser
   extension, npm publish, or production dictionary asset exists in this phase.
 
@@ -55,14 +59,12 @@ readiness. It covers current packages and the planned provider-proxy boundary.
 | Open proxy abuse | Future proxies require auth or same-origin session plus rate limits. |
 | Provider error leakage | Future proxies must map errors to safe codes/messages. |
 | Prompt injection into provider instructions | Proxies must keep server-owned instructions separate from user context. |
-| Test fixture using real provider | CI and tests must use mocks unless a manual env gate is explicitly invoked. |
+| Test fixture using real provider | CI and tests use mocks; the manual real-provider smoke exits unless explicit env gates are set. |
 | Package artifact leakage | Package dry-run and smoke install remain release-readiness gates. |
 | IndexedDB data exposure | Memory import/export/reset stays user-controlled and local. |
 
 ## Security Requirements For Later V4.2 Work
 
-- Do not add OpenAI SDK or real provider calls until the env-gated server-side
-  adapter prompt opens that work.
 - Do not add browser provider-key options.
 - Do not log full document text or stable document IDs by default.
 - Do not add npm publish or production deployment claims in this contract

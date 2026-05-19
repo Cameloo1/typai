@@ -8,9 +8,9 @@ editor surfaces; V4.2 focuses on provider security, package clarity, install
 examples, release dry-runs, beta API boundaries, API stability labels, privacy
 threat modeling, and public-beta smoke gates.
 
-This scope lock is docs, contracts, and tests only. Provider examples,
-OpenAI-specific server adapters, release tooling, and real provider calls start
-only in later V4.2 prompts.
+This scope began as docs, contracts, and tests only. Follow-up V4.2 prompts now
+add mock-first provider examples and server-side-only, env-gated OpenAI
+Responses example paths while preserving the no-real-provider-calls default.
 
 ## Current V4.1 Completed State
 
@@ -202,8 +202,9 @@ V4.2 is ready only when these gates are true:
 - Reference provider examples exist for Express-shaped, Next route-handler, and
   Cloudflare Worker-shaped server proxies; they are mock-only by default,
   require no provider keys, and pass the shared proxy contract harness.
-- Future real-provider examples keep private keys server-side.
-- OpenAI Responses example is server-side, env-gated, and disabled by default.
+- Real-provider examples keep private keys server-side.
+- OpenAI Responses example paths are server-side, env-gated, and disabled by
+  default.
 - Browser examples contain no API keys or direct model-provider calls.
 - Consumer install examples are verified.
 - Package dry-run and smoke install pass.

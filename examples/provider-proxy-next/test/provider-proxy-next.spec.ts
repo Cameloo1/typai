@@ -1,4 +1,7 @@
-import { runProviderProxyContractSuite } from "@typai/provider-proxy-testkit";
+import {
+  runProviderProxyContractSuite,
+  validCompletionRequest,
+} from "@typai/provider-proxy-testkit";
 import { describe, expect, it } from "vitest";
 
 import { handleTypaiNextCompletionRequest } from "../src/handler";
@@ -53,6 +56,74 @@ describe("provider-proxy-next CORS policy", () => {
 
     expect(response.status).toBe(403);
     expect(await response.text()).not.toContain("private text");
+  });
+});
+
+describe("provider-proxy-next OpenAI Responses mode", () => {
+  it("fails safely when openai mode is enabled without a server key", async () => {
+    const response = await handleTypaiNextCompletionRequest(
+      createRequest(
+        "POST",
+        { "content-type": "application/json" },
+        JSON.stringify({ request: validCompletionRequest }),
+      ),
+      {
+        PROVIDER_MODE: "openai",
+        ALLOWED_ORIGIN: "http://localhost:5173",
+      },
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(body).toContain("internal_error");
+    expect(body).not.toContain(validCompletionRequest.contextBefore);
+  });
+
+  it("calls the server-side Responses adapter with mocked fetch only", async () => {
+    const fetchCalls: RequestInit[] = [];
+    const response = await handleTypaiNextCompletionRequest(
+      createRequest(
+        "POST",
+        { "content-type": "application/json" },
+        JSON.stringify({ request: validCompletionRequest }),
+      ),
+      {
+        PROVIDER_MODE: "openai",
+        OPENAI_API_KEY: "sk-test-server-key",
+        OPENAI_MODEL: "gpt-test-model",
+        ALLOWED_ORIGIN: "http://localhost:5173",
+      },
+      {
+        async fetchImpl(_input, init) {
+          fetchCalls.push(init ?? {});
+
+          return new Response(
+            JSON.stringify({
+              output_text: " through a mocked Responses adapter.",
+              model: "gpt-test-model",
+              usage: {
+                input_tokens: 12,
+                output_tokens: 7,
+              },
+              status: "completed",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    );
+    const body = await response.json();
+    const headers = new Headers(fetchCalls[0]?.headers);
+    const requestBody = JSON.parse(String(fetchCalls[0]?.body));
+
+    expect(response.status).toBe(200);
+    expect(body.text).toBe(" through a mocked Responses adapter.");
+    expect(body.model).toBe("gpt-test-model");
+    expect(headers.get("authorization")).toBe("Bearer sk-test-server-key");
+    expect(requestBody.model).toBe("gpt-test-model");
+    expect(JSON.stringify(requestBody)).toContain("continuation_only");
+    expect(JSON.stringify(body)).not.toContain("sk-test-server-key");
+    expect(fetchCalls).toHaveLength(1);
   });
 });
 

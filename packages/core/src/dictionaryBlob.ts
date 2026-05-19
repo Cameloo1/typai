@@ -4,6 +4,7 @@ export const typaiDictionaryEntryByteLength = 14;
 
 const headerByteLength = 24;
 const maxUint16 = 0xffff;
+const allowedDictionaryWordPattern = /^[a-z]+$/u;
 
 export interface TypaiDictionaryBlobEntry {
   readonly word: string;
@@ -47,6 +48,10 @@ export function encodeTypaiDictionaryBlob(input: EncodeTypaiDictionaryBlobInput)
 
   if (languageBytes.length > maxUint16) {
     throw new TypaiDictionaryBlobError("Language code is too long.");
+  }
+
+  if (input.language !== "en-US") {
+    throw new TypaiDictionaryBlobError(`Unsupported dictionary language: ${input.language}`);
   }
 
   const stringTableByteLength = encodedEntries.reduce(
@@ -183,6 +188,10 @@ export function decodeTypaiDictionaryBlob(
 
   const language = decodeUtf8(decoder, input.subarray(languageOffset), "language");
 
+  if (language !== "en-US") {
+    throw new TypaiDictionaryBlobError(`Unsupported dictionary language: ${language}`);
+  }
+
   return {
     magic: typaiDictionaryMagic,
     version: typaiDictionaryVersion,
@@ -200,6 +209,12 @@ function validateEntry(entry: TypaiDictionaryBlobEntry, seenWords: Set<string>):
 
   if (entry.word !== entry.word.toLocaleLowerCase("en-US")) {
     throw new TypaiDictionaryBlobError(`Dictionary words must be lowercase: ${entry.word}`);
+  }
+
+  if (!allowedDictionaryWordPattern.test(entry.word)) {
+    throw new TypaiDictionaryBlobError(
+      `Dictionary words must be lowercase ASCII alphabetic tokens: ${entry.word}`,
+    );
   }
 
   if (seenWords.has(entry.word)) {

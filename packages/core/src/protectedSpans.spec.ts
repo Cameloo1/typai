@@ -16,9 +16,6 @@ describe("protected token classification", () => {
     ["camelCaseIdentifier", "identifier"],
     ["snake_case_identifier", "identifier"],
     ["PascalCaseClass", "identifier"],
-    ["API", "identifier"],
-    ["SQL", "identifier"],
-    ["XSS", "identifier"],
     ["`nmap`", "code"],
     ["nmap", "code"],
     ["const x = 1", "code"],
@@ -33,6 +30,44 @@ describe("protected token classification", () => {
       protected: true,
     });
     expect(isProtectedTokenText(text), `${text} should be protected`).toBe(true);
+  });
+
+  it.each([
+    "teh",
+    "Teh",
+    "TEH",
+    "hello",
+    "Hello",
+    "HELLO",
+    "it's",
+    "IT'S",
+  ])("keeps word-shaped token %s unprotected for core gating", (text) => {
+    expect(classifyToken(text)).toEqual({
+      tokenType: "word",
+      protected: false,
+    });
+  });
+
+  it.each([
+    "API",
+    "SQL",
+    "XSS",
+  ])("lets acronym-shaped token %s reach core's uppercase safety gate", (text) => {
+    expect(classifyToken(text)).toEqual({
+      tokenType: "word",
+      protected: false,
+    });
+  });
+
+  it("keeps mixed-case identifiers protected", () => {
+    expect(classifyToken("PascalCaseClass")).toEqual({
+      tokenType: "identifier",
+      protected: true,
+    });
+    expect(classifyToken("camelCaseIdentifier")).toEqual({
+      tokenType: "identifier",
+      protected: true,
+    });
   });
 
   it.each(["teh", "hello", "it's"])("keeps plain word %s unprotected", (text) => {

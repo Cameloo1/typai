@@ -17,6 +17,16 @@ enum TypaiReasonFlags : unsigned int {
   TYPAI_REASON_DICTIONARY_EMPTY = 1u << 12,
   TYPAI_REASON_DICTIONARY_CLEARED = 1u << 13,
   TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH = 1u << 14,
+  TYPAI_REASON_DELETE_INDEX_SUGGESTIONS = 1u << 15,
+  TYPAI_REASON_COMMON_TYPO_TABLE_EXPANDED = 1u << 16,
+  TYPAI_REASON_CASE_PRESERVED = 1u << 17,
+  TYPAI_REASON_PUNCTUATION_PRESERVED = 1u << 18,
+  TYPAI_REASON_DELETE_INDEX_CANDIDATE = 1u << 19,
+  TYPAI_REASON_FREQUENCY_RANKED = 1u << 20,
+  TYPAI_REASON_AUTOCORRECT_GATE_PASSED = 1u << 21,
+  TYPAI_REASON_AUTOCORRECT_GATE_BLOCKED = 1u << 22,
+  TYPAI_REASON_VALID_WORD_BLOCK = 1u << 23,
+  TYPAI_REASON_PROTECTED_TOKEN_BLOCK = 1u << 24,
 };
 
 enum TypaiDictionaryLoadResult : int {
@@ -60,3 +70,9 @@ extern "C" int typai_load_dictionary_blob(
 extern "C" void typai_clear_loaded_dictionary();
 
 extern "C" unsigned int typai_loaded_dictionary_word_count();
+
+extern "C" unsigned int typai_delete_index_entry_count();
+
+extern "C" unsigned int typai_delete_index_memory_estimate_bytes();
+
+extern "C" void typai_clear_delete_index();

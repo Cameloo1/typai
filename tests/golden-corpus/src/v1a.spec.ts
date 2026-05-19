@@ -65,6 +65,6 @@ describe("Typai V1A-dev golden corpus", () => {
 
     expect(decision.suggestions, `${token} should include ${suggestion}`).toContain(suggestion);
     expect(decision.mark).toBe("red_spelling_issue");
-    expect(decision.reasonCodes).toContain("EDIT_DISTANCE_SUGGESTIONS");
+    expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
   });
 });

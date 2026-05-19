@@ -1,4 +1,9 @@
-import type { CorrectionTransaction, VisualMark } from "@typai/contenteditable";
+import {
+  type CorrectionTransaction,
+  plainTextOffsetToDomPosition,
+  type TypaiPopover,
+  type VisualMark,
+} from "@typai/contenteditable";
 import type { CorrectionDecision, Token, TypaiCore, TypaiMemoryExport } from "@typai/core";
 import { createMemoryStorage, createTypaiCore } from "@typai/core";
 import {
@@ -26,6 +31,7 @@ import {
   type DemoTextareaCompletionController,
   formatCompletionLatency,
 } from "./completionDemoControllers";
+import { type DemoMark, pruneStaleMarks, renderMarkedText } from "./markRendering";
 
 type TypaiReactDebug = {
   getDebugData(): TypaiUiDebugData;
@@ -122,9 +128,11 @@ function ReactDemoContent() {
   const [memoryMessage, setMemoryMessage] = useState("Memory ready.");
   const [renderCount, setRenderCount] = useState(1);
   const [completionEnabled, setCompletionEnabled] = useState(true);
+  const [contenteditablePopover, setContenteditablePopover] = useState<TypaiPopover | null>(null);
   const [, setCompletionMetricVersion] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const contenteditableRef = useRef<HTMLDivElement | null>(null);
+  const contenteditableMarksRef = useRef<DemoMark[]>([]);
   const completionEnabledRef = useRef(true);
   const completionProviderControlRef = useRef({
     latencyMs: 50,
@@ -279,6 +287,53 @@ function ReactDemoContent() {
     [recordEvent],
   );
 
+  const renderReactContenteditableMarks = useCallback((caretOffset?: number | null) => {
+    const element = contenteditableRef.current;
+
+    if (element === null) {
+      return;
+    }
+
+    const text = element.textContent ?? "";
+    const nextMarks = pruneStaleMarks(text, contenteditableMarksRef.current);
+
+    contenteditableMarksRef.current = nextMarks;
+    element.innerHTML = renderMarkedText(text, nextMarks);
+    setContenteditableCaretOffset(element, caretOffset ?? text.length);
+  }, []);
+
+  const recordRenderableContenteditableMark = useCallback(
+    (mark: VisualMark) => {
+      const element = contenteditableRef.current;
+      const text = element?.textContent ?? "";
+      const markedText = text.slice(mark.range.start, mark.range.end);
+
+      if (markedText.length > 0) {
+        contenteditableMarksRef.current = [
+          ...contenteditableMarksRef.current,
+          {
+            ...mark,
+            text: markedText,
+          },
+        ];
+      }
+
+      recordContenteditableMark(mark);
+      renderReactContenteditableMarks();
+    },
+    [recordContenteditableMark, renderReactContenteditableMarks],
+  );
+
+  const removeRenderableContenteditableMark = useCallback(
+    (mark: VisualMark) => {
+      contenteditableMarksRef.current = contenteditableMarksRef.current.filter(
+        (candidate) => candidate.id !== mark.id,
+      );
+      renderReactContenteditableMarks();
+    },
+    [renderReactContenteditableMarks],
+  );
+
   const recordProtectedSkip = useCallback(
     (source: string) => {
       setDebugData((current) => ({
@@ -312,6 +367,9 @@ function ReactDemoContent() {
   );
 
   const resetInputs = useCallback(() => {
+    contenteditableMarksRef.current = [];
+    setContenteditablePopover(null);
+
     if (textareaRef.current !== null) {
       textareaRef.current.value = "";
       textareaRef.current.setSelectionRange(0, 0);
@@ -524,10 +582,19 @@ function ReactDemoContent() {
             settings={settings}
             completion={contenteditableCompletion}
             onCorrection={recordContenteditableCorrection}
-            onMark={recordContenteditableMark}
+            onMark={recordRenderableContenteditableMark}
+            onMarkRemoved={removeRenderableContenteditableMark}
+            onPopover={setContenteditablePopover}
             onProtectedSkip={(_token: Token) => recordProtectedSkip("react-contenteditable")}
             onDecision={(decision) => recordDecision("react-contenteditable", decision)}
+            onTextChange={(change) => renderReactContenteditableMarks(change.caretOffset)}
           />
+          {contenteditablePopover !== null ? (
+            <ReactContenteditablePopover
+              popover={contenteditablePopover}
+              onClose={() => setContenteditablePopover(null)}
+            />
+          ) : null}
         </section>
 
         <aside className="textarea-side-panel" aria-label="React controls and debug">
@@ -733,6 +800,111 @@ function createReactDemoCore(): Promise<TypaiCore> {
   return createTypaiCore({
     storage: createMemoryStorage(),
   });
+}
+
+function ReactContenteditablePopover({
+  popover,
+  onClose,
+}: {
+  popover: TypaiPopover;
+  onClose(): void;
+}) {
+  if (popover.kind === "blue_correction") {
+    const runAction = (action: () => Promise<unknown>) => {
+      void action().finally(onClose);
+    };
+
+    return (
+      <div className="typai-popover" data-testid="react-contenteditable-blue-popover">
+        <p>
+          Corrected "{popover.mark.original}" -&gt; "{popover.mark.replacement}".
+        </p>
+        <div className="typai-popover-actions">
+          <button
+            type="button"
+            data-testid="react-contenteditable-revert-action"
+            onClick={() => runAction(popover.actions.revert)}
+          >
+            Revert
+          </button>
+          <button
+            type="button"
+            data-testid="react-contenteditable-always-correct-action"
+            onClick={() => runAction(popover.actions.alwaysCorrect)}
+          >
+            Always correct
+          </button>
+          <button
+            type="button"
+            data-testid="react-contenteditable-never-correct-action"
+            onClick={() => runAction(popover.actions.neverCorrect)}
+          >
+            Don't correct again
+          </button>
+          <button
+            type="button"
+            data-testid="react-contenteditable-add-dictionary-action"
+            onClick={() => runAction(popover.actions.addOriginalToDictionary)}
+          >
+            Add original to dictionary
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const runRedAction = (action: () => Promise<unknown>) => {
+    void action().finally(onClose);
+  };
+
+  return (
+    <div className="typai-popover" data-testid="react-contenteditable-red-popover">
+      <p>Possible spelling issue: "{popover.original}".</p>
+      <div className="typai-popover-actions">
+        {popover.suggestions.map((suggestion) => (
+          <button
+            type="button"
+            key={suggestion}
+            data-testid="react-contenteditable-suggestion-item"
+            onClick={() => runRedAction(() => popover.actions.applySuggestion(suggestion))}
+          >
+            {suggestion}
+          </button>
+        ))}
+        <button
+          type="button"
+          data-testid="react-contenteditable-ignore-once-action"
+          onClick={() => runRedAction(popover.actions.ignoreOnce)}
+        >
+          Ignore once
+        </button>
+        <button
+          type="button"
+          data-testid="react-contenteditable-add-dictionary-action"
+          onClick={() => runRedAction(popover.actions.addToDictionary)}
+        >
+          Add to dictionary
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function setContenteditableCaretOffset(element: HTMLElement, offset: number): void {
+  const ownerDocument = element.ownerDocument;
+  const selection = ownerDocument.getSelection();
+  const position = plainTextOffsetToDomPosition(element, offset);
+
+  if (selection === null || position === null) {
+    return;
+  }
+
+  const range = ownerDocument.createRange();
+
+  range.setStart(position.node, position.offset);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function combineCompletionMetrics(

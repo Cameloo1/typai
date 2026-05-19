@@ -63,6 +63,9 @@ jobs:
       - name: Deterministic correction benchmark
         run: pnpm --filter @typai/core bench
 
+      - name: Spell quality benchmark gates
+        run: pnpm bench:spell-quality
+
   e2e:
     name: Chromium and Firefox E2E
     runs-on: ubuntu-latest

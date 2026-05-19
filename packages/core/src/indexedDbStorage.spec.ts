@@ -71,7 +71,7 @@ describe("createIndexedDbStorage", () => {
       replacement: "on my way",
       confidence: 1,
       mark: "blue_applied_correction",
-      reasonCodes: ["ALWAYS_CORRECT_RULE"],
+      reasonCodes: ["ALWAYS_CORRECT_RULE", "AUTOCORRECT_GATE_PASSED"],
     });
   });
 

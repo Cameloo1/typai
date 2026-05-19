@@ -9,10 +9,16 @@ provider.
 ```sh
 pnpm --filter provider-proxy-express test
 pnpm --filter provider-proxy-express build
+pnpm --filter provider-proxy-express dev
 ```
 
 Copy `.env.example` into your local server environment if you want to change
 the local origin or limits. Do not commit local environment files.
+
+The dev runner starts a local endpoint at
+`http://127.0.0.1:8787/api/typai/completion`, allows
+`http://127.0.0.1:5173` unless `ALLOWED_ORIGIN` is set, and defaults to mock
+mode.
 
 The optional real-provider smoke is manual-only:
 
@@ -25,7 +31,7 @@ That command may incur provider cost and must not be added to CI.
 ## Defaults
 
 - `PROVIDER_MODE=mock`
-- `ALLOWED_ORIGIN=http://localhost:5173`
+- `ALLOWED_ORIGIN=http://127.0.0.1:5173` for the local full demo runner
 - bounded context and completion limits from the shared proxy contract
 - no provider key required
 - no raw context logging
@@ -41,7 +47,8 @@ control as an embedder-owned production hook.
 ## OpenAI Responses Mode
 
 This example includes a server-side OpenAI Responses adapter through the shared
-example utility package. It is disabled unless `PROVIDER_MODE=openai` and
+example utility package. The local dev runner refuses OpenAI mode unless
+`TYPAI_ALLOW_REAL_PROVIDER_TEST=1`, `PROVIDER_MODE=openai`, and
 `OPENAI_API_KEY` are set in the server environment. `OPENAI_MODEL` selects the
 model; the example uses a conservative sample default when it is omitted.
 

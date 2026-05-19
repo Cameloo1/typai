@@ -18,6 +18,9 @@ Boundary:
 - no provider calls
 - no network calls
 - no local model inference
+- delete-index/edit-distance candidates are suggestions-only unless the token is
+  explicitly listed in the audited common-typo table
+- valid words and protected tokens are never autocorrected
 
 Quickstart:
 
@@ -25,5 +28,6 @@ Quickstart:
 import { createTypaiCore } from "@typai/core";
 
 const typai = await createTypaiCore();
-const result = typai.checkCompletedToken({ text: "teh" });
+const result = typai.checkCompletedToken({ token: "Teh," });
+// auto_correct: "The,"
 ```

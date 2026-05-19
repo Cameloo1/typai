@@ -58,10 +58,15 @@ type MetricState = {
 type DebugEvent = {
   time: string;
   actionType: string;
+  sourceKind: string;
   original: string;
   replacement: string;
   result: string;
   reasonCodes: string[];
+};
+
+type DebugEventInput = Omit<DebugEvent, "time" | "sourceKind"> & {
+  sourceKind?: string;
 };
 
 type StorageMode = "indexeddb" | "memory";
@@ -289,6 +294,7 @@ if (app) {
               <tr>
                 <th>Time</th>
                 <th>Action</th>
+                <th>Source</th>
                 <th>Original</th>
                 <th>Replacement</th>
                 <th>Result</th>
@@ -1495,10 +1501,11 @@ async function startDemo(
     renderDebugTable(debugEls.debugTableBody, debugEvents);
   };
 
-  const logDebugEvent = (event: Omit<DebugEvent, "time">) => {
+  const logDebugEvent = (event: DebugEventInput) => {
     debugEvents.unshift({
       time: new Date().toLocaleTimeString(),
       ...event,
+      sourceKind: event.sourceKind ?? sourceKindFromReasonCodes(event.reasonCodes),
     });
 
     if (debugEvents.length > 20) {
@@ -1556,6 +1563,12 @@ async function startDemo(
     },
     getLoadedDictionaryWordCount() {
       return core.getLoadedDictionaryWordCount();
+    },
+    getDeleteIndexEntryCount() {
+      return core.getDeleteIndexEntryCount();
+    },
+    getDeleteIndexMemoryEstimateBytes() {
+      return core.getDeleteIndexMemoryEstimateBytes();
     },
     clearLoadedDictionary() {
       return core.clearLoadedDictionary();
@@ -2049,7 +2062,7 @@ function renderDebugTable(element: HTMLElement | null, events: DebugEvent[]): vo
   if (events.length === 0) {
     element.innerHTML = `
       <tr>
-        <td colspan="6">No local events yet.</td>
+        <td colspan="7">No local events yet.</td>
       </tr>
     `;
     return;
@@ -2061,6 +2074,7 @@ function renderDebugTable(element: HTMLElement | null, events: DebugEvent[]): vo
         <tr data-testid="debug-row">
           <td>${escapeHtml(event.time)}</td>
           <td>${escapeHtml(event.actionType)}</td>
+          <td>${escapeHtml(event.sourceKind)}</td>
           <td>${escapeHtml(event.original)}</td>
           <td>${escapeHtml(event.replacement)}</td>
           <td>${escapeHtml(event.result)}</td>
@@ -2069,6 +2083,41 @@ function renderDebugTable(element: HTMLElement | null, events: DebugEvent[]): vo
       `,
     )
     .join("");
+}
+
+function sourceKindFromReasonCodes(reasonCodes: string[]): string {
+  if (reasonCodes.includes("ALWAYS_CORRECT_RULE")) {
+    return "user_always_rule";
+  }
+
+  if (reasonCodes.includes("NEVER_CORRECT_RULE")) {
+    return "user_never_rule";
+  }
+
+  if (reasonCodes.includes("COMMON_TYPO_TABLE_EXPANDED")) {
+    return "expanded_common_typo_table";
+  }
+
+  if (reasonCodes.includes("COMMON_TYPO_MATCH")) {
+    return "common_typo_table";
+  }
+
+  if (
+    reasonCodes.includes("DELETE_INDEX_CANDIDATE") ||
+    reasonCodes.includes("DELETE_INDEX_SUGGESTIONS")
+  ) {
+    return "delete_index_suggestion_engine";
+  }
+
+  if (reasonCodes.includes("PROTECTED_TOKEN_BLOCK")) {
+    return "protected_token_gate";
+  }
+
+  if (reasonCodes.includes("AUTOCORRECT_GATE_BLOCKED")) {
+    return "suppressed_autocorrect_gate";
+  }
+
+  return "local_action";
 }
 
 async function handlePopoverClick(
@@ -2122,7 +2171,7 @@ async function handlePopoverClick(
   focusAfterPopoverAction(editor, result);
 }
 
-function debugEventFromUserAction(action: TypaiUserAction): Omit<DebugEvent, "time"> {
+function debugEventFromUserAction(action: TypaiUserAction): DebugEventInput {
   if (action.type === "revert_correction") {
     return {
       actionType: "revert_correction",

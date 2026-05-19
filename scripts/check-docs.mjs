@@ -24,6 +24,11 @@ const requiredFiles = [
   "docs/api-stability.md",
   "docs/troubleshooting.md",
   "docs/roadmap.md",
+  "docs/dictionary-source-selection.md",
+  "docs/dictionary-asset-policy.md",
+  "docs/dictionary-production-approval.md",
+  "docs/dictionary-asset-blockers.md",
+  "docs/common-typo-table.md",
 ];
 
 const forbiddenOverclaims = [

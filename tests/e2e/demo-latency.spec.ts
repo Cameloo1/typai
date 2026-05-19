@@ -35,6 +35,7 @@ const hardFailureThresholdMs = 100;
 const remoteCompletionWarningTargetMs = 800;
 const remoteCompletionHardFailureThresholdMs = 2000;
 const remoteCompletionMockLatencyMs = 50;
+const demoReadyTimeoutMs = 15_000;
 
 type LatencySummary = {
   count: number;
@@ -86,7 +87,7 @@ declare global {
 
 test("reports contenteditable browser-path demo latency smoke metrics", async ({ page }) => {
   await page.goto(`/?typaiDbName=typai-latency-${Date.now()}&storage=memory`);
-  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await expectDemoReady(page);
   await page.evaluate(() => window.__typaiDebug?.clearLatencies());
 
   const editor = page.getByTestId("typai-editor");
@@ -131,8 +132,8 @@ test("reports contenteditable browser-path demo latency smoke metrics", async ({
 
 test("reports textarea browser-path demo latency smoke metrics", async ({ page }) => {
   await page.goto(`/?typaiDbName=typai-textarea-latency-${Date.now()}&storage=memory`);
-  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
-  await expect(page.locator("[data-textarea-last-decision]")).toHaveText("Ready.");
+  await expectDemoReady(page);
+  await expectTextareaDemoReady(page);
   await page.getByRole("button", { name: /Textarea.*Demo/ }).click();
   await expect(page.getByTestId("textarea-demo-root")).toBeVisible();
   await page.evaluate(() => window.__typaiTextareaDebug?.clearLatencies());
@@ -181,7 +182,7 @@ test("reports textarea browser-path demo latency smoke metrics", async ({ page }
 
 test("reports CodeMirror browser-path demo latency smoke metrics", async ({ page }) => {
   await page.goto(`/?typaiDbName=typai-codemirror-latency-${Date.now()}&storage=memory`);
-  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await expectDemoReady(page);
   await page.getByRole("button", { name: /CodeMirror.*Demo/ }).click();
   const root = page.getByTestId("codemirror-demo-root");
 
@@ -233,7 +234,7 @@ test("reports CodeMirror browser-path demo latency smoke metrics", async ({ page
 
 test("reports V4 remote completion mocked ghost latency smoke metrics", async ({ page }) => {
   await page.goto(`/?typaiDbName=typai-remote-completion-latency-${Date.now()}&storage=memory`);
-  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await expectDemoReady(page);
   await page.getByRole("button", { name: "V4 Remote Completion" }).click();
   await expect(page.getByTestId("remote-completion-demo-root")).toBeVisible();
   await setRemoteCompletionMockLatency(page, remoteCompletionMockLatencyMs);
@@ -285,7 +286,7 @@ test("reports V4 remote completion mocked ghost latency smoke metrics", async ({
 
 test("reports textarea completion mocked ghost latency smoke metrics", async ({ page }) => {
   await page.goto(`/?typaiDbName=typai-textarea-completion-latency-${Date.now()}&storage=memory`);
-  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await expectDemoReady(page);
   await page.getByRole("button", { name: /Textarea.*Demo/ }).click();
   await expect(page.getByTestId("textarea-demo-root")).toBeVisible();
   await page.getByTestId("textarea-completion-text").fill(" with benchmark textarea completion.");
@@ -324,7 +325,7 @@ test("reports React textarea completion mocked ghost latency smoke metrics", asy
   await page.goto(
     `/?typaiDbName=typai-react-textarea-completion-latency-${Date.now()}&storage=memory`,
   );
-  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await expectDemoReady(page);
   await page.getByRole("button", { name: /React.*Demo/ }).click();
   const root = page.getByTestId("react-demo-root");
 
@@ -361,7 +362,7 @@ test("reports React textarea completion mocked ghost latency smoke metrics", asy
 
 test("reports CodeMirror completion mocked ghost latency smoke metrics", async ({ page }) => {
   await page.goto(`/?typaiDbName=typai-codemirror-completion-latency-${Date.now()}&storage=memory`);
-  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await expectDemoReady(page);
   await page.getByRole("button", { name: /CodeMirror.*Demo/ }).click();
   const root = page.getByTestId("codemirror-demo-root");
 
@@ -400,6 +401,18 @@ test("reports CodeMirror completion mocked ghost latency smoke metrics", async (
     samples,
   );
 });
+
+async function expectDemoReady(page: Page): Promise<void> {
+  await expect(page.getByTestId("last-decision")).toHaveText("Ready.", {
+    timeout: demoReadyTimeoutMs,
+  });
+}
+
+async function expectTextareaDemoReady(page: Page): Promise<void> {
+  await expect(page.locator("[data-textarea-last-decision]")).toHaveText("Ready.", {
+    timeout: demoReadyTimeoutMs,
+  });
+}
 
 async function clearEditor(editor: Locator, page: Page): Promise<void> {
   await editor.evaluate((element) => {

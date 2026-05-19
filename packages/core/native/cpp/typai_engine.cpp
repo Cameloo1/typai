@@ -16,7 +16,20 @@ constexpr unsigned int kDictionaryBlobEntryLen = 14;
 constexpr unsigned int kMaxDynamicDictionaryWords = 4096;
 constexpr unsigned int kMaxDynamicDictionaryStringBytes = 65536;
 constexpr unsigned int kMaxDynamicDictionaryTrieNodes = 32768;
+constexpr unsigned int kDeleteIndexMaxDistance = 2;
+constexpr unsigned int kMaxDeleteIndexWordLen = 32;
+constexpr unsigned int kMaxDeleteKeyVariants =
+    1 + kMaxDeleteIndexWordLen +
+    ((kMaxDeleteIndexWordLen * (kMaxDeleteIndexWordLen - 1)) / 2);
+constexpr unsigned int kDeleteIndexBucketCount = 32768;
+constexpr unsigned int kMaxDeleteIndexEntries = 65536;
+constexpr unsigned int kMaxDeleteIndexCandidateLinks = 196608;
+constexpr unsigned int kMaxDeleteIndexStringBytes = 786432;
+constexpr unsigned int kBuiltinWordIdFlag = 1u << 31;
+constexpr unsigned int kFnvOffsetBasis = 2166136261u;
+constexpr unsigned int kFnvPrime = 16777619u;
 constexpr char kDictionaryBlobMagic[] = {'T', 'Y', 'P', 'A', 'I', 'D', 'I', 'C'};
+constexpr char kSupportedDictionaryLanguage[] = {'e', 'n', '-', 'U', 'S'};
 
 struct WordView {
   const char* word;
@@ -54,8 +67,46 @@ struct LoadedDictionary {
   unsigned int trie_count;
 };
 
+struct DeleteKey {
+  char key[kMaxDeleteIndexWordLen + 1];
+  unsigned int len;
+};
+
+struct DeleteKeySet {
+  DeleteKey keys[kMaxDeleteKeyVariants];
+  unsigned int count;
+};
+
+struct DeleteIndexCandidateLink {
+  unsigned int word_id;
+  int next;
+};
+
+struct DeleteIndexEntry {
+  unsigned int key_offset;
+  unsigned int key_len;
+  unsigned int hash;
+  int candidate_head;
+  int candidate_tail;
+  unsigned int candidate_count;
+  int next_bucket;
+};
+
+struct DeleteIndex {
+  char key_table[kMaxDeleteIndexStringBytes];
+  DeleteIndexEntry entries[kMaxDeleteIndexEntries];
+  DeleteIndexCandidateLink candidate_links[kMaxDeleteIndexCandidateLinks];
+  int buckets[kDeleteIndexBucketCount];
+  unsigned int key_table_len;
+  unsigned int entry_count;
+  unsigned int candidate_link_count;
+  bool built;
+};
+
 LoadedDictionary g_loaded_dictionary;
 LoadedDictionary g_staging_dictionary;
+DeleteIndex g_delete_index;
+DeleteIndex g_staging_delete_index;
 
 void reset_outputs(
     char* replacement_out,
@@ -136,6 +187,17 @@ void clear_loaded_dictionary_state(LoadedDictionary& dictionary) {
   dictionary.string_table_len = 0;
   dictionary.entry_count = 0;
   dictionary.trie_count = 0;
+}
+
+void clear_delete_index_state(DeleteIndex& index) {
+  index.key_table_len = 0;
+  index.entry_count = 0;
+  index.candidate_link_count = 0;
+  index.built = false;
+
+  for (unsigned int bucket_index = 0; bucket_index < kDeleteIndexBucketCount; ++bucket_index) {
+    index.buckets[bucket_index] = -1;
+  }
 }
 
 bool append_trie_node(LoadedDictionary& dictionary, int& node_index_out) {
@@ -231,6 +293,13 @@ bool is_dynamic_dictionary_word(const char* token, unsigned int token_len) {
   return find_dynamic_dictionary_entry(g_loaded_dictionary, token, token_len) != nullptr;
 }
 
+bool is_dynamic_dictionary_word_in(
+    const LoadedDictionary& dictionary,
+    const char* token,
+    unsigned int token_len) {
+  return find_dynamic_dictionary_entry(dictionary, token, token_len) != nullptr;
+}
+
 bool is_any_known_valid_word(const char* token, unsigned int token_len, bool* dynamic_match_out) {
   if (dynamic_match_out != nullptr) {
     *dynamic_match_out = false;
@@ -319,6 +388,372 @@ int compare_words(
   return 0;
 }
 
+unsigned int hash_delete_key(const char* key, unsigned int key_len) {
+  unsigned int hash = kFnvOffsetBasis;
+
+  for (unsigned int index = 0; index < key_len; ++index) {
+    hash ^= static_cast<unsigned int>(static_cast<unsigned char>(key[index]));
+    hash *= kFnvPrime;
+  }
+
+  hash ^= key_len;
+  hash *= kFnvPrime;
+  return hash;
+}
+
+bool delete_key_equals(const char* left, unsigned int left_len, const char* right, unsigned int right_len) {
+  return compare_words(left, left_len, right, right_len) == 0;
+}
+
+bool delete_key_set_contains(const DeleteKeySet& key_set, const char* key, unsigned int key_len) {
+  for (unsigned int index = 0; index < key_set.count; ++index) {
+    if (delete_key_equals(key_set.keys[index].key, key_set.keys[index].len, key, key_len)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool append_delete_key(DeleteKeySet& key_set, const char* key, unsigned int key_len) {
+  if (key_len > kMaxDeleteIndexWordLen) {
+    return false;
+  }
+
+  if (delete_key_set_contains(key_set, key, key_len)) {
+    return true;
+  }
+
+  if (key_set.count >= kMaxDeleteKeyVariants) {
+    return false;
+  }
+
+  DeleteKey& output = key_set.keys[key_set.count];
+  output.len = key_len;
+
+  for (unsigned int index = 0; index < key_len; ++index) {
+    output.key[index] = key[index];
+  }
+
+  output.key[key_len] = '\0';
+  key_set.count += 1;
+  return true;
+}
+
+bool append_delete_variant(
+    DeleteKeySet& key_set,
+    const char* word,
+    unsigned int word_len,
+    unsigned int first_deleted,
+    unsigned int second_deleted,
+    unsigned int deleted_count) {
+  char key[kMaxDeleteIndexWordLen + 1] = {};
+  unsigned int key_len = 0;
+
+  for (unsigned int index = 0; index < word_len; ++index) {
+    const bool skip_first = deleted_count > 0 && index == first_deleted;
+    const bool skip_second = deleted_count > 1 && index == second_deleted;
+
+    if (skip_first || skip_second) {
+      continue;
+    }
+
+    key[key_len] = word[index];
+    key_len += 1;
+  }
+
+  return append_delete_key(key_set, key, key_len);
+}
+
+bool collect_delete_keys(const char* word, unsigned int word_len, DeleteKeySet& key_set) {
+  key_set.count = 0;
+
+  if (word == nullptr || word_len > kMaxDeleteIndexWordLen) {
+    return false;
+  }
+
+  if (!append_delete_key(key_set, word, word_len)) {
+    return false;
+  }
+
+  for (unsigned int first = 0; first < word_len; ++first) {
+    if (!append_delete_variant(key_set, word, word_len, first, 0, 1)) {
+      return false;
+    }
+  }
+
+  for (unsigned int first = 0; first < word_len; ++first) {
+    for (unsigned int second = first + 1; second < word_len; ++second) {
+      if (!append_delete_variant(key_set, word, word_len, first, second, kDeleteIndexMaxDistance)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool delete_index_entry_key_matches(
+    const DeleteIndex& index,
+    const DeleteIndexEntry& entry,
+    const char* key,
+    unsigned int key_len,
+    unsigned int hash) {
+  if (entry.hash != hash || entry.key_len != key_len) {
+    return false;
+  }
+
+  return delete_key_equals(index.key_table + entry.key_offset, entry.key_len, key, key_len);
+}
+
+int find_delete_index_entry(
+    const DeleteIndex& index,
+    const char* key,
+    unsigned int key_len,
+    unsigned int hash) {
+  const unsigned int bucket_index = hash % kDeleteIndexBucketCount;
+  int entry_index = index.buckets[bucket_index];
+
+  while (entry_index >= 0) {
+    const DeleteIndexEntry& entry = index.entries[static_cast<unsigned int>(entry_index)];
+
+    if (delete_index_entry_key_matches(index, entry, key, key_len, hash)) {
+      return entry_index;
+    }
+
+    entry_index = entry.next_bucket;
+  }
+
+  return -1;
+}
+
+bool append_delete_index_entry(
+    DeleteIndex& index,
+    const char* key,
+    unsigned int key_len,
+    unsigned int hash,
+    int& entry_index_out) {
+  if (index.entry_count >= kMaxDeleteIndexEntries) {
+    return false;
+  }
+
+  const unsigned long long key_table_end =
+      static_cast<unsigned long long>(index.key_table_len) + key_len;
+
+  if (key_table_end > kMaxDeleteIndexStringBytes) {
+    return false;
+  }
+
+  const unsigned int bucket_index = hash % kDeleteIndexBucketCount;
+  const unsigned int entry_index = index.entry_count;
+  DeleteIndexEntry& entry = index.entries[entry_index];
+  entry.key_offset = index.key_table_len;
+  entry.key_len = key_len;
+  entry.hash = hash;
+  entry.candidate_head = -1;
+  entry.candidate_tail = -1;
+  entry.candidate_count = 0;
+  entry.next_bucket = index.buckets[bucket_index];
+
+  for (unsigned int index_in_key = 0; index_in_key < key_len; ++index_in_key) {
+    index.key_table[index.key_table_len + index_in_key] = key[index_in_key];
+  }
+
+  index.key_table_len += key_len;
+  index.buckets[bucket_index] = static_cast<int>(entry_index);
+  index.entry_count += 1;
+  entry_index_out = static_cast<int>(entry_index);
+  return true;
+}
+
+bool delete_index_entry_has_word_id(
+    const DeleteIndex& index,
+    const DeleteIndexEntry& entry,
+    unsigned int word_id) {
+  int link_index = entry.candidate_head;
+
+  while (link_index >= 0) {
+    const DeleteIndexCandidateLink& link =
+        index.candidate_links[static_cast<unsigned int>(link_index)];
+
+    if (link.word_id == word_id) {
+      return true;
+    }
+
+    link_index = link.next;
+  }
+
+  return false;
+}
+
+bool append_delete_index_candidate(
+    DeleteIndex& index,
+    DeleteIndexEntry& entry,
+    unsigned int word_id) {
+  if (delete_index_entry_has_word_id(index, entry, word_id)) {
+    return true;
+  }
+
+  if (index.candidate_link_count >= kMaxDeleteIndexCandidateLinks) {
+    return false;
+  }
+
+  const unsigned int link_index = index.candidate_link_count;
+  DeleteIndexCandidateLink& link = index.candidate_links[link_index];
+  link.word_id = word_id;
+  link.next = -1;
+
+  if (entry.candidate_tail >= 0) {
+    index.candidate_links[static_cast<unsigned int>(entry.candidate_tail)].next =
+        static_cast<int>(link_index);
+  } else {
+    entry.candidate_head = static_cast<int>(link_index);
+  }
+
+  entry.candidate_tail = static_cast<int>(link_index);
+  entry.candidate_count += 1;
+  index.candidate_link_count += 1;
+  return true;
+}
+
+bool add_delete_key_to_index(
+    DeleteIndex& index,
+    const char* key,
+    unsigned int key_len,
+    unsigned int word_id) {
+  const unsigned int hash = hash_delete_key(key, key_len);
+  int entry_index = find_delete_index_entry(index, key, key_len, hash);
+
+  if (entry_index < 0) {
+    if (!append_delete_index_entry(index, key, key_len, hash, entry_index)) {
+      return false;
+    }
+  }
+
+  return append_delete_index_candidate(
+      index, index.entries[static_cast<unsigned int>(entry_index)], word_id);
+}
+
+bool add_word_to_delete_index(DeleteIndex& index, WordView word, unsigned int word_id) {
+  if (word.len > kMaxDeleteIndexWordLen || !is_lowercase_ascii_word(word.word, word.len)) {
+    return true;
+  }
+
+  DeleteKeySet key_set = {};
+
+  if (!collect_delete_keys(word.word, word.len, key_set)) {
+    return false;
+  }
+
+  for (unsigned int index_in_set = 0; index_in_set < key_set.count; ++index_in_set) {
+    const DeleteKey& key = key_set.keys[index_in_set];
+
+    if (!add_delete_key_to_index(index, key.key, key.len, word_id)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool word_view_from_word_id(unsigned int word_id, WordView& word_out) {
+  if ((word_id & kBuiltinWordIdFlag) != 0) {
+    const unsigned int builtin_index = word_id & ~kBuiltinWordIdFlag;
+
+    if (builtin_index >= kKnownValidWordsCount) {
+      return false;
+    }
+
+    const DictionaryEntry& entry = kKnownValidWords[builtin_index];
+    word_out = {entry.word, entry.len, entry.frequency, 0, false};
+    return true;
+  }
+
+  if (word_id >= g_loaded_dictionary.entry_count) {
+    return false;
+  }
+
+  const DynamicDictionaryEntry& entry = g_loaded_dictionary.entries[word_id];
+  word_out = {
+      dynamic_word_ptr(g_loaded_dictionary, entry),
+      entry.len,
+      entry.frequency,
+      entry.flags,
+      true,
+  };
+  return true;
+}
+
+bool rebuild_delete_index(const LoadedDictionary& dictionary, DeleteIndex& index) {
+  clear_delete_index_state(index);
+
+  for (unsigned int entry_index = 0; entry_index < dictionary.entry_count; ++entry_index) {
+    const DynamicDictionaryEntry& entry = dictionary.entries[entry_index];
+    const WordView word = {
+        dynamic_word_ptr(dictionary, entry),
+        entry.len,
+        entry.frequency,
+        entry.flags,
+        true,
+    };
+
+    if (!add_word_to_delete_index(index, word, entry_index)) {
+      clear_delete_index_state(index);
+      return false;
+    }
+  }
+
+  for (unsigned int builtin_index = 0; builtin_index < kKnownValidWordsCount; ++builtin_index) {
+    const DictionaryEntry& entry = kKnownValidWords[builtin_index];
+
+    if (
+        !is_lowercase_ascii_word(entry.word, entry.len) ||
+        is_dynamic_dictionary_word_in(dictionary, entry.word, entry.len)) {
+      continue;
+    }
+
+    if (!add_word_to_delete_index(
+            index,
+            {entry.word, entry.len, entry.frequency, 0, false},
+            kBuiltinWordIdFlag | builtin_index)) {
+      clear_delete_index_state(index);
+      return false;
+    }
+  }
+
+  index.built = true;
+  return true;
+}
+
+bool ensure_delete_index_built() {
+  if (g_delete_index.built) {
+    return true;
+  }
+
+  if (!rebuild_delete_index(g_loaded_dictionary, g_staging_delete_index)) {
+    clear_delete_index_state(g_delete_index);
+    return false;
+  }
+
+  g_delete_index = g_staging_delete_index;
+  return true;
+}
+
+unsigned int delete_index_memory_estimate_bytes(const DeleteIndex& index) {
+  const unsigned long long bytes =
+      static_cast<unsigned long long>(index.key_table_len) +
+      (static_cast<unsigned long long>(index.entry_count) * sizeof(DeleteIndexEntry)) +
+      (static_cast<unsigned long long>(index.candidate_link_count) *
+       sizeof(DeleteIndexCandidateLink)) +
+      (static_cast<unsigned long long>(kDeleteIndexBucketCount) * sizeof(int));
+
+  if (bytes > 0xffffffffull) {
+    return 0xffffffffu;
+  }
+
+  return static_cast<unsigned int>(bytes);
+}
+
 unsigned int levenshtein_distance_bounded(
     const char* token,
     unsigned int token_len,
@@ -394,6 +829,22 @@ void insert_sorted_candidate(
     unsigned int candidate_cap,
     SuggestionCandidate candidate) {
   if (candidate_count >= candidate_cap) {
+    if (candidate_cap == 0 || !candidate_precedes(candidate, candidates[candidate_cap - 1])) {
+      return;
+    }
+
+    candidates[candidate_cap - 1] = candidate;
+
+    unsigned int replacement_index = candidate_cap - 1;
+    while (
+        replacement_index > 0 &&
+        candidate_precedes(candidates[replacement_index], candidates[replacement_index - 1])) {
+      const SuggestionCandidate previous = candidates[replacement_index - 1];
+      candidates[replacement_index - 1] = candidates[replacement_index];
+      candidates[replacement_index] = previous;
+      replacement_index -= 1;
+    }
+
     return;
   }
 
@@ -432,20 +883,43 @@ void maybe_collect_candidate(
   }
 }
 
-unsigned int collect_suggestion_candidates(
+bool collected_candidates_contain_word(
+    const SuggestionCandidate* candidates,
+    unsigned int candidate_count,
+    WordView word) {
+  for (unsigned int index = 0; index < candidate_count; ++index) {
+    if (token_equals(candidates[index].word.word, candidates[index].word.len, word.word, word.len)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void maybe_collect_unique_candidate(
+    const char* token,
+    unsigned int token_len,
+    WordView word,
+    SuggestionCandidate* candidates,
+    unsigned int& candidate_count,
+    unsigned int candidate_cap) {
+  if (collected_candidates_contain_word(candidates, candidate_count, word)) {
+    return;
+  }
+
+  maybe_collect_candidate(token, token_len, word, candidates, candidate_count, candidate_cap);
+}
+
+unsigned int collect_suggestion_candidates_by_scan(
     const char* token,
     unsigned int token_len,
     SuggestionCandidate* candidates,
     unsigned int candidate_cap) {
-  if (candidates == nullptr || candidate_cap == 0 || !is_lowercase_alphabetic_token(token, token_len)) {
-    return 0;
-  }
-
   unsigned int candidate_count = 0;
 
   for (unsigned int index = 0; index < g_loaded_dictionary.entry_count; ++index) {
     const DynamicDictionaryEntry& entry = g_loaded_dictionary.entries[index];
-    maybe_collect_candidate(
+    maybe_collect_unique_candidate(
         token,
         token_len,
         {
@@ -467,13 +941,63 @@ unsigned int collect_suggestion_candidates(
       continue;
     }
 
-    maybe_collect_candidate(
+    maybe_collect_unique_candidate(
         token,
         token_len,
-        {entry.word, entry.len, 0, 0, false},
+        {entry.word, entry.len, entry.frequency, 0, false},
         candidates,
         candidate_count,
         candidate_cap);
+  }
+
+  return candidate_count;
+}
+
+unsigned int collect_suggestion_candidates(
+    const char* token,
+    unsigned int token_len,
+    SuggestionCandidate* candidates,
+    unsigned int candidate_cap) {
+  if (candidates == nullptr || candidate_cap == 0 || !is_lowercase_alphabetic_token(token, token_len)) {
+    return 0;
+  }
+
+  unsigned int candidate_count = 0;
+
+  if (token_len > kMaxDeleteIndexWordLen || !ensure_delete_index_built()) {
+    return collect_suggestion_candidates_by_scan(token, token_len, candidates, candidate_cap);
+  }
+
+  DeleteKeySet query_keys = {};
+
+  if (!collect_delete_keys(token, token_len, query_keys)) {
+    return collect_suggestion_candidates_by_scan(token, token_len, candidates, candidate_cap);
+  }
+
+  for (unsigned int query_key_index = 0; query_key_index < query_keys.count; ++query_key_index) {
+    const DeleteKey& key = query_keys.keys[query_key_index];
+    const unsigned int hash = hash_delete_key(key.key, key.len);
+    const int entry_index = find_delete_index_entry(g_delete_index, key.key, key.len, hash);
+
+    if (entry_index < 0) {
+      continue;
+    }
+
+    const DeleteIndexEntry& entry = g_delete_index.entries[static_cast<unsigned int>(entry_index)];
+    int link_index = entry.candidate_head;
+
+    while (link_index >= 0) {
+      const DeleteIndexCandidateLink& link =
+          g_delete_index.candidate_links[static_cast<unsigned int>(link_index)];
+      WordView word = {};
+
+      if (word_view_from_word_id(link.word_id, word)) {
+        maybe_collect_unique_candidate(
+            token, token_len, word, candidates, candidate_count, candidate_cap);
+      }
+
+      link_index = link.next;
+    }
   }
 
   return candidate_count;
@@ -543,6 +1067,20 @@ bool dictionary_magic_matches(const unsigned char* data, unsigned int data_len) 
 
   for (unsigned int index = 0; index < sizeof(kDictionaryBlobMagic); ++index) {
     if (data[index] != static_cast<unsigned char>(kDictionaryBlobMagic[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool dictionary_language_matches(const unsigned char* data, unsigned int language_len) {
+  if (language_len != sizeof(kSupportedDictionaryLanguage)) {
+    return false;
+  }
+
+  for (unsigned int index = 0; index < sizeof(kSupportedDictionaryLanguage); ++index) {
+    if (data[index] != static_cast<unsigned char>(kSupportedDictionaryLanguage[index])) {
       return false;
     }
   }
@@ -662,6 +1200,14 @@ int load_dictionary_blob(
         TYPAI_REASON_DICTIONARY_BOUNDS_ERROR);
   }
 
+  if (!dictionary_language_matches(data + language_offset, language_len)) {
+    return reject_dictionary_blob(
+        word_count_out,
+        reason_flags_out,
+        TYPAI_DICTIONARY_LOAD_BOUNDS_ERROR,
+        TYPAI_REASON_DICTIONARY_BOUNDS_ERROR);
+  }
+
   if (
       word_count > kMaxDynamicDictionaryWords ||
       string_table_len > kMaxDynamicDictionaryStringBytes) {
@@ -727,7 +1273,16 @@ int load_dictionary_blob(
     }
   }
 
+  if (!rebuild_delete_index(g_staging_dictionary, g_staging_delete_index)) {
+    return reject_dictionary_blob(
+        word_count_out,
+        reason_flags_out,
+        TYPAI_DICTIONARY_LOAD_BOUNDS_ERROR,
+        TYPAI_REASON_DICTIONARY_BOUNDS_ERROR);
+  }
+
   g_loaded_dictionary = g_staging_dictionary;
+  g_delete_index = g_staging_delete_index;
 
   if (word_count_out != nullptr) {
     *word_count_out = g_loaded_dictionary.entry_count;
@@ -757,12 +1312,14 @@ extern "C" int typai_check_token(
   if (typai::is_any_known_valid_word(token, token_len, &dynamic_match)) {
     typai::set_reason_flags(
         reason_flags_out,
-        dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD);
+        (dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD) |
+            TYPAI_REASON_VALID_WORD_BLOCK);
     return 0;
   }
 
   if (typai::is_protected_looking_token(token, token_len)) {
-    typai::set_reason_flags(reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN);
+    typai::set_reason_flags(
+        reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN | TYPAI_REASON_PROTECTED_TOKEN_BLOCK);
     return 0;
   }
 
@@ -770,22 +1327,29 @@ extern "C" int typai_check_token(
   if (replacement.value != nullptr) {
     const unsigned int replacement_flags =
         typai::write_replacement(replacement, replacement_out, replacement_cap);
+    const unsigned int expanded_flags =
+        replacement.expanded ? TYPAI_REASON_COMMON_TYPO_TABLE_EXPANDED : TYPAI_REASON_NONE;
     typai::set_confidence(confidence_out, typai::kCommonTypoConfidence);
     typai::set_reason_flags(
-        reason_flags_out, TYPAI_REASON_COMMON_TYPO_MATCH | replacement_flags);
+        reason_flags_out,
+        TYPAI_REASON_COMMON_TYPO_MATCH | TYPAI_REASON_AUTOCORRECT_GATE_PASSED |
+            expanded_flags | replacement_flags);
     return 1;
   }
 
   if (typai::is_lowercase_alphabetic_token(token, token_len)) {
     const unsigned int suggestion_flags = typai::has_edit_distance_suggestions(token, token_len)
-        ? TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS
+        ? (TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS | TYPAI_REASON_DELETE_INDEX_SUGGESTIONS |
+           TYPAI_REASON_DELETE_INDEX_CANDIDATE | TYPAI_REASON_FREQUENCY_RANKED)
         : TYPAI_REASON_NO_SUGGESTIONS;
     typai::set_reason_flags(
-        reason_flags_out, TYPAI_REASON_UNKNOWN_NON_WORD | suggestion_flags);
+        reason_flags_out,
+        TYPAI_REASON_UNKNOWN_NON_WORD | TYPAI_REASON_AUTOCORRECT_GATE_BLOCKED | suggestion_flags);
     return 2;
   }
 
-  typai::set_reason_flags(reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN);
+  typai::set_reason_flags(
+      reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN | TYPAI_REASON_PROTECTED_TOKEN_BLOCK);
   return 0;
 }
 
@@ -810,13 +1374,15 @@ extern "C" unsigned int typai_suggest_token(
   if (typai::is_any_known_valid_word(token, token_len, &dynamic_match)) {
     typai::set_reason_flags(
         reason_flags_out,
-        dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD);
+        (dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD) |
+            TYPAI_REASON_VALID_WORD_BLOCK);
     return 0;
   }
 
   if (typai::is_protected_looking_token(token, token_len) ||
       !typai::is_lowercase_alphabetic_token(token, token_len)) {
-    typai::set_reason_flags(reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN);
+    typai::set_reason_flags(
+        reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN | TYPAI_REASON_PROTECTED_TOKEN_BLOCK);
     return 0;
   }
 
@@ -831,14 +1397,19 @@ extern "C" unsigned int typai_suggest_token(
 
   if (suggestions_out == nullptr) {
     typai::set_reason_flags(
-        reason_flags_out, TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS | TYPAI_REASON_INVALID_INPUT);
+        reason_flags_out,
+        TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS | TYPAI_REASON_DELETE_INDEX_SUGGESTIONS |
+            TYPAI_REASON_DELETE_INDEX_CANDIDATE | TYPAI_REASON_FREQUENCY_RANKED |
+            TYPAI_REASON_INVALID_INPUT);
     return 0;
   }
 
   const unsigned int writable_slots = typai::writable_suggestion_slots(
       suggestions_out_cap, max_suggestions, suggestion_slot_cap, scores_out, scores_cap);
   const unsigned int suggestion_count = typai::min_uint(candidate_count, writable_slots);
-  unsigned int flags = TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS;
+  unsigned int flags = TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS |
+                       TYPAI_REASON_DELETE_INDEX_SUGGESTIONS |
+                       TYPAI_REASON_DELETE_INDEX_CANDIDATE | TYPAI_REASON_FREQUENCY_RANKED;
 
   if (suggestion_count == 0) {
     typai::set_reason_flags(reason_flags_out, flags | TYPAI_REASON_REPLACEMENT_TRUNCATED);
@@ -868,8 +1439,25 @@ extern "C" int typai_load_dictionary_blob(
 
 extern "C" void typai_clear_loaded_dictionary() {
   typai::clear_loaded_dictionary_state(typai::g_loaded_dictionary);
+  if (typai::rebuild_delete_index(typai::g_loaded_dictionary, typai::g_staging_delete_index)) {
+    typai::g_delete_index = typai::g_staging_delete_index;
+  } else {
+    typai::clear_delete_index_state(typai::g_delete_index);
+  }
 }
 
 extern "C" unsigned int typai_loaded_dictionary_word_count() {
   return typai::g_loaded_dictionary.entry_count;
+}
+
+extern "C" unsigned int typai_delete_index_entry_count() {
+  return typai::g_delete_index.entry_count;
+}
+
+extern "C" unsigned int typai_delete_index_memory_estimate_bytes() {
+  return typai::delete_index_memory_estimate_bytes(typai::g_delete_index);
+}
+
+extern "C" void typai_clear_delete_index() {
+  typai::clear_delete_index_state(typai::g_delete_index);
 }

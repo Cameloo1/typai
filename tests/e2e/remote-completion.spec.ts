@@ -14,6 +14,7 @@ type RemoteMetrics = {
   dismissByCompositionCount: number;
   revertCount: number;
   staleResponseDroppedCount: number;
+  providerErrorCount: number;
   staleResponseDroppedRequestIds: string[];
   ghostLatencySamples: number[];
 };
@@ -29,6 +30,15 @@ type RemoteDebugGlobal = Window & {
 type NetworkGuard = {
   providerCalls: string[];
   secretLeaks: string[];
+};
+
+type MockProxyEndpoint = {
+  endpoint: string;
+  requests: Array<{
+    url: string;
+    method: string;
+    postData: string;
+  }>;
 };
 
 test("remote completion ghost appears after debounce without becoming source text", async ({
@@ -53,6 +63,7 @@ test("remote completion Tab accepts visible ghost text", async ({ page }, testIn
   await expect(remoteGhost(page)).toHaveCount(0);
   await expect.poll(() => getRemoteSourceText(page)).toBe(`${prefix}${defaultCompletion}`);
   await expect(page.getByTestId("remote-accept-count")).toHaveText("1");
+  await expect(page.getByTestId("blue-mark")).toHaveCount(0);
   await expectMetric(page, "acceptCount", 1);
 });
 
@@ -156,6 +167,8 @@ test("remote completion coexists with correction transactions", async ({ page },
 
   await expect(remoteGhost(page)).toHaveText(defaultCompletion, { timeout: 5_000 });
   await expect.poll(() => getRemoteSourceText(page)).toBe(`${prefix} the again`);
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("blue-mark")).toHaveCount(0);
 });
 
 test("remote completion demo makes no real OpenAI or provider calls", async ({
@@ -174,6 +187,107 @@ test("remote completion demo makes no real OpenAI or provider calls", async ({
 
   expect(bodyText ?? "").not.toMatch(/\bOPENAI_API_KEY\b/);
   expect(bodyText ?? "").not.toMatch(/\bsk-[A-Za-z0-9_-]{8,}\b/);
+});
+
+test("remote completion proxy mode uses the configured proxy endpoint only", async ({
+  page,
+}, testInfo) => {
+  const guard = await openRemoteCompletionDemo(page, testInfo);
+  const proxy = await installMockProxyEndpoint(page, {
+    text: " with proxy model output.",
+    model: "mock-proxy-model",
+  });
+
+  await setProviderMode(page, "proxy", proxy.endpoint);
+  const prefix = await showGhost(
+    page,
+    "Please continue this proxy prompt",
+    " with proxy model output.",
+  );
+
+  await expect(remoteGhost(page)).toHaveText(" with proxy model output.");
+  await expect(page.getByTestId("remote-active-provider-mode")).toHaveText("proxy");
+  await expect(page.getByTestId("remote-active-endpoint")).toHaveText(proxy.endpoint);
+  await expect(page.getByTestId("remote-last-model")).toHaveText("mock-proxy-model");
+  await expect(page.getByTestId("remote-last-ghost")).toHaveText(" with proxy model output.");
+  await page.keyboard.press("Tab");
+  await expect.poll(() => getRemoteSourceText(page)).toBe(`${prefix} with proxy model output.`);
+
+  expect(proxy.requests).toHaveLength(1);
+  expect(proxy.requests[0]?.url).toBe(proxy.endpoint);
+  expect(proxy.requests[0]?.postData).not.toMatch(/\bOPENAI_API_KEY\b/i);
+  expect(proxy.requests[0]?.postData).not.toMatch(/\bsk-[A-Za-z0-9_-]{8,}\b/);
+  expect(guard.providerCalls).toEqual([]);
+  expect(guard.secretLeaks).toEqual([]);
+});
+
+test("remote completion proxy mode Escape dismisses visible ghost text", async ({
+  page,
+}, testInfo) => {
+  await openRemoteCompletionDemo(page, testInfo);
+  const proxy = await installMockProxyEndpoint(page, {
+    text: " with dismissible proxy output.",
+  });
+
+  await setProviderMode(page, "proxy", proxy.endpoint);
+  const prefix = await showGhost(
+    page,
+    "Please continue this proxy draft",
+    " with dismissible proxy output.",
+  );
+
+  await page.keyboard.press("Escape");
+
+  await expect(remoteGhost(page)).toHaveCount(0);
+  await expect.poll(() => getRemoteSourceText(page)).toBe(prefix);
+  await expectMetric(page, "dismissByEscapeCount", 1);
+});
+
+test("remote completion proxy mode handles provider failure safely", async ({ page }, testInfo) => {
+  await openRemoteCompletionDemo(page, testInfo);
+  const proxy = await installMockProxyEndpoint(page, {
+    status: 500,
+  });
+
+  await setProviderMode(page, "proxy", proxy.endpoint);
+  const editor = page.getByTestId("remote-completion-editor");
+
+  await editor.click();
+  await page.keyboard.type("Please continue this failing proxy prompt");
+
+  await expectRemoteState(page, "error", 5_000);
+  await expectMetric(page, "providerErrorCount", 1);
+  await expect(remoteGhost(page)).toHaveCount(0);
+  await expect(page.getByTestId("remote-status")).toHaveText("error");
+});
+
+test("remote completion proxy mode drops stale proxy responses", async ({ page }, testInfo) => {
+  await openRemoteCompletionDemo(page, testInfo);
+  const proxy = await installMockProxyEndpoint(page, {
+    delayByRequestIndexMs: [900, 50],
+    textForRequest: (requestId) => ` with stale proxy ${requestId}.`,
+  });
+
+  await setProviderMode(page, "proxy", proxy.endpoint);
+  await setProviderIgnoresAbort(page, true);
+  const editor = page.getByTestId("remote-completion-editor");
+
+  await editor.click();
+  await page.keyboard.type("This proxy request is ready");
+  await expectRemoteState(page, "requesting", 1_500);
+
+  await page.keyboard.type("x");
+
+  await expectMetric(page, "staleResponseDroppedCount", 1, 3_000);
+  const metrics = await getRemoteMetrics(page);
+  const staleRequestId = metrics.staleResponseDroppedRequestIds.at(-1);
+
+  expect(staleRequestId).toBeTruthy();
+  await expect(remoteGhost(page)).toHaveText(/^ with stale proxy completion-\d+\.$/, {
+    timeout: 3_000,
+  });
+  await expect(remoteGhost(page)).not.toHaveText(` with stale proxy ${staleRequestId}.`);
+  await expect.poll(() => getRemoteSourceText(page)).toBe("This proxy request is readyx");
 });
 
 async function openRemoteCompletionDemo(
@@ -195,12 +309,16 @@ async function openRemoteCompletionDemo(
   return guard;
 }
 
-async function showGhost(page: Page, prefix = "Please continue this prompt"): Promise<string> {
+async function showGhost(
+  page: Page,
+  prefix = "Please continue this prompt",
+  expectedCompletion = defaultCompletion,
+): Promise<string> {
   const editor = page.getByTestId("remote-completion-editor");
 
   await editor.click();
   await page.keyboard.type(prefix);
-  await expect(remoteGhost(page)).toHaveText(defaultCompletion, { timeout: 5_000 });
+  await expect(remoteGhost(page)).toHaveText(expectedCompletion, { timeout: 5_000 });
 
   return prefix;
 }
@@ -227,6 +345,22 @@ async function setMockLatency(page: Page, latencyMs: number): Promise<void> {
 
   await input.fill(String(latencyMs));
   await input.dispatchEvent("change");
+}
+
+async function setProviderMode(
+  page: Page,
+  mode: "mock" | "proxy",
+  endpoint?: string,
+): Promise<void> {
+  if (endpoint !== undefined) {
+    const input = page.getByTestId("remote-proxy-endpoint");
+
+    await input.fill(endpoint);
+    await input.dispatchEvent("change");
+  }
+
+  await page.getByTestId("remote-provider-mode").selectOption(mode);
+  await expect(page.getByTestId("remote-active-provider-mode")).toHaveText(mode);
 }
 
 async function setProviderIgnoresAbort(page: Page, value: boolean): Promise<void> {
@@ -353,10 +487,115 @@ async function installProviderCallGuard(page: Page): Promise<NetworkGuard> {
       guard.secretLeaks.push(url);
     }
 
-    await route.continue();
+    await route.fallback();
   });
 
   return guard;
+}
+
+async function installMockProxyEndpoint(
+  page: Page,
+  options: {
+    delayByRequestIndexMs?: number[];
+    model?: string;
+    status?: number;
+    text?: string;
+    textForRequest?: (requestId: string) => string;
+  } = {},
+): Promise<MockProxyEndpoint> {
+  const endpoint = `http://127.0.0.1:8787/api/typai/completion?test=${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  const requests: MockProxyEndpoint["requests"] = [];
+
+  await page.route(`${endpoint}**`, async (route, request) => {
+    const origin = request.headers().origin ?? "http://localhost:5173";
+
+    if (request.method() === "OPTIONS") {
+      await route.fulfill({
+        status: 204,
+        headers: buildProxyCorsHeaders(origin),
+        body: "",
+      });
+      return;
+    }
+
+    const postData = request.postData() ?? "";
+    const requestIndex = requests.length;
+
+    requests.push({
+      url: request.url(),
+      method: request.method(),
+      postData,
+    });
+
+    const delayMs = options.delayByRequestIndexMs?.[requestIndex] ?? 0;
+
+    if (delayMs > 0) {
+      await wait(delayMs);
+    }
+
+    const status = options.status ?? 200;
+    const body =
+      status >= 400
+        ? {
+            error: {
+              code: "server_error",
+              message: "The completion proxy failed.",
+            },
+          }
+        : {
+            text:
+              options.textForRequest?.(readRequestId(postData)) ??
+              options.text ??
+              " with proxy output.",
+            model: options.model ?? "mock-proxy-model",
+            usage: {
+              inputTokens: 12,
+              outputTokens: 4,
+            },
+            finishReason: "stop",
+          };
+
+    await route.fulfill({
+      status,
+      headers: {
+        ...buildProxyCorsHeaders(origin),
+        "content-type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify(body),
+    });
+  });
+
+  return {
+    endpoint,
+    requests,
+  };
+}
+
+function buildProxyCorsHeaders(origin: string): Record<string, string> {
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-headers": "content-type",
+    vary: "Origin",
+  };
+}
+
+function readRequestId(postData: string): string {
+  try {
+    const payload = JSON.parse(postData) as { request?: { id?: unknown } };
+
+    return typeof payload.request?.id === "string" ? payload.request.id : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function uniqueDbName(testInfo: TestInfo): string {

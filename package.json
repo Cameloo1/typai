@@ -18,6 +18,7 @@
     "smoke:public-beta": "node scripts/public-beta-smoke.mjs",
     "smoke:real-provider:manual": "node scripts/manual-real-provider-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
+    "dictionary:check-production": "node scripts/check-dictionary-production-manifest.mjs",
     "dictionary:gate-status": "node scripts/dictionary-gate-status.mjs",
     "dictionary:check-policy": "node scripts/dictionary-check-policy.mjs",
     "scan:package-secrets": "node scripts/scan-package-secrets.mjs",

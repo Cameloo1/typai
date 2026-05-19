@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "language": "en-US",
+  "dictionary": {
+    "name": "English Speller Database / SCOWL v2 generated Hunspell en_US dictionary",
+    "sourceUrl": "https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip",
+    "version": "2026.02.25 [7e99eda]",
+    "sourceFiles": [
+      {
+        "url": "https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip",
+        "sha256": "ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9",
+        "byteSize": 187271,
+        "contents": ["en_US.aff", "en_US.dic", "README_en_US.txt"]
+      }
+    ],
+    "license": "ESDB/SCOWL notice license plus Hunspell affix-file BSD-style notice",
+    "licenseFile": "packages/core/assets/production/LICENSES/README.md",
+    "sha256": "ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9",
+    "attribution": "English wordlist generated from the English Speller Database / SCOWL by Kevin Atkinson; en_US Hunspell affix file includes Geoff Kuenning BSD-style notice."
+  },
+  "frequency": {
+    "name": "Google Books Ngram Viewer American English 2019 1-grams",
+    "sourceUrl": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/eng-us-1-ngrams_exports.html",
+    "version": "20200217 American English 2019",
+    "sourceFiles": [
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/totalcounts-1",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00000-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00001-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00002-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00003-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00004-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00005-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00006-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00007-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00008-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00009-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00010-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00011-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00012-of-00014.gz",
+        "sha256": null
+      },
+      {
+        "url": "http://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00013-of-00014.gz",
+        "sha256": null
+      }
+    ],
+    "license": "Creative Commons Attribution 3.0 Unported",
+    "licenseFile": "packages/core/assets/production/LICENSES/README.md",
+    "sha256": null,
+    "attribution": "Frequency scores derived from Google Books Ngram Viewer data, American English 2019, version 20200217."
+  },
+  "transform": {
+    "script": "scripts/build-production-dictionary.mjs",
+    "version": "not implemented",
+    "filters": [
+      "read pinned ESDB/SCOWL en_US size 60 Hunspell files",
+      "strip Hunspell flags or model supported flags explicitly",
+      "normalize accepted dictionary words to Typai token policy",
+      "read pinned Google Books Ngram American English 2019 1-gram files",
+      "filter to lowercase alphabetic words accepted by the dictionary source",
+      "aggregate frequency counts deterministically",
+      "emit Typai Dictionary Blob v1 plus generated-output hash"
+    ],
+    "generatedAt": null
+  },
+  "output": {
+    "wordCount": null,
+    "byteSize": null,
+    "packageInclusion": "blocked",
+    "assetPath": ""
+  },
+  "review": {
+    "status": "blocked",
+    "reviewedAt": "2026-05-19",
+    "reviewNotes": "Source path is approved for future pipeline work, but production asset ingestion remains blocked. Google Ngram raw source hashes, deterministic transform script, generated output hash, generated size evidence, quality evidence, and final review signoff are missing."
+  }
+}

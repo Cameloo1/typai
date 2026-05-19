@@ -15,8 +15,8 @@ state from:
 
 Source approval status: **APPROVED** for the first source path.
 
-Asset ingestion status: **BLOCKED until manifest, transform, hash,
-attribution, size, quality, and review gates pass**.
+Asset ingestion status: **BLOCKED until frequency source hashes, transform,
+generated output hash, attribution, size, quality, and review gates pass**.
 
 No production dictionary, frequency table, raw corpus, or generated production
 language asset is bundled in this repository state.
@@ -37,12 +37,11 @@ frequency table, package asset, or npm release.
 
 Production bundling remains blocked because the repository does not yet have:
 
-- production asset manifest under `docs/asset-manifests/`
+- approved production asset manifest under `packages/core/assets/production/`
 - deterministic production transform script and command
-- raw ESDB/SCOWL input SHA-256
-- raw Google Ngram input URLs and SHA-256 values
+- raw Google Ngram input SHA-256 values
 - generated output SHA-256
-- package-visible attribution and full applicable notices
+- final package-visible attribution and full applicable notices
 - compressed and uncompressed production output size evidence
 - quality gate results against the generated production asset
 - package dry-run proof that raw inputs are excluded
@@ -61,6 +60,23 @@ The following must not be committed, packed, published, or claimed as shipped:
   evidence
 
 Package inclusion remains `none` until these gates pass.
+
+## Prompt 109 Manifest Status
+
+The blocked production manifest template is:
+
+- `packages/core/assets/production/MANIFEST.template.json`
+
+It records the approved ESDB/SCOWL `en_US` source ZIP hash and the exact Google
+Ngram American English 2019 1-gram source URLs. It intentionally keeps Google
+Ngram raw source hashes as `null`, generated output counts and byte size as
+`null`, `output.packageInclusion` as `blocked`, and `review.status` as
+`blocked`.
+
+The placeholder license and attribution files are:
+
+- `packages/core/assets/production/LICENSES/README.md`
+- `packages/core/assets/production/ATTRIBUTION.md`
 
 ## Scaled Mock Status
 

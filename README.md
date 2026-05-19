@@ -22,8 +22,9 @@ Readiness.
 - no direct browser-to-provider path is supported
 - no production dictionary asset, Codex adapter, next-edit logging, or local
   model inference is included
-- current local spell coverage is narrow until the approved production
-  dictionary/SymSpell-quality candidate path lands
+- current local spell coverage now includes delete-index suggestions and an
+  audited common-typo autocorrect gate, but it is still not production
+  dictionary coverage until an approved production asset lands
 
 ## Packages
 
@@ -58,6 +59,8 @@ will be added after a real npm publish.
 - [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
 - [Intelligence Quality Foundation](./docs/intelligence-quality-foundation.md)
 - [Spell quality baseline](./docs/spell-quality-baseline.md)
+- [Common typo table](./docs/common-typo-table.md)
+- [Spell false-positive review](./docs/spell-false-positive-review.md)
 - [Dictionary source selection](./docs/dictionary-source-selection.md)
 - [Dictionary production approval](./docs/dictionary-production-approval.md)
 

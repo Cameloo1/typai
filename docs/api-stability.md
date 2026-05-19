@@ -59,6 +59,19 @@ Package label: `stable-beta` for deterministic correction APIs.
 - Public correction, token, dictionary, memory, range, language, and storage
   types exported from `@typai/core`.
 
+Behavior note for Prompt 103:
+
+- `checkCompletedToken()` may now return additional reason codes such as
+  `COMMON_TYPO_TABLE_EXPANDED`, `CASE_PRESERVED`,
+  `PUNCTUATION_PRESERVED`, `AUTOCORRECT_GATE_PASSED`,
+  `AUTOCORRECT_GATE_BLOCKED`, `VALID_WORD_BLOCK`, and
+  `PROTECTED_TOKEN_BLOCK`.
+- The stable action semantics are unchanged: valid words and protected tokens
+  still do nothing, approved corrections still use blue marks, and unresolved
+  spelling issues still use red marks.
+- Delete-index and edit-distance candidates remain suggestions-only unless the
+  token is explicitly present in the audited common-typo table.
+
 `private`:
 
 - C++ engine internals.

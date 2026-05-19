@@ -665,7 +665,7 @@ bool word_view_from_word_id(unsigned int word_id, WordView& word_out) {
     }
 
     const DictionaryEntry& entry = kKnownValidWords[builtin_index];
-    word_out = {entry.word, entry.len, 0, 0, false};
+    word_out = {entry.word, entry.len, entry.frequency, 0, false};
     return true;
   }
 
@@ -714,7 +714,7 @@ bool rebuild_delete_index(const LoadedDictionary& dictionary, DeleteIndex& index
 
     if (!add_word_to_delete_index(
             index,
-            {entry.word, entry.len, 0, 0, false},
+            {entry.word, entry.len, entry.frequency, 0, false},
             kBuiltinWordIdFlag | builtin_index)) {
       clear_delete_index_state(index);
       return false;
@@ -944,7 +944,7 @@ unsigned int collect_suggestion_candidates_by_scan(
     maybe_collect_unique_candidate(
         token,
         token_len,
-        {entry.word, entry.len, 0, 0, false},
+        {entry.word, entry.len, entry.frequency, 0, false},
         candidates,
         candidate_count,
         candidate_cap);
@@ -1312,12 +1312,14 @@ extern "C" int typai_check_token(
   if (typai::is_any_known_valid_word(token, token_len, &dynamic_match)) {
     typai::set_reason_flags(
         reason_flags_out,
-        dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD);
+        (dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD) |
+            TYPAI_REASON_VALID_WORD_BLOCK);
     return 0;
   }
 
   if (typai::is_protected_looking_token(token, token_len)) {
-    typai::set_reason_flags(reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN);
+    typai::set_reason_flags(
+        reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN | TYPAI_REASON_PROTECTED_TOKEN_BLOCK);
     return 0;
   }
 
@@ -1325,22 +1327,29 @@ extern "C" int typai_check_token(
   if (replacement.value != nullptr) {
     const unsigned int replacement_flags =
         typai::write_replacement(replacement, replacement_out, replacement_cap);
+    const unsigned int expanded_flags =
+        replacement.expanded ? TYPAI_REASON_COMMON_TYPO_TABLE_EXPANDED : TYPAI_REASON_NONE;
     typai::set_confidence(confidence_out, typai::kCommonTypoConfidence);
     typai::set_reason_flags(
-        reason_flags_out, TYPAI_REASON_COMMON_TYPO_MATCH | replacement_flags);
+        reason_flags_out,
+        TYPAI_REASON_COMMON_TYPO_MATCH | TYPAI_REASON_AUTOCORRECT_GATE_PASSED |
+            expanded_flags | replacement_flags);
     return 1;
   }
 
   if (typai::is_lowercase_alphabetic_token(token, token_len)) {
     const unsigned int suggestion_flags = typai::has_edit_distance_suggestions(token, token_len)
-        ? (TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS | TYPAI_REASON_DELETE_INDEX_SUGGESTIONS)
+        ? (TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS | TYPAI_REASON_DELETE_INDEX_SUGGESTIONS |
+           TYPAI_REASON_DELETE_INDEX_CANDIDATE | TYPAI_REASON_FREQUENCY_RANKED)
         : TYPAI_REASON_NO_SUGGESTIONS;
     typai::set_reason_flags(
-        reason_flags_out, TYPAI_REASON_UNKNOWN_NON_WORD | suggestion_flags);
+        reason_flags_out,
+        TYPAI_REASON_UNKNOWN_NON_WORD | TYPAI_REASON_AUTOCORRECT_GATE_BLOCKED | suggestion_flags);
     return 2;
   }
 
-  typai::set_reason_flags(reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN);
+  typai::set_reason_flags(
+      reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN | TYPAI_REASON_PROTECTED_TOKEN_BLOCK);
   return 0;
 }
 
@@ -1365,13 +1374,15 @@ extern "C" unsigned int typai_suggest_token(
   if (typai::is_any_known_valid_word(token, token_len, &dynamic_match)) {
     typai::set_reason_flags(
         reason_flags_out,
-        dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD);
+        (dynamic_match ? TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH : TYPAI_REASON_KNOWN_VALID_WORD) |
+            TYPAI_REASON_VALID_WORD_BLOCK);
     return 0;
   }
 
   if (typai::is_protected_looking_token(token, token_len) ||
       !typai::is_lowercase_alphabetic_token(token, token_len)) {
-    typai::set_reason_flags(reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN);
+    typai::set_reason_flags(
+        reason_flags_out, TYPAI_REASON_PROTECTED_LOOKING_TOKEN | TYPAI_REASON_PROTECTED_TOKEN_BLOCK);
     return 0;
   }
 
@@ -1388,6 +1399,7 @@ extern "C" unsigned int typai_suggest_token(
     typai::set_reason_flags(
         reason_flags_out,
         TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS | TYPAI_REASON_DELETE_INDEX_SUGGESTIONS |
+            TYPAI_REASON_DELETE_INDEX_CANDIDATE | TYPAI_REASON_FREQUENCY_RANKED |
             TYPAI_REASON_INVALID_INPUT);
     return 0;
   }
@@ -1395,7 +1407,9 @@ extern "C" unsigned int typai_suggest_token(
   const unsigned int writable_slots = typai::writable_suggestion_slots(
       suggestions_out_cap, max_suggestions, suggestion_slot_cap, scores_out, scores_cap);
   const unsigned int suggestion_count = typai::min_uint(candidate_count, writable_slots);
-  unsigned int flags = TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS | TYPAI_REASON_DELETE_INDEX_SUGGESTIONS;
+  unsigned int flags = TYPAI_REASON_EDIT_DISTANCE_SUGGESTIONS |
+                       TYPAI_REASON_DELETE_INDEX_SUGGESTIONS |
+                       TYPAI_REASON_DELETE_INDEX_CANDIDATE | TYPAI_REASON_FREQUENCY_RANKED;
 
   if (suggestion_count == 0) {
     typai::set_reason_flags(reason_flags_out, flags | TYPAI_REASON_REPLACEMENT_TRUNCATED);

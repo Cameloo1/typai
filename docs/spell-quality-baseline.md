@@ -17,13 +17,15 @@ rails and safety behavior, but coverage is intentionally narrow.
 - Core behavior through `createTypaiCore().checkCompletedToken()` and
   `createTypaiCore().suggestToken()`
 - Prompt 102 C++ delete-index suggestion path and exposed index stats
+- Prompt 103 explicit common-typo gate, case preservation, punctuation
+  preservation, and suggestions-only contraction/plural handling
 
 ## Current Asset Size
 
 | Asset | Current size | Notes |
 | --- | ---: | --- |
-| Built-in common typo map | 5 entries | Autocorrect source for current known typos only. |
-| Built-in valid-word list | 37 entries | Tiny deterministic guard list, not a production dictionary. |
+| Built-in common typo map | 21 entries | Explicit autocorrect source; see `docs/common-typo-table.md`. |
+| Built-in valid-word list | 52 entries | Tiny deterministic guard list, not a production dictionary. |
 | Mock dictionary fixture | 20 entries | Loader/ranking fixture only, not loaded by default. |
 | Scaled mock fixture | 3,600 generated entries by default | Prompt 101 loader stress fixture only, ignored by Git and not production. |
 
@@ -64,7 +66,9 @@ not add production dictionary data and does not expand autocorrect.
 
 ## Current Supported Typos
 
-These are the only built-in common typo autocorrections.
+Prompt 103 keeps the original five common typo autocorrections and adds 16
+explicitly reviewed non-word typo entries. These are still table-driven; delete
+index rank alone is not an autocorrect gate.
 
 | Token | Current action | Replacement | Mark |
 | --- | --- | --- | --- |
@@ -74,77 +78,89 @@ These are the only built-in common typo autocorrections.
 | `becuase` | `auto_correct` | `because` | `blue_applied_correction` |
 | `thier` | `auto_correct` | `their` | `blue_applied_correction` |
 
-## Common Misspellings Not Yet Well Covered
+## Expanded Common Typo Coverage
 
-Current result: 16 of 16 are not autocorrected. That is the intended safety
-posture today. Only 3 of 16 receive suggestions because the word sources are
-tiny.
+Current result after Prompt 103: 16 of 16 baseline broad common misspellings
+autocorrect through the explicit common-typo table.
+
+| Token | Current action | Replacement |
+| --- | --- | --- |
+| `adress` | `auto_correct` | `address` |
+| `speling` | `auto_correct` | `spelling` |
+| `corection` | `auto_correct` | `correction` |
+| `seperate` | `auto_correct` | `separate` |
+| `definitly` | `auto_correct` | `definitely` |
+| `accomodate` | `auto_correct` | `accommodate` |
+| `occured` | `auto_correct` | `occurred` |
+| `untill` | `auto_correct` | `until` |
+| `tommorow` | `auto_correct` | `tomorrow` |
+| `goverment` | `auto_correct` | `government` |
+| `enviroment` | `auto_correct` | `environment` |
+| `arguement` | `auto_correct` | `argument` |
+| `calender` | `auto_correct` | `calendar` |
+| `embarass` | `auto_correct` | `embarrass` |
+| `publically` | `auto_correct` | `publicly` |
+| `neccessary` | `auto_correct` | `necessary` |
+
+## Suggestions-Only Cases
+
+These cases stay red unresolved suggestions because they are delete-index-only,
+contraction repairs, or plural-ambiguous.
 
 | Token | Current action | Current suggestions |
 | --- | --- | --- |
-| `adress` | `mark_unresolved` | `address` |
-| `speling` | `mark_unresolved` | `spelling` |
-| `corection` | `mark_unresolved` | `correction` |
-| `seperate` | `mark_unresolved` | none |
-| `definitly` | `mark_unresolved` | none |
-| `accomodate` | `mark_unresolved` | none |
-| `occured` | `mark_unresolved` | none |
-| `untill` | `mark_unresolved` | none |
-| `tommorow` | `mark_unresolved` | none |
-| `goverment` | `mark_unresolved` | none |
-| `enviroment` | `mark_unresolved` | none |
-| `arguement` | `mark_unresolved` | none |
-| `calender` | `mark_unresolved` | none |
-| `embarass` | `mark_unresolved` | none |
-| `publically` | `mark_unresolved` | none |
-| `neccessary` | `mark_unresolved` | none |
+| `reciept` | `mark_unresolved` | `receipt` |
+| `addres` | `mark_unresolved` | `address` |
+| `dont` | `mark_unresolved` | `don't` |
+| `it;s` | `mark_unresolved` | `it's` |
+| `adresss` | `mark_unresolved` | `address`, `addresses` |
 
-With a host-provided or scaled mock dictionary containing `separate` and
-`tomorrow`, Prompt 102 delete-index lookup suggests `separate` for `seperate`
-and `tomorrow` for `tommorow`. Those candidates still do not autocorrect.
+With a host-provided or scaled mock dictionary, Prompt 102 delete-index lookup
+continues to supply suggestions. Prompt 103 still blocks delete-index-only
+autocorrect unless the typo is explicitly present in the common typo table.
 
 ## Current Autocorrect Behavior
 
 - Supported common typo autocorrects: 5 of 5.
-- Broad common misspelling autocorrects: 0 of 16.
+- Expanded broad common misspelling autocorrects: 16 of 16.
 - Edit-distance suggestion autocorrects: 0.
 - Valid-word autocorrections: 0 of 6.
 - Protected-token autocorrection writes: 0 of 9 measured terms.
+- Case preservation: `Teh` -> `The`; `TEH` -> `THE`.
+- Punctuation preservation: `teh,` -> `the,`.
 
-Delete-index candidates currently stay suggestion-only and red-marked. This
-must remain true until a later prompt adds an explicit common-typo or
-high-confidence gate.
+Delete-index candidates currently stay suggestion-only and red-marked unless
+the token is explicitly listed in the common typo table. This preserves the
+valid-word and protected-token trust model.
 
 ## Must-Not-Autocorrect Valid Words
 
 | Token | Current action | Reason |
 | --- | --- | --- |
-| `form` | `do_nothing` | `KNOWN_VALID_WORD` |
-| `lead` | `do_nothing` | `KNOWN_VALID_WORD` |
-| `to` | `do_nothing` | `KNOWN_VALID_WORD` |
-| `its` | `do_nothing` | `KNOWN_VALID_WORD` |
-| `there` | `do_nothing` | `KNOWN_VALID_WORD` |
-| `their` | `do_nothing` | `KNOWN_VALID_WORD` |
+| `form` | `do_nothing` | `KNOWN_VALID_WORD`, `VALID_WORD_BLOCK` |
+| `lead` | `do_nothing` | `KNOWN_VALID_WORD`, `VALID_WORD_BLOCK` |
+| `to` | `do_nothing` | `KNOWN_VALID_WORD`, `VALID_WORD_BLOCK` |
+| `its` | `do_nothing` | `KNOWN_VALID_WORD`, `VALID_WORD_BLOCK` |
+| `there` | `do_nothing` | `KNOWN_VALID_WORD`, `VALID_WORD_BLOCK` |
+| `their` | `do_nothing` | `KNOWN_VALID_WORD`, `VALID_WORD_BLOCK` |
 
 ## Protected Terms
 
 Core and tokenizer protection are related but not identical. Editor adapters
-use tokenizer protection before asking core to write. Direct core checks also
-protect syntax-shaped tokens. The current gap is `kubectl`: it is not protected
-by the tokenizer and is not in the valid-word list, so direct core marks it as
-an unresolved non-word.
+use tokenizer protection before asking core to write. Prompt 103 adds `kubectl`
+to the protected technical-token set.
 
 | Token | Tokenizer protected | Direct core action | Direct core reason |
 | --- | --- | --- | --- |
-| `user@example.com` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
-| `https://example.com` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
-| `/etc/passwd` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
-| `snake_case_identifier` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
-| `camelCaseIdentifier` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
-| `CVE-2024-1234` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
-| `nmap` | yes | `do_nothing` | `KNOWN_VALID_WORD` |
-| `sqlmap` | yes | `do_nothing` | `KNOWN_VALID_WORD` |
-| `kubectl` | no | `mark_unresolved` | `UNKNOWN_NON_WORD`, `NO_SUGGESTIONS` |
+| `user@example.com` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `https://example.com` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `/etc/passwd` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `snake_case_identifier` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `camelCaseIdentifier` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `CVE-2024-1234` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `nmap` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `sqlmap` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
+| `kubectl` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
 
 ## Surface Parity
 
@@ -162,7 +178,6 @@ Known gaps:
 - broad spell quality samples are not yet tested across every surface.
 - the adapter testkit uses a mock conformance core, so it proves adapter
   contracts rather than full production dictionary quality.
-- `kubectl` is not yet a protected technical token or known valid word.
 - no default local demo proves a real provider completion path yet.
 
 ## Future Gates

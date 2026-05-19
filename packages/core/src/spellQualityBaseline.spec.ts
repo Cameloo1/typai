@@ -17,22 +17,29 @@ const supportedTypos = [
 ];
 
 const broadCommonMisspellings = [
-  { token: "adress", suggestions: ["address"] },
-  { token: "speling", suggestions: ["spelling"] },
-  { token: "corection", suggestions: ["correction"] },
-  { token: "seperate", suggestions: [] },
-  { token: "definitly", suggestions: [] },
-  { token: "accomodate", suggestions: [] },
-  { token: "occured", suggestions: [] },
-  { token: "untill", suggestions: [] },
-  { token: "tommorow", suggestions: [] },
-  { token: "goverment", suggestions: [] },
-  { token: "enviroment", suggestions: [] },
-  { token: "arguement", suggestions: [] },
-  { token: "calender", suggestions: [] },
-  { token: "embarass", suggestions: [] },
-  { token: "publically", suggestions: [] },
-  { token: "neccessary", suggestions: [] },
+  { token: "adress", replacement: "address" },
+  { token: "speling", replacement: "spelling" },
+  { token: "corection", replacement: "correction" },
+  { token: "seperate", replacement: "separate" },
+  { token: "definitly", replacement: "definitely" },
+  { token: "accomodate", replacement: "accommodate" },
+  { token: "occured", replacement: "occurred" },
+  { token: "untill", replacement: "until" },
+  { token: "tommorow", replacement: "tomorrow" },
+  { token: "goverment", replacement: "government" },
+  { token: "enviroment", replacement: "environment" },
+  { token: "arguement", replacement: "argument" },
+  { token: "calender", replacement: "calendar" },
+  { token: "embarass", replacement: "embarrass" },
+  { token: "publically", replacement: "publicly" },
+  { token: "neccessary", replacement: "necessary" },
+];
+
+const suggestionsOnlyMisspellings = [
+  { token: "reciept", suggestions: ["receipt"] },
+  { token: "dont", suggestions: ["don't"] },
+  { token: "it;s", suggestions: ["it's"] },
+  { token: "adresss", suggestions: ["address", "addresses"] },
 ];
 
 const validWords = ["form", "lead", "to", "its", "there", "their"];
@@ -46,6 +53,7 @@ const protectedTerms = [
   "CVE-2024-1234",
   "nmap",
   "sqlmap",
+  "kubectl",
 ];
 
 describe("spell quality baseline", () => {
@@ -77,25 +85,40 @@ describe("spell quality baseline", () => {
       replacement,
       confidence: 0.99,
       mark: "blue_applied_correction",
-      reasonCodes: ["COMMON_TYPO_MATCH"],
+      reasonCodes: ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED"],
     });
   });
 
-  it("records current broad misspelling weakness without widening autocorrect", async () => {
+  it("records prompt 103 broad misspelling autocorrect coverage", async () => {
     const core = await createTypaiCore();
 
-    for (const { token, suggestions } of broadCommonMisspellings) {
+    for (const { token, replacement } of broadCommonMisspellings) {
       const decision = core.checkCompletedToken({ token });
 
-      expect(decision.action, `${token} should stay suggestion-only today`).toBe("mark_unresolved");
+      expect(decision.action, `${token} should pass the explicit common-typo gate`).toBe(
+        "auto_correct",
+      );
 
-      if (decision.action !== "mark_unresolved") {
-        continue;
+      if (decision.action === "auto_correct") {
+        expect(decision.replacement).toBe(replacement);
+        expect(decision.reasonCodes).toContain("COMMON_TYPO_TABLE_EXPANDED");
+        expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_PASSED");
       }
+    }
+  });
 
-      expect(decision.mark).toBe("red_spelling_issue");
-      expect(decision.suggestions).toEqual(suggestions);
-      expect(decision.reasonCodes).toContain("UNKNOWN_NON_WORD");
+  it("records prompt 103 suggestions-only cases without widening autocorrect", async () => {
+    const core = await createTypaiCore();
+
+    for (const { token, suggestions } of suggestionsOnlyMisspellings) {
+      const decision = core.checkCompletedToken({ token });
+
+      expect(decision.action, `${token} should stay suggestion-only`).toBe("mark_unresolved");
+
+      if (decision.action === "mark_unresolved") {
+        expect(decision.suggestions).toEqual(expect.arrayContaining(suggestions));
+        expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
+      }
     }
   });
 
@@ -104,7 +127,7 @@ describe("spell quality baseline", () => {
 
     expect(core.checkCompletedToken({ token })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["KNOWN_VALID_WORD"],
+      reasonCodes: ["KNOWN_VALID_WORD", "VALID_WORD_BLOCK"],
     });
   });
 
@@ -117,30 +140,28 @@ describe("spell quality baseline", () => {
     expect(decision.action, `${token} must not be autocorrected`).toBe("do_nothing");
   });
 
-  it("records kubectl as a current protected-term gap", async () => {
+  it("records kubectl as protected after prompt 103", async () => {
     const core = await createTypaiCore();
     const decision = core.checkCompletedToken({ token: "kubectl" });
 
-    expect(classifyToken("kubectl").protected).toBe(false);
+    expect(classifyToken("kubectl").protected).toBe(true);
     expect(decision).toEqual({
-      action: "mark_unresolved",
-      original: "kubectl",
-      suggestions: [],
-      mark: "red_spelling_issue",
-      reasonCodes: ["UNKNOWN_NON_WORD", "NO_SUGGESTIONS"],
+      action: "do_nothing",
+      reasonCodes: ["PROTECTED_LOOKING_TOKEN", "PROTECTED_TOKEN_BLOCK"],
     });
   });
 
-  it("emits a compact baseline report for prompt 99", async () => {
+  it("emits a compact baseline report for prompt 103", async () => {
     const core = await createTypaiCore();
     const report = buildBaselineReport(core);
 
     expect(report.supportedTypoAutocorrects).toBe(5);
-    expect(report.broadMisspellingAutocorrects).toBe(0);
-    expect(report.broadMisspellingSuggestions).toBe(3);
+    expect(report.broadMisspellingAutocorrects).toBe(16);
+    expect(report.suggestionsOnlyAutocorrects).toBe(0);
+    expect(report.suggestionsOnlySuggestions).toBe(4);
     expect(report.validWordAutocorrections).toBe(0);
     expect(report.protectedTermAutocorrections).toBe(0);
-    expect(report.currentProtectedTermGaps).toEqual(["kubectl"]);
+    expect(report.currentProtectedTermGaps).toEqual([]);
 
     console.info("[typai spell-quality-baseline]", JSON.stringify(report));
   });
@@ -150,9 +171,10 @@ function buildBaselineReport(core: TypaiCore) {
   const broadDecisions = broadCommonMisspellings.map(({ token }) =>
     core.checkCompletedToken({ token }),
   );
-  const protectedTermDecisions = [...protectedTerms, "kubectl"].map((token) =>
+  const suggestionsOnlyDecisions = suggestionsOnlyMisspellings.map(({ token }) =>
     core.checkCompletedToken({ token }),
   );
+  const protectedTermDecisions = protectedTerms.map((token) => core.checkCompletedToken({ token }));
 
   return {
     supportedTypoAutocorrects: supportedTypos.filter(
@@ -161,7 +183,10 @@ function buildBaselineReport(core: TypaiCore) {
     broadMisspellingAutocorrects: broadDecisions.filter(
       (decision) => decision.action === "auto_correct",
     ).length,
-    broadMisspellingSuggestions: broadDecisions.filter(
+    suggestionsOnlyAutocorrects: suggestionsOnlyDecisions.filter(
+      (decision) => decision.action === "auto_correct",
+    ).length,
+    suggestionsOnlySuggestions: suggestionsOnlyDecisions.filter(
       (decision) => decision.action === "mark_unresolved" && decision.suggestions.length > 0,
     ).length,
     validWordAutocorrections: validWords.filter(

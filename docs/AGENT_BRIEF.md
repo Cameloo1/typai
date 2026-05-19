@@ -14,8 +14,9 @@ demo quality.
 
 Package readiness is not the same as product intelligence. The public beta
 package rails, provider proxy boundaries, and cross-surface completion
-contracts are in place, but the local spell engine is still narrow until the
-production dictionary/frequency asset, candidate generation, ranking, and
+contracts are in place. The local spell engine now has delete-index
+suggestions and an explicit common-typo autocorrect gate, but it is still not
+production dictionary coverage until an approved dictionary/frequency asset and
 quality gates land.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
@@ -147,8 +148,8 @@ correction settles.
 - No storage reads, network calls, server calls, local-service calls, or model
   calls inside the deterministic correction hot path.
 - Valid words are never autocorrected.
-- Edit-distance/delete-index candidates are suggestions only and are never
-  autocorrected.
+- Edit-distance/delete-index candidates are suggestions only unless the token
+  is explicitly listed in the audited common-typo table.
 - Protected spans are hard write barriers.
 - Stale writes are blocked with current token/range text and editor-version
   checks.
@@ -165,7 +166,7 @@ correction settles.
 
 ## Current Non-Goals
 
-- No delete-index autocorrect.
+- No delete-index-only autocorrect.
 - No keyboard adjacency.
 - No edit-distance autocorrect.
 - No valid-word autocorrect.

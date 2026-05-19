@@ -33,7 +33,60 @@ describe("createTypaiCore", () => {
       replacement,
       confidence: 0.99,
       mark: "blue_applied_correction",
-      reasonCodes: ["COMMON_TYPO_MATCH"],
+      reasonCodes: ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED"],
+    });
+  });
+
+  it.each([
+    ["adress", "address"],
+    ["speling", "spelling"],
+    ["corection", "correction"],
+    ["seperate", "separate"],
+    ["definitly", "definitely"],
+    ["accomodate", "accommodate"],
+    ["occured", "occurred"],
+    ["untill", "until"],
+    ["tommorow", "tomorrow"],
+    ["goverment", "government"],
+    ["enviroment", "environment"],
+    ["arguement", "argument"],
+    ["calender", "calendar"],
+    ["embarass", "embarrass"],
+    ["publically", "publicly"],
+    ["neccessary", "necessary"],
+  ])("auto-corrects expanded common typo %s", async (token, replacement) => {
+    const core = await createTypaiCore();
+
+    expect(core.checkCompletedToken({ token })).toEqual({
+      action: "auto_correct",
+      original: token,
+      replacement,
+      confidence: 0.99,
+      mark: "blue_applied_correction",
+      reasonCodes: ["COMMON_TYPO_MATCH", "COMMON_TYPO_TABLE_EXPANDED", "AUTOCORRECT_GATE_PASSED"],
+    });
+  });
+
+  it.each([
+    ["teh", "the", ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED"]],
+    ["Teh", "The", ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED", "CASE_PRESERVED"]],
+    ["TEH", "THE", ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED", "CASE_PRESERVED"]],
+    ["teh,", "the,", ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED", "PUNCTUATION_PRESERVED"]],
+    [
+      "Teh,",
+      "The,",
+      ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED", "CASE_PRESERVED", "PUNCTUATION_PRESERVED"],
+    ],
+  ])("preserves casing and punctuation for %s", async (token, replacement, reasonCodes) => {
+    const core = await createTypaiCore();
+
+    expect(core.checkCompletedToken({ token })).toEqual({
+      action: "auto_correct",
+      original: token,
+      replacement,
+      confidence: 0.99,
+      mark: "blue_applied_correction",
+      reasonCodes,
     });
   });
 
@@ -42,7 +95,16 @@ describe("createTypaiCore", () => {
 
     expect(core.checkCompletedToken({ token })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["KNOWN_VALID_WORD"],
+      reasonCodes: ["KNOWN_VALID_WORD", "VALID_WORD_BLOCK"],
+    });
+  });
+
+  it("treats simple valid contractions as words", async () => {
+    const core = await createTypaiCore();
+
+    expect(core.checkCompletedToken({ token: "it's" })).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["KNOWN_VALID_WORD", "VALID_WORD_BLOCK"],
     });
   });
 
@@ -54,15 +116,13 @@ describe("createTypaiCore", () => {
       original: "zzzzword",
       suggestions: [],
       mark: "red_spelling_issue",
-      reasonCodes: ["UNKNOWN_NON_WORD", "NO_SUGGESTIONS"],
+      reasonCodes: ["UNKNOWN_NON_WORD", "NO_SUGGESTIONS", "AUTOCORRECT_GATE_BLOCKED"],
     });
   });
 
   it.each([
     ["reciept", "receipt"],
-    ["adress", "address"],
-    ["corection", "correction"],
-    ["speling", "spelling"],
+    ["addres", "address"],
   ])("marks %s unresolved with C++ suggestion %s", async (token, suggestion) => {
     const core = await createTypaiCore();
     const decision = core.checkCompletedToken({ token });
@@ -78,6 +138,38 @@ describe("createTypaiCore", () => {
     expect(decision.suggestions).toContain(suggestion);
     expect(decision.reasonCodes).toContain("UNKNOWN_NON_WORD");
     expect(decision.reasonCodes).toContain("EDIT_DISTANCE_SUGGESTIONS");
+    expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
+  });
+
+  it.each([
+    ["dont", "don't"],
+    ["it;s", "it's"],
+  ])("suggests contraction repair for %s without autocorrecting", async (token, suggestion) => {
+    const core = await createTypaiCore();
+    const decision = core.checkCompletedToken({ token });
+    const result = core.suggestToken({ token });
+
+    expect(decision.action).toBe("mark_unresolved");
+
+    if (decision.action === "mark_unresolved") {
+      expect(decision.suggestions).toContain(suggestion);
+      expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
+    }
+
+    expect(result.suggestions).toContain(suggestion);
+    expect(result.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
+  });
+
+  it("keeps plural ambiguity suggestion-only", async () => {
+    const core = await createTypaiCore();
+    const decision = core.checkCompletedToken({ token: "adresss" });
+
+    expect(decision.action).toBe("mark_unresolved");
+
+    if (decision.action === "mark_unresolved") {
+      expect(decision.suggestions).toEqual(["address", "addresses"]);
+      expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
+    }
   });
 
   it("exposes deterministic direct C++ suggestions through Wasm", async () => {
@@ -109,8 +201,8 @@ describe("createTypaiCore", () => {
     expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(core.getLoadedDictionaryWordCount());
 
     for (const [token, expected] of [
-      ["seperate", "separate"],
-      ["tommorow", "tomorrow"],
+      ["separat", "separate"],
+      ["tomorow", "tomorrow"],
     ] as const) {
       const result = core.suggestToken({ token, maxSuggestions: 4 });
       const decision = core.checkCompletedToken({ token });
@@ -138,9 +230,13 @@ describe("createTypaiCore", () => {
 
     expect(core.getLoadedDictionaryWordCount()).toBe(blob.wordCount);
 
+    expect(core.checkCompletedToken({ token: "because" })).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
+    });
     expect(core.checkCompletedToken({ token: "nmap" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH"],
+      reasonCodes: ["PROTECTED_LOOKING_TOKEN", "PROTECTED_TOKEN_BLOCK"],
     });
   });
 
@@ -158,7 +254,7 @@ describe("createTypaiCore", () => {
     expect(core.getLoadedDictionaryWordCount()).toBe(1);
     expect(core.checkCompletedToken({ token: "alphaword" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH"],
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
     });
   });
 
@@ -190,11 +286,11 @@ describe("createTypaiCore", () => {
       replacement: "the",
       confidence: 0.99,
       mark: "blue_applied_correction",
-      reasonCodes: ["COMMON_TYPO_MATCH"],
+      reasonCodes: ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED"],
     });
     expect(core.checkCompletedToken({ token: "form" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH"],
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
     });
   });
 
@@ -253,7 +349,7 @@ describe("createTypaiCore", () => {
 
   it.each([
     ["reciept", "receipt"],
-    ["adress", "address"],
+    ["addres", "address"],
   ])("keeps loaded dictionary edit-distance candidate %s suggestions-only", async (token, expected) => {
     const core = await createTypaiCore({
       dictionary: {
@@ -285,7 +381,7 @@ describe("createTypaiCore", () => {
 
   it("keeps edit-distance suggestions out of autocorrection", async () => {
     const core = await createTypaiCore();
-    const decision = core.checkCompletedToken({ token: "adress" });
+    const decision = core.checkCompletedToken({ token: "reciept" });
 
     expect(decision.action).toBe("mark_unresolved");
   });
@@ -299,15 +395,15 @@ describe("createTypaiCore", () => {
 
     expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(core.getLoadedDictionaryWordCount());
     expect(core.getDeleteIndexMemoryEstimateBytes()).toBeGreaterThan(0);
-    expect(core.checkCompletedToken({ token: "speling" }).action).toBe("mark_unresolved");
+    expect(core.checkCompletedToken({ token: "reciept" }).action).toBe("mark_unresolved");
     expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
     expect(core.checkCompletedToken({ token: "form" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH"],
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
     });
     expect(core.checkCompletedToken({ token: "user@example.com" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["PROTECTED_LOOKING_TOKEN"],
+      reasonCodes: ["PROTECTED_LOOKING_TOKEN", "PROTECTED_TOKEN_BLOCK"],
     });
   });
 
@@ -316,7 +412,7 @@ describe("createTypaiCore", () => {
 
     expect(core.checkCompletedToken({ token: "user@example.com" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["PROTECTED_LOOKING_TOKEN"],
+      reasonCodes: ["PROTECTED_LOOKING_TOKEN", "PROTECTED_TOKEN_BLOCK"],
     });
   });
 
@@ -338,7 +434,7 @@ describe("createTypaiCore", () => {
       replacement: "and",
       confidence: 0.99,
       mark: "blue_applied_correction",
-      reasonCodes: ["COMMON_TYPO_MATCH"],
+      reasonCodes: ["COMMON_TYPO_MATCH", "AUTOCORRECT_GATE_PASSED"],
     });
   });
 
@@ -378,7 +474,7 @@ describe("createTypaiCore", () => {
 
     expect(core.checkCompletedToken({ token: "form" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["KNOWN_VALID_WORD"],
+      reasonCodes: ["KNOWN_VALID_WORD", "VALID_WORD_BLOCK"],
     });
   });
 
@@ -436,7 +532,7 @@ describe("createTypaiCore", () => {
       replacement: "the",
       confidence: 1,
       mark: "blue_applied_correction",
-      reasonCodes: ["ALWAYS_CORRECT_RULE"],
+      reasonCodes: ["ALWAYS_CORRECT_RULE", "AUTOCORRECT_GATE_PASSED"],
     });
   });
 
@@ -451,7 +547,7 @@ describe("createTypaiCore", () => {
       replacement: "on my way",
       confidence: 1,
       mark: "blue_applied_correction",
-      reasonCodes: ["ALWAYS_CORRECT_RULE"],
+      reasonCodes: ["ALWAYS_CORRECT_RULE", "AUTOCORRECT_GATE_PASSED"],
     });
   });
 
@@ -472,6 +568,33 @@ describe("createTypaiCore", () => {
     expect(decision.mark).toBe("red_spelling_issue");
     expect(decision.reasonCodes).toContain("COMMON_TYPO_MATCH");
     expect(decision.reasonCodes).toContain("NEVER_CORRECT_RULE");
+  });
+
+  it("never-correct rules suppress expanded common typo autocorrect", async () => {
+    const core = await createTypaiCore({ storage: createMemoryStorage() });
+
+    await core.setNeverCorrect("adress", "address");
+    const decision = core.checkCompletedToken({ token: "adress" });
+
+    expect(decision.action).toBe("mark_unresolved");
+
+    if (decision.action === "mark_unresolved") {
+      expect(decision.suggestions[0]).toBe("address");
+      expect(decision.reasonCodes).toContain("COMMON_TYPO_TABLE_EXPANDED");
+      expect(decision.reasonCodes).toContain("NEVER_CORRECT_RULE");
+      expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
+    }
+  });
+
+  it("personal dictionary blocks expanded common typo autocorrect", async () => {
+    const core = await createTypaiCore({ storage: createMemoryStorage() });
+
+    await core.addToPersonalDictionary("adress");
+
+    expect(core.checkCompletedToken({ token: "adress" })).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["PERSONAL_DICTIONARY_MATCH"],
+    });
   });
 
   it("correction rule lookup and clear are synchronous after async writes", async () => {
@@ -589,7 +712,7 @@ describe("createTypaiCore", () => {
       replacement: "on my way",
       confidence: 1,
       mark: "blue_applied_correction",
-      reasonCodes: ["ALWAYS_CORRECT_RULE"],
+      reasonCodes: ["ALWAYS_CORRECT_RULE", "AUTOCORRECT_GATE_PASSED"],
     });
 
     const neverDecision = secondCore.checkCompletedToken({ token: "teh" });

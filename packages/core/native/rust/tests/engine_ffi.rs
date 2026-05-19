@@ -12,6 +12,13 @@ const TYPAI_REASON_DICTIONARY_UNSUPPORTED_VERSION: u32 = 1 << 10;
 const TYPAI_REASON_DICTIONARY_BOUNDS_ERROR: u32 = 1 << 11;
 const TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH: u32 = 1 << 14;
 const TYPAI_REASON_DELETE_INDEX_SUGGESTIONS: u32 = 1 << 15;
+const TYPAI_REASON_COMMON_TYPO_TABLE_EXPANDED: u32 = 1 << 16;
+const TYPAI_REASON_DELETE_INDEX_CANDIDATE: u32 = 1 << 19;
+const TYPAI_REASON_FREQUENCY_RANKED: u32 = 1 << 20;
+const TYPAI_REASON_AUTOCORRECT_GATE_PASSED: u32 = 1 << 21;
+const TYPAI_REASON_AUTOCORRECT_GATE_BLOCKED: u32 = 1 << 22;
+const TYPAI_REASON_VALID_WORD_BLOCK: u32 = 1 << 23;
+const TYPAI_REASON_PROTECTED_TOKEN_BLOCK: u32 = 1 << 24;
 const TYPAI_DICTIONARY_LOAD_OK: i32 = 1;
 const TYPAI_DICTIONARY_LOAD_INVALID_MAGIC: i32 = -2;
 const TYPAI_DICTIONARY_LOAD_UNSUPPORTED_VERSION: i32 = -3;
@@ -262,6 +269,50 @@ fn common_typos_are_deterministic_auto_corrections() {
             0,
             "{token}",
         );
+        assert_ne!(
+            decision.reason_flags & TYPAI_REASON_AUTOCORRECT_GATE_PASSED,
+            0,
+            "{token}",
+        );
+    }
+}
+
+#[test]
+fn expanded_common_typos_are_explicit_auto_corrections() {
+    clear_loaded_dictionary();
+
+    for (token, replacement) in [
+        ("adress", "address"),
+        ("speling", "spelling"),
+        ("corection", "correction"),
+        ("seperate", "separate"),
+        ("definitly", "definitely"),
+        ("accomodate", "accommodate"),
+        ("occured", "occurred"),
+        ("untill", "until"),
+        ("tommorow", "tomorrow"),
+        ("goverment", "government"),
+        ("enviroment", "environment"),
+        ("arguement", "argument"),
+        ("calender", "calendar"),
+        ("embarass", "embarrass"),
+        ("publically", "publicly"),
+        ("neccessary", "necessary"),
+    ] {
+        let decision = check_token(token);
+
+        assert_eq!(decision.code, 1, "{token}");
+        assert_eq!(decision.replacement, replacement, "{token}");
+        assert_ne!(
+            decision.reason_flags & TYPAI_REASON_COMMON_TYPO_TABLE_EXPANDED,
+            0,
+            "{token}",
+        );
+        assert_ne!(
+            decision.reason_flags & TYPAI_REASON_AUTOCORRECT_GATE_PASSED,
+            0,
+            "{token}",
+        );
     }
 }
 
@@ -280,6 +331,11 @@ fn known_valid_words_are_never_auto_corrected() {
             0,
             "{token}",
         );
+        assert_ne!(
+            decision.reason_flags & TYPAI_REASON_VALID_WORD_BLOCK,
+            0,
+            "{token}",
+        );
     }
 }
 
@@ -293,6 +349,10 @@ fn unknown_lowercase_alphabetic_tokens_are_marked_unresolved() {
     assert_eq!(decision.replacement, "");
     assert_eq!(decision.confidence, 0.0);
     assert_ne!(decision.reason_flags & TYPAI_REASON_UNKNOWN_NON_WORD, 0);
+    assert_ne!(
+        decision.reason_flags & TYPAI_REASON_AUTOCORRECT_GATE_BLOCKED,
+        0,
+    );
     assert_ne!(decision.reason_flags & TYPAI_REASON_NO_SUGGESTIONS, 0);
 }
 
@@ -319,6 +379,11 @@ fn protected_looking_tokens_are_ignored() {
         assert_eq!(decision.confidence, 0.0, "{token}");
         assert_ne!(
             decision.reason_flags & TYPAI_REASON_PROTECTED_LOOKING_TOKEN,
+            0,
+            "{token}",
+        );
+        assert_ne!(
+            decision.reason_flags & TYPAI_REASON_PROTECTED_TOKEN_BLOCK,
             0,
             "{token}",
         );
@@ -362,6 +427,16 @@ fn edit_distance_suggestions_include_seed_candidates() {
             0,
             "{token}",
         );
+        assert_ne!(
+            result.reason_flags & TYPAI_REASON_DELETE_INDEX_CANDIDATE,
+            0,
+            "{token}",
+        );
+        assert_ne!(
+            result.reason_flags & TYPAI_REASON_FREQUENCY_RANKED,
+            0,
+            "{token}",
+        );
     }
 }
 
@@ -380,7 +455,7 @@ fn distant_unknown_tokens_can_return_no_suggestions() {
 fn edit_distance_candidates_are_suggestions_only() {
     clear_loaded_dictionary();
 
-    for token in ["reciept", "adress", "corection", "speling"] {
+    for token in ["reciept", "addres", "separat", "tomorow"] {
         let decision = check_token(token);
 
         assert_eq!(decision.code, 2, "{token}");
@@ -398,6 +473,11 @@ fn edit_distance_candidates_are_suggestions_only() {
         );
         assert_ne!(
             decision.reason_flags & TYPAI_REASON_DELETE_INDEX_SUGGESTIONS,
+            0,
+            "{token}",
+        );
+        assert_ne!(
+            decision.reason_flags & TYPAI_REASON_AUTOCORRECT_GATE_BLOCKED,
             0,
             "{token}",
         );
@@ -533,11 +613,11 @@ fn delete_index_suggests_host_dictionary_words_without_autocorrecting() {
     assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
 
     for (token, expected) in [
-        ("adress", "address"),
-        ("speling", "spelling"),
-        ("corection", "correction"),
-        ("seperate", "separate"),
-        ("tommorow", "tomorrow"),
+        ("addres", "address"),
+        ("spelng", "spelling"),
+        ("corecton", "correction"),
+        ("separat", "separate"),
+        ("tomorow", "tomorrow"),
     ] {
         let suggestions = suggest_token(token);
         let decision = check_token(token);

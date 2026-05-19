@@ -24,8 +24,10 @@ Prompt 101 also adds an ignored scaled mock generator for loader stress tests.
   expose ownership across FFI.
 - Do not use raw `new`, `malloc`, or `free` in the loader or delete-index FFI
   path.
-- Frequency scores rank suggestions only in this phase.
-- Frequency scores must not expand autocorrect triggers in this phase.
+- Frequency scores rank suggestions only.
+- Frequency scores must not expand autocorrect triggers. Prompt 103
+  autocorrection can only come from the audited common-typo table or user
+  always-correct rules.
 
 ## Encoding
 
@@ -84,8 +86,10 @@ Current delete-index limits:
 - output still uses caller-owned suggestion and score buffers
 - exposed stats are primitive counts and byte estimates only
 
-The delete index only improves suggestion recall and latency. It is not an
-autocorrect source.
+The delete index improves suggestion recall and latency. It is not an
+autocorrect source by itself. Prompt 103 can autocorrect a misspelling that is
+also discoverable through the delete index only when that typo is explicitly
+listed in `docs/common-typo-table.md`.
 
 ## Suggestion Ranking And Scores
 
@@ -94,7 +98,7 @@ word IDs, verifies actual bounded Levenshtein distance, and ranks suggestions
 by:
 
 1. Lower edit distance.
-2. Higher loaded frequency.
+2. Higher loaded or built-in frequency.
 3. Alphabetical order for deterministic ties.
 
 Returned suggestion scores are deterministic ranking signals, not autocorrect
@@ -107,7 +111,17 @@ score = ((max_edit_distance + 1 - edit_distance) * 2)
 
 The distance component preserves edit-distance priority. The capped frequency
 component ranks same-distance candidates. Scores must not be used to
-auto-correct delete-index candidates during Public Alpha Readiness.
+auto-correct delete-index candidates.
+
+Prompt 103 reason codes distinguish ranking and gates:
+
+- `DELETE_INDEX_CANDIDATE` means a suggestion came through the delete-index
+  candidate path.
+- `FREQUENCY_RANKED` means frequency participated in suggestion ordering.
+- `AUTOCORRECT_GATE_BLOCKED` means a non-word stayed a red unresolved spelling
+  issue.
+- `AUTOCORRECT_GATE_PASSED` means an explicit common-typo or user rule allowed
+  a blue correction.
 
 ## Validation
 

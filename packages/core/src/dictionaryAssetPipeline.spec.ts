@@ -82,11 +82,11 @@ describe("blocked-branch dictionary asset pipeline", () => {
     expect(core.getLoadedDictionaryWordCount()).toBe(blob.wordCount);
     expect(core.checkCompletedToken({ token: "because" })).toEqual({
       action: "do_nothing",
-      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH"],
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
     });
     expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
 
-    const decision = core.checkCompletedToken({ token: "adress" });
+    const decision = core.checkCompletedToken({ token: "addres" });
 
     expect(decision.action).toBe("mark_unresolved");
 

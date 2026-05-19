@@ -24,6 +24,9 @@ const tokens = [
   "speling",
   "seperate",
   "tommorow",
+  "definitly",
+  "dont",
+  "adresss",
   "form",
   "user@example.com",
   "zzzzword",
@@ -166,6 +169,9 @@ async function runSuggestScenario(name, core) {
     "speling",
     "seperate",
     "tommorow",
+    "addres",
+    "dont",
+    "adresss",
     "zzzzword",
   ];
   let tokenIndex = 0;

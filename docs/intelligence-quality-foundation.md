@@ -45,10 +45,13 @@ The current local spell intelligence is intentionally thin:
 - an ignored Prompt 101 scaled mock dictionary generator for loader stress
   testing only
 - Prompt 102 C++ delete-index candidate generation for suggestions
+- Prompt 103 expanded explicit common typo table with conservative gates
+- Prompt 103 case and trailing-punctuation preservation for approved
+  corrections
+- Prompt 103 suggestions-only contraction and plural-ambiguity handling
 - no production dictionary or frequency asset
 - no product-scale dictionary behind the delete index by default
-- no expanded common typo map
-- no broad casing, plural, contraction, or morphology handling
+- no broad morphology or context-aware correction
 - no product-scale false-positive review corpus
 
 That means Typai can prove the correction pipeline and safety boundaries, but
@@ -109,7 +112,8 @@ No model/local inference is included in this phase.
 - Provider examples remain server-side and environment-gated for real provider
   calls.
 - Edit-distance and SymSpell candidates do not become autocorrect
-  automatically.
+  automatically. Prompt 103 only promotes entries that are explicitly listed in
+  `docs/common-typo-table.md`.
 - Valid words are never autocorrected.
 - Protected tokens are never autocorrected.
 - Blue still means Typai changed text.
@@ -145,10 +149,11 @@ Future quality gates should target:
    mock plus host-provided asset pipeline without production ingestion.
 4. Prompt 102: add scalable C++ candidate generation using a deterministic
    delete-index lookup for suggestions only.
-5. Prompt 103: add ranking, conservative confidence gates, and expanded common
-   typo coverage.
-6. Prompt 104: add casing preservation, contraction handling, and plural
-   handling without valid-word autocorrect.
+5. Prompt 103: add ranking, conservative confidence gates, expanded common
+   typo coverage, case preservation, contraction suggestions, and plural
+   ambiguity handling.
+6. Prompt 104: broaden cross-surface quality evidence for the Prompt 103 spell
+   intelligence behavior without adding context or model-based correction.
 7. Prompt 105: add cross-surface spell quality tests for contenteditable,
    textarea, React, and CodeMirror.
 8. Prompt 106: add a real proxy completion demo mode through secure server-side
@@ -185,6 +190,8 @@ Future phase acceptance:
   explicit autocorrect gate is approved
 - broad common misspellings receive suggestions without opening autocorrect
   beyond the approved common-typo/high-confidence gate
+- expanded common typo autocorrects preserve casing and trailing punctuation
+  while keeping protected-token and valid-word writes at zero
 - valid-word and protected-token write counts remain zero
 - cross-surface correction behavior remains consistent
 - real-provider demo path stays server-side and manually gated

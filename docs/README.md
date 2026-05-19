@@ -13,6 +13,7 @@ provider credentials stay on the embedder's server.
 - [Getting started](./getting-started.md)
 - [Installation](./installation.md)
 - [Examples](./examples.md)
+- [Real-provider demo](./real-provider-demo.md)
 - [Troubleshooting](./troubleshooting.md)
 
 ## Concepts

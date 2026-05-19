@@ -5,6 +5,10 @@ Status date: 2026-05-19.
 Status: complete. The V4.2 hardening audit and checkpoint are recorded in
 `docs/v4-2-provider-public-beta-readiness-complete.md`.
 
+Prompt 105 builds on the completed V4.2 rails by wiring the full local demo to
+an optional proxy completion mode. Mock mode remains default, while manual
+real-provider checks still require the server-side proxy and explicit env gates.
+
 V4.2 prepares Typai for public beta adoption without expanding product scope
 into new intelligence features. V4.1 proved mocked completion across existing
 editor surfaces; V4.2 focuses on provider security, package clarity, install
@@ -175,6 +179,9 @@ V4.2 should make public beta readiness inspectable:
 - CI release-readiness workflow uses no real provider calls and requires no
   provider secrets.
 - Manual real-provider checks are opt-in, env-gated, and excluded from CI.
+- The full demo may expose a proxy endpoint URL for manual local testing, but
+  provider credentials stay server-side and automated tests keep using mocked
+  proxy responses.
 
 ## Compressed Prompt Sequence
 

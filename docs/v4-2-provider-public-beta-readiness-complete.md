@@ -16,6 +16,8 @@ without adding new editor surfaces or new intelligence features.
   and Cloudflare Worker-shaped server boundaries.
 - Server-side OpenAI Responses example path, disabled by default and env-gated.
 - Manual real-provider smoke script, disabled by default and excluded from CI.
+- Prompt 105 local demo proxy mode, disabled by default and routed through the
+  secure provider proxy boundary.
 - Focused consumer install examples.
 - Public-beta documentation structure.
 - Release dry-run tooling, package metadata audit, and package secret scan.
@@ -67,8 +69,13 @@ The OpenAI Responses path is server-side only. It lives in example-only proxy
 utilities and is enabled only when `PROVIDER_MODE=openai` and `OPENAI_API_KEY`
 are present in the server environment.
 
-Automated tests mock the Responses fetch path. CI, demos, E2E, browser
-benchmarks, package smoke, and public beta smoke use mock providers only.
+Automated tests mock the Responses fetch path. CI, E2E, browser benchmarks,
+package smoke, and public beta smoke use mock providers only. Demos default to
+mock mode.
+
+After Prompt 105, the full demo's V4 Remote Completion tab can be switched from
+mock mode to proxy mode for a local manual run. The browser still calls only the
+configured proxy endpoint; OpenAI mode remains server-side and env-gated.
 
 ## Security Model
 

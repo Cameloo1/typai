@@ -51,6 +51,8 @@ The current local spell intelligence is intentionally thin:
 - Prompt 103 suggestions-only contraction and plural-ambiguity handling
 - Prompt 104 cross-surface E2E parity coverage for the Prompt 103 spelling
   behavior
+- Prompt 105 optional local real-provider completion demo path through the
+  secure proxy boundary
 - no production dictionary or frequency asset
 - no product-scale dictionary behind the delete index by default
 - no broad morphology or context-aware correction

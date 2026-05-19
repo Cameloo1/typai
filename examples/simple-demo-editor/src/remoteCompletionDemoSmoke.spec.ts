@@ -13,22 +13,30 @@ describe("remote completion demo scaffold", () => {
     expect(packageJson).toContain('"@typai/completion-remote"');
   });
 
-  it("uses a mock provider with contenteditable controls and metrics", () => {
+  it("uses mock-by-default completion with optional proxy controls and metrics", () => {
     expect(demoSource).toContain("createMockCompletionProvider");
+    expect(demoSource).toContain("createEndpointCompletionProvider");
     expect(demoSource).toContain("createContenteditableCompletionController");
 
     for (const selector of [
       "remote-completion-editor",
       "remote-enabled",
+      "remote-provider-mode",
+      "remote-proxy-endpoint",
       "remote-completion-text",
       "remote-latency",
       "remote-status",
+      "remote-active-provider-mode",
+      "remote-active-endpoint",
       "remote-request-count",
       "remote-ghost-count",
       "remote-accept-count",
       "remote-dismiss-count",
       "remote-revert-count",
       "remote-p95-ghost-latency",
+      "remote-last-latency",
+      "remote-last-model",
+      "remote-last-ghost",
     ]) {
       expect(demoSource).toContain(selector);
     }

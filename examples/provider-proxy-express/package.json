@@ -7,6 +7,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsup --config tsup.config.ts",
+    "dev": "node ../../scripts/dev-completion-proxy.mjs",
     "test": "vitest run",
     "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true});\""
   },

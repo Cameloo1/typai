@@ -19,6 +19,8 @@ Readiness.
 - completion is optional through `@typai/completion-remote`
 - provider examples keep credentials server-side
 - automated tests and demos use mock providers
+- the full demo has an optional local proxy completion mode for manual
+  real-provider checks
 - no direct browser-to-provider path is supported
 - no production dictionary asset, Codex adapter, next-edit logging, or local
   model inference is included
@@ -52,6 +54,7 @@ will be added after a real npm publish.
 - [Getting started](./docs/getting-started.md)
 - [Installation](./docs/installation.md)
 - [Examples](./docs/examples.md)
+- [Real-provider demo](./docs/real-provider-demo.md)
 - [Security](./docs/security.md)
 - [Privacy](./docs/privacy.md)
 - [Troubleshooting](./docs/troubleshooting.md)

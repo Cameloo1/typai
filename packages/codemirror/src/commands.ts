@@ -8,14 +8,25 @@ import {
 import {
   addTypaiCodeMirrorMarkEffect,
   addTypaiCodeMirrorTransactionEffect,
+  clearTypaiCodeMirrorGhostTextEffect,
   clearTypaiCodeMirrorMarksEffect,
+  getTypaiCodeMirrorCompletionTransactions,
+  getTypaiCodeMirrorGhostText,
   getTypaiCodeMirrorMarks,
   getTypaiCodeMirrorOptions,
   getTypaiCodeMirrorTransactions,
   removeTypaiCodeMirrorMarkEffect,
+  setTypaiCodeMirrorGhostTextEffect,
   setTypaiCodeMirrorRuntimeSettingsEffect,
 } from "./state";
-import type { CodeMirrorTypaiCorrectionTransaction, CodeMirrorTypaiMark } from "./types";
+import type {
+  CodeMirrorCompletionGhostMetadata,
+  CodeMirrorCompletionSnapshot,
+  CodeMirrorCompletionTransaction,
+  CodeMirrorGhostTextClearReason,
+  CodeMirrorTypaiCorrectionTransaction,
+  CodeMirrorTypaiMark,
+} from "./types";
 
 const activePopovers = new WeakMap<EditorView, TypaiPopoverHandle>();
 
@@ -35,6 +46,89 @@ export function getTypaiCodeMirrorViewTransactions(
   view: EditorView,
 ): CodeMirrorTypaiCorrectionTransaction[] {
   return getTypaiCodeMirrorTransactions(view.state);
+}
+
+export function getTypaiCodeMirrorViewCompletionTransactions(
+  view: EditorView,
+): CodeMirrorCompletionTransaction[] {
+  return getTypaiCodeMirrorCompletionTransactions(view.state);
+}
+
+export function renderTypaiCodeMirrorGhostText(
+  view: EditorView,
+  text: string,
+  snapshot?: CodeMirrorCompletionSnapshot,
+  metadata?: CodeMirrorCompletionGhostMetadata,
+): boolean {
+  const normalizedText = text.length === 0 ? "" : text;
+
+  if (normalizedText.length === 0) {
+    clearTypaiCodeMirrorGhostText(view);
+    return false;
+  }
+
+  const ghostSnapshot = snapshot ?? createCurrentCompletionSnapshot(view);
+
+  if (!completionSnapshotMatchesEditor(view, ghostSnapshot)) {
+    clearTypaiCodeMirrorGhostText(view);
+    return false;
+  }
+
+  view.dispatch({
+    effects: setTypaiCodeMirrorGhostTextEffect.of({
+      text: normalizedText,
+      from: ghostSnapshot.selection.end,
+      snapshot: ghostSnapshot,
+      metadata,
+    }),
+  });
+
+  return true;
+}
+
+export function clearTypaiCodeMirrorGhostText(
+  view: EditorView,
+  _reason: CodeMirrorGhostTextClearReason = "manual",
+): boolean {
+  if (getTypaiCodeMirrorGhostText(view.state) === null) {
+    return false;
+  }
+
+  view.dispatch({
+    effects: clearTypaiCodeMirrorGhostTextEffect.of(),
+  });
+
+  return true;
+}
+
+export function isTypaiCodeMirrorGhostTextVisible(view: EditorView): boolean {
+  return getTypaiCodeMirrorGhostText(view.state) !== null;
+}
+
+export function getTypaiCodeMirrorGhostTextContent(view: EditorView): string | null {
+  return getTypaiCodeMirrorGhostText(view.state)?.text ?? null;
+}
+
+export function revertLastTypaiCodeMirrorCompletion(view: EditorView): boolean {
+  const transaction = getTypaiCodeMirrorCompletionTransactions(view.state).at(-1);
+
+  if (transaction === undefined) {
+    return false;
+  }
+
+  return revertTypaiCodeMirrorCompletionTransaction(view, transaction);
+}
+
+export function revertTypaiCodeMirrorCompletion(view: EditorView, transactionId: string): boolean {
+  const transaction = getTypaiCodeMirrorCompletionTransactions(view.state).find(
+    (candidate) => candidate.id === transactionId,
+  );
+
+  if (transaction === undefined) {
+    return false;
+  }
+
+  return revertTypaiCodeMirrorCompletionTransaction(view, transaction);
 }
 
 export function revertFirstTypaiCodeMirrorCorrection(view: EditorView): boolean {
@@ -358,6 +452,37 @@ function revertTypaiCodeMirrorBlueMark(view: EditorView, mark: CodeMirrorTypaiMa
   return true;
 }
 
+function revertTypaiCodeMirrorCompletionTransaction(
+  view: EditorView,
+  transaction: CodeMirrorCompletionTransaction,
+): boolean {
+  if (
+    transaction.insertedText.length === 0 ||
+    view.state.doc.sliceString(transaction.rangeAfter.from, transaction.rangeAfter.to) !==
+      transaction.insertedText
+  ) {
+    return false;
+  }
+
+  const options = getTypaiCodeMirrorOptions(view.state);
+
+  view.dispatch({
+    changes: {
+      from: transaction.rangeAfter.from,
+      to: transaction.rangeAfter.to,
+      insert: "",
+    },
+    selection: {
+      anchor: transaction.rangeAfter.from,
+    },
+    userEvent: "input.typai.completion.revert",
+  });
+
+  options?.completion?.onCompletionReverted?.(transaction);
+
+  return true;
+}
+
 function getTypaiCodeMirrorMarkAnchorRect(
   view: EditorView,
   mark: CodeMirrorTypaiMark,
@@ -422,6 +547,36 @@ function wirePopoverKeyboardActivation(element: HTMLElement): void {
 
 function createCommandId(prefix: string): string {
   return `typai-cm-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createCurrentCompletionSnapshot(view: EditorView): CodeMirrorCompletionSnapshot {
+  const selection = view.state.selection.main;
+
+  return {
+    text: view.state.doc.toString(),
+    version: Date.now(),
+    selection: {
+      start: selection.from,
+      end: selection.to,
+    },
+    isComposingIME: view.composing,
+  };
+}
+
+function completionSnapshotMatchesEditor(
+  view: EditorView,
+  snapshot: CodeMirrorCompletionSnapshot,
+): boolean {
+  const selection = view.state.selection.main;
+
+  return (
+    snapshot.text === view.state.doc.toString() &&
+    snapshot.selection.start === selection.from &&
+    snapshot.selection.end === selection.to &&
+    selection.empty &&
+    !snapshot.isComposingIME &&
+    !view.composing
+  );
 }
 
 type RectLike = {

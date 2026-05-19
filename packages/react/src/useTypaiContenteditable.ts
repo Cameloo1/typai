@@ -1,5 +1,6 @@
 import {
   attachContenteditable,
+  type CompletionTransaction,
   type CorrectionTransaction,
   type DetachContenteditable,
   type TypaiPopover,
@@ -9,7 +10,7 @@ import {
   type VisualMark,
 } from "@typai/contenteditable";
 import type { CorrectionDecision, Token } from "@typai/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useComposedRefs } from "./internals/useComposedRefs";
 import { useStableCallback } from "./internals/useStableCallback";
 import type {
@@ -26,11 +27,14 @@ const defaultContenteditableSettings: TypaiSettings = {
   usePersonalDictionary: true,
 };
 
+const useAdapterLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function useTypaiContenteditable(
   options: TypaiContenteditableHookOptions = {},
 ): TypaiContenteditableHookResult {
   const coreContext = useTypaiCore();
   const typai = options.typai ?? coreContext.typai;
+  const completion = options.completion ?? coreContext.completion?.contenteditable;
   const coreStatus = options.typai !== undefined ? "ready" : coreContext.status;
   const coreError = options.typai !== undefined ? null : coreContext.error;
   const [element, setElement] = useState<HTMLElement | null>(null);
@@ -110,12 +114,18 @@ export function useTypaiContenteditable(
   const onUserAction = useStableCallback((action: TypaiUserAction) => {
     options.onUserAction?.(action);
   });
+  const onCompletionAccepted = useStableCallback((transaction: CompletionTransaction) => {
+    options.onCompletionAccepted?.(transaction);
+  });
+  const onCompletionReverted = useStableCallback((transaction: CompletionTransaction) => {
+    options.onCompletionReverted?.(transaction);
+  });
 
   useEffect(() => {
     adapterRef.current?.updateSettings(settings);
   }, [settings]);
 
-  useEffect(() => {
+  useAdapterLayoutEffect(() => {
     if (typai === null) {
       setAdapter(null);
       setStatus(coreStatus === "error" ? "error" : "waiting_for_core");
@@ -144,7 +154,12 @@ export function useTypaiContenteditable(
         onSettingsChange,
         onTextChange,
         onUserAction,
+        onCompletionAccepted,
+        onCompletionReverted,
+        completion,
+        completionMode: options.completionMode,
       });
+      const disconnectCompletion = completion?.connectEditor?.(attachedAdapter);
 
       adapterRef.current = attachedAdapter;
       setAdapter(() => attachedAdapter);
@@ -158,6 +173,7 @@ export function useTypaiContenteditable(
           setAdapter(null);
         }
 
+        disconnectCompletion?.();
         attachedAdapter();
         setDetachCount((current) => current + 1);
       };
@@ -182,6 +198,10 @@ export function useTypaiContenteditable(
     onSettingsChange,
     onTextChange,
     onUserAction,
+    onCompletionAccepted,
+    onCompletionReverted,
+    completion,
+    options.completionMode,
   ]);
 
   return useMemo(

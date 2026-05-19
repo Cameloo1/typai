@@ -29,11 +29,13 @@ type RemoteCompletionDemoDebug = {
     dismissByCompositionCount: number;
     revertCount: number;
     staleResponseDroppedCount: number;
+    providerErrorCount: number;
     staleResponseDroppedRequestIds: string[];
     ghostLatencySamples: number[];
   };
   resetMetrics(): void;
   setIgnoreAbortForProvider(value: boolean): void;
+  failNextRequest(): void;
 };
 
 declare global {
@@ -202,6 +204,7 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
   let lastAcceptedTransaction: CompletionTransaction | null = null;
   let lastMetricEvent: CompletionMetricEvent | null = null;
   let ignoreAbortForProvider = false;
+  let failNextRequest = false;
 
   const renderMetrics = () => {
     const snapshot = completionController?.remote.getMetricsSnapshot() ?? null;
@@ -251,6 +254,11 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
               getMockLatencyMs(latencyInput),
               ignoreAbortForProvider ? undefined : options.signal,
             );
+
+            if (failNextRequest) {
+              failNextRequest = false;
+              throw new Error("Mock remote completion provider error.");
+            }
 
             return completionText;
           }),
@@ -382,6 +390,7 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
         dismissByCompositionCount,
         revertCount: counts?.completion_reverted ?? 0,
         staleResponseDroppedCount: counts?.stale_response_dropped ?? 0,
+        providerErrorCount: counts?.provider_error ?? 0,
         staleResponseDroppedRequestIds,
         ghostLatencySamples,
       };
@@ -393,6 +402,9 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
     },
     setIgnoreAbortForProvider(value) {
       ignoreAbortForProvider = value;
+    },
+    failNextRequest() {
+      failNextRequest = true;
     },
   };
 }

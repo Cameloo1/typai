@@ -1,5 +1,6 @@
 import type {
   AttachContenteditableOptions,
+  ContenteditableCompletionController,
   TypaiSettings as ContenteditableSettings,
   DetachContenteditable,
 } from "@typai/contenteditable";
@@ -8,6 +9,7 @@ import type {
   AttachTextareaOptions,
   DetachTextarea,
   TextareaAdapterSettings,
+  TextareaCompletionController,
 } from "@typai/textarea";
 import type { TypaiUiDebugData, TypaiUiSettings } from "@typai/ui";
 import type { HTMLAttributes, ReactNode, Ref, TextareaHTMLAttributes } from "react";
@@ -21,6 +23,7 @@ export type TypaiProviderProps = {
   typai?: TypaiCore;
   core?: TypaiCore;
   createCore?: TypaiCoreFactory;
+  completion?: TypaiCompletionContextValue;
 };
 
 export type TypaiCoreStatus = "idle" | "loading" | "ready" | "error";
@@ -29,6 +32,7 @@ export type TypaiCoreContextValue = {
   typai: TypaiCore | null;
   status: TypaiCoreStatus;
   error: unknown;
+  completion: TypaiCompletionContextValue | null;
   /**
    * Deprecated alias kept during the staged React adapter rollout.
    * Use `typai` instead.
@@ -41,6 +45,19 @@ export type TypaiCoreContextValue = {
   loading: boolean;
 };
 
+export type TypaiTextareaCompletionController = TextareaCompletionController & {
+  connectEditor?(editor: DetachTextarea): () => void;
+};
+
+export type TypaiContenteditableCompletionController = ContenteditableCompletionController & {
+  connectEditor?(editor: DetachContenteditable): () => void;
+};
+
+export type TypaiCompletionContextValue = {
+  textarea?: TypaiTextareaCompletionController;
+  contenteditable?: TypaiContenteditableCompletionController;
+};
+
 export type TypaiAdapterHookStatus = "idle" | "waiting_for_core" | "attached" | "error";
 
 export type TypaiAdapterDebugState = {
@@ -51,8 +68,12 @@ export type TypaiAdapterDebugState = {
   lastError: unknown;
 };
 
-export type TypaiTextareaHookOptions = Omit<AttachTextareaOptions, "textarea" | "typai"> & {
+export type TypaiTextareaHookOptions = Omit<
+  AttachTextareaOptions,
+  "textarea" | "typai" | "completion"
+> & {
   typai?: TypaiCore;
+  completion?: TypaiTextareaCompletionController;
   textareaRef?: Ref<HTMLTextAreaElement>;
   disabled?: boolean;
   readOnly?: boolean;
@@ -71,9 +92,10 @@ export type TypaiTextareaHookResult = {
 
 export type TypaiContenteditableHookOptions = Omit<
   AttachContenteditableOptions,
-  "element" | "typai"
+  "element" | "typai" | "completion"
 > & {
   typai?: TypaiCore;
+  completion?: TypaiContenteditableCompletionController;
   elementRef?: Ref<HTMLElement>;
 };
 

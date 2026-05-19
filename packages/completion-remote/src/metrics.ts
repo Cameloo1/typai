@@ -1,3 +1,4 @@
+import type { CompletionProviderErrorKind, CompletionRequestBudget } from "./provider";
 import type { CompletionMode } from "./types";
 
 export const DEFAULT_COMPLETION_METRICS_MAX_EVENTS = 200;
@@ -6,8 +7,17 @@ export const COMPLETION_METRIC_EVENT_TYPES = [
   "request_scheduled",
   "request_canceled_before_send",
   "request_aborted_in_flight",
+  "request_budget_exceeded",
   "provider_error",
+  "provider_timeout",
+  "invalid_response",
+  "rate_limit_cooldown_started",
   "provider_latency",
+  "stream_started",
+  "stream_delta",
+  "stream_completed",
+  "stream_aborted",
+  "stream_stale_delta_dropped",
   "ghost_shown",
   "ghost_dismissed_by_typing",
   "ghost_dismissed_by_escape",
@@ -34,6 +44,10 @@ export type CompletionMetricEvent = {
   latencyMs?: number;
   status?: string;
   reason?: string;
+  providerErrorKind?: CompletionProviderErrorKind;
+  retryAfterMs?: number;
+  cooldownUntilMs?: number;
+  budgetLimit?: keyof CompletionRequestBudget | "rate_limit_cooldown";
   timeFromLastUserInputToRequestStartMs?: number;
   timeFromRequestStartToResponseMs?: number;
   timeFromLastUserInputToGhostVisibleMs?: number;

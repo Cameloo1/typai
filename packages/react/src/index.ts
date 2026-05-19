@@ -6,6 +6,8 @@ export { TypaiProvider } from "./TypaiProvider";
 export type {
   TypaiAdapterDebugState,
   TypaiAdapterHookStatus,
+  TypaiCompletionContextValue,
+  TypaiContenteditableCompletionController,
   TypaiContenteditableHookOptions,
   TypaiContenteditableHookResult,
   TypaiContenteditableProps,
@@ -17,6 +19,7 @@ export type {
   TypaiNativeTextareaProps,
   TypaiProviderProps,
   TypaiSettingsPanelProps,
+  TypaiTextareaCompletionController,
   TypaiTextareaHookOptions,
   TypaiTextareaHookResult,
   TypaiTextareaProps,

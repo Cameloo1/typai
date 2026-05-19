@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
 import type { TypaiCore } from "@typai/core";
 import { act, createRef, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -8,7 +9,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as TypaiReact from "../src/index";
 import {
+  type TypaiContenteditableCompletionController,
   TypaiProvider,
+  type TypaiTextareaCompletionController,
   type TypaiTextareaHookOptions,
   useTypaiContenteditable,
   useTypaiCore,
@@ -20,6 +23,8 @@ import {
 const mountedRoots: Root[] = [];
 
 afterEach(() => {
+  vi.useRealTimers();
+
   for (const root of mountedRoots.splice(0, mountedRoots.length)) {
     act(() => root.unmount());
   }
@@ -272,6 +277,81 @@ describe("@typai/react components", () => {
     expect(onCorrection).toHaveBeenCalledTimes(1);
   });
 
+  it("TypaiTextarea works without completion", async () => {
+    const core = createAutoCorrectCore();
+    const view = render(
+      <TypaiReact.TypaiTextarea typai={core} textareaProps={{ "aria-label": "Prompt" }} />,
+    );
+    await flushEffects();
+    const textarea = view.container.querySelector("textarea");
+
+    typeIntoTextarea(textarea, "teh ");
+
+    expect(textarea?.value).toBe("the ");
+    expect(view.container.querySelector("[data-testid='textarea-ghost-text']")).toBeNull();
+  });
+
+  it("TypaiTextarea with completion shows mock ghost text and accepts with Tab", async () => {
+    const completion = createMockTextareaCompletionController(" completion");
+    const view = render(
+      <TypaiReact.TypaiTextarea
+        typai={createFakeCore()}
+        completion={completion}
+        textareaProps={{ "aria-label": "Prompt" }}
+      />,
+    );
+    await flushEffects();
+    const textarea = view.container.querySelector("textarea");
+
+    typeIntoTextarea(textarea, "Prompt");
+    await flushEffects();
+
+    expect(view.container.querySelector("[data-testid='textarea-ghost-text']")?.textContent).toBe(
+      " completion",
+    );
+    expect(textarea?.value).toBe("Prompt");
+
+    const event = keyEvent("Tab");
+
+    act(() => {
+      textarea?.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(textarea?.value).toBe("Prompt completion");
+    expect(view.container.querySelector("[data-testid='textarea-blue-mark']")).toBeNull();
+    expect(completion.stats.acceptCount).toBe(1);
+  });
+
+  it("TypaiTextarea completion dismisses with Escape", async () => {
+    const completion = createMockTextareaCompletionController(" completion");
+    const view = render(
+      <TypaiReact.TypaiTextarea
+        typai={createFakeCore()}
+        completion={completion}
+        textareaProps={{ "aria-label": "Prompt" }}
+      />,
+    );
+    await flushEffects();
+    const textarea = view.container.querySelector("textarea");
+
+    typeIntoTextarea(textarea, "Prompt");
+    await flushEffects();
+
+    expect(view.container.querySelector("[data-testid='textarea-ghost-text']")).not.toBeNull();
+
+    const event = keyEvent("Escape");
+
+    act(() => {
+      textarea?.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(textarea?.value).toBe("Prompt");
+    expect(view.container.querySelector("[data-testid='textarea-ghost-text']")).toBeNull();
+    expect(completion.stats.dismissReasons).toEqual(["escape"]);
+  });
+
   it("TypaiTextarea uses provider context when typai prop is omitted", async () => {
     const core = createAutoCorrectCore();
     const view = render(
@@ -341,6 +421,165 @@ describe("@typai/react components", () => {
     typeIntoContenteditable(element, "teh ");
 
     expect(onDecision).toHaveBeenCalledTimes(1);
+  });
+
+  it("TypaiContenteditable works without completion", async () => {
+    const onDecision = vi.fn();
+    const view = render(
+      <TypaiReact.TypaiContenteditable
+        typai={createFakeCore()}
+        onDecision={onDecision}
+        contenteditableProps={{ role: "textbox", "aria-label": "Editor" }}
+      />,
+    );
+    await flushEffects();
+    const element = view.container.querySelector("[data-typai-react-contenteditable]");
+
+    typeIntoContenteditable(element, "teh ");
+
+    expect(onDecision).toHaveBeenCalledTimes(1);
+    expect(view.container.querySelector("[data-typai-ghost='true']")).toBeNull();
+  });
+
+  it("TypaiContenteditable with completion shows mock ghost text and accepts with Tab", async () => {
+    const completion = createMockContenteditableCompletionController(" completion");
+    const view = render(
+      <TypaiReact.TypaiContenteditable
+        typai={createFakeCore()}
+        completion={completion}
+        completionMode="prompt"
+        contenteditableProps={{ role: "textbox", "aria-label": "Editor" }}
+      />,
+    );
+    await flushEffects();
+    const element = view.container.querySelector("[data-typai-react-contenteditable]");
+
+    typeIntoContenteditable(element, "Prompt");
+    await flushEffects();
+
+    expect(view.container.querySelector("[data-typai-ghost='true']")?.textContent).toBe(
+      " completion",
+    );
+
+    const event = keyEvent("Tab");
+
+    act(() => {
+      element?.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(element?.textContent).toBe("Prompt completion");
+    expect(view.container.querySelector("[data-typai-ghost='true']")).toBeNull();
+    expect(completion.stats.acceptCount).toBe(1);
+  });
+
+  it("TypaiProvider can provide optional completion without making it required", async () => {
+    const completion = createMockTextareaCompletionController(" completion");
+    const view = render(
+      <TypaiProvider
+        typai={createFakeCore()}
+        completion={{
+          textarea: completion,
+        }}
+      >
+        <TypaiReact.TypaiTextarea textareaProps={{ "aria-label": "Prompt" }} />
+      </TypaiProvider>,
+    );
+    await flushEffects();
+    const textarea = view.container.querySelector("textarea");
+
+    typeIntoTextarea(textarea, "Prompt");
+    await flushEffects();
+
+    expect(view.container.querySelector("[data-testid='textarea-ghost-text']")?.textContent).toBe(
+      " completion",
+    );
+  });
+
+  it("unmount detaches completion controller", async () => {
+    const completion = createMockTextareaCompletionController(" completion");
+    const view = render(
+      <TypaiReact.TypaiTextarea
+        typai={createFakeCore()}
+        completion={completion}
+        textareaProps={{ "aria-label": "Prompt" }}
+      />,
+    );
+    await flushEffects();
+
+    expect(completion.stats.connectCount).toBe(1);
+
+    view.unmount();
+
+    expect(completion.stats.disconnectCount).toBe(1);
+    expect(completion.stats.destroyCount).toBe(1);
+  });
+
+  it("re-render does not duplicate completion attachment or editor listeners", async () => {
+    const completion = createMockTextareaCompletionController(" completion");
+    const core = createFakeCore();
+    const view = render(
+      <TypaiReact.TypaiTextarea
+        typai={core}
+        completion={completion}
+        textareaProps={{ "aria-label": "Prompt" }}
+      />,
+    );
+    await flushEffects();
+
+    view.rerender(
+      <TypaiReact.TypaiTextarea
+        typai={core}
+        completion={completion}
+        textareaProps={{ "aria-label": "Prompt updated" }}
+      />,
+    );
+    await flushEffects();
+
+    const textarea = view.container.querySelector("textarea");
+
+    typeIntoTextarea(textarea, "Prompt");
+    await flushEffects();
+
+    expect(completion.stats.connectCount).toBe(1);
+    expect(completion.stats.inputCount).toBe(1);
+    expect(view.container.querySelector("[data-testid='textarea-ghost-text']")?.textContent).toBe(
+      " completion",
+    );
+  });
+
+  it("React completion metrics do not include raw prompt context by default", async () => {
+    const completion = createMockTextareaCompletionController(" completion");
+    const privateText = "private react completion context";
+    const view = render(
+      <TypaiReact.TypaiTextarea
+        typai={createFakeCore()}
+        completion={completion}
+        textareaProps={{ "aria-label": "Prompt" }}
+      />,
+    );
+    await flushEffects();
+
+    typeIntoTextarea(view.container.querySelector("textarea"), privateText);
+
+    expect(JSON.stringify(completion.stats.metrics)).not.toContain(privateText);
+  });
+
+  it("React package source does not include browser provider key paths", () => {
+    const source = [
+      "src/TypaiProvider.tsx",
+      "src/useTypaiTextarea.ts",
+      "src/useTypaiContenteditable.ts",
+      "src/components/TypaiTextarea.tsx",
+      "src/components/TypaiContenteditable.tsx",
+    ]
+      .map((path) => readFileSync(path, "utf8"))
+      .join("\n");
+
+    expect(source).not.toContain("OPENAI_API_KEY");
+    expect(source).not.toContain("apiKey");
+    expect(source).not.toContain("providerKey");
+    expect(source).not.toContain("Authorization");
   });
 
   it("TypaiSettingsPanel toggles controlled settings callbacks", () => {
@@ -532,6 +771,7 @@ function typeIntoContenteditable(element: Element | null, text: string): void {
 
   act(() => {
     element.textContent = text;
+    placeSelectionAtEnd(element);
     element.dispatchEvent(inputEvent(text.at(-1) ?? ""));
   });
 }
@@ -544,6 +784,184 @@ function inputEvent(data: string): Event {
   });
 
   return event;
+}
+
+function keyEvent(key: string): KeyboardEvent {
+  return new KeyboardEvent("keydown", {
+    key,
+    bubbles: true,
+    cancelable: true,
+  });
+}
+
+function placeSelectionAtEnd(element: HTMLElement): void {
+  element.focus();
+
+  const selection = element.ownerDocument.getSelection();
+
+  if (selection === null) {
+    return;
+  }
+
+  const range = element.ownerDocument.createRange();
+  const lastChild = element.lastChild;
+
+  if (lastChild?.nodeType === Node.TEXT_NODE) {
+    range.setStart(lastChild, lastChild.textContent?.length ?? 0);
+    range.collapse(true);
+  } else {
+    range.selectNodeContents(element);
+    range.collapse(false);
+  }
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+type MockCompletionStats = {
+  connectCount: number;
+  disconnectCount: number;
+  destroyCount: number;
+  inputCount: number;
+  acceptCount: number;
+  dismissReasons: string[];
+  metrics: Array<{
+    type: string;
+    requestId: string;
+    completionLength: number;
+  }>;
+};
+
+type MockTextareaCompletionController = TypaiTextareaCompletionController & {
+  stats: MockCompletionStats;
+};
+
+type MockContenteditableCompletionController = TypaiContenteditableCompletionController & {
+  stats: MockCompletionStats;
+};
+
+function createMockCompletionStats(): MockCompletionStats {
+  return {
+    connectCount: 0,
+    disconnectCount: 0,
+    destroyCount: 0,
+    inputCount: 0,
+    acceptCount: 0,
+    dismissReasons: [],
+    metrics: [],
+  };
+}
+
+function createMockTextareaCompletionController(
+  completionText: string,
+): MockTextareaCompletionController {
+  let editor:
+    | Parameters<NonNullable<TypaiTextareaCompletionController["connectEditor"]>>[0]
+    | null = null;
+  const stats = createMockCompletionStats();
+
+  return {
+    stats,
+    connectEditor(nextEditor) {
+      stats.connectCount += 1;
+      editor = nextEditor;
+
+      return () => {
+        stats.disconnectCount += 1;
+
+        if (editor === nextEditor) {
+          editor = null;
+        }
+      };
+    },
+    onEditorInput(snapshot) {
+      stats.inputCount += 1;
+
+      const requestId = `react-textarea-completion-${stats.inputCount}`;
+
+      stats.metrics.push({
+        type: "request_scheduled",
+        requestId,
+        completionLength: completionText.length,
+      });
+
+      if (snapshot.isComposingIME || snapshot.selection.start !== snapshot.selection.end) {
+        return;
+      }
+
+      editor?.renderTextareaGhostText(completionText, snapshot, {
+        requestId,
+        providerName: "react-mock-provider",
+        model: "react-mock-model",
+        latencyMs: 0,
+      });
+    },
+    onCompletionAccepted() {
+      stats.acceptCount += 1;
+    },
+    onCompletionDismissed(event) {
+      stats.dismissReasons.push(event.reason);
+    },
+    destroy() {
+      stats.destroyCount += 1;
+    },
+  };
+}
+
+function createMockContenteditableCompletionController(
+  completionText: string,
+): MockContenteditableCompletionController {
+  let editor:
+    | Parameters<NonNullable<TypaiContenteditableCompletionController["connectEditor"]>>[0]
+    | null = null;
+  const stats = createMockCompletionStats();
+
+  return {
+    stats,
+    connectEditor(nextEditor) {
+      stats.connectCount += 1;
+      editor = nextEditor;
+
+      return () => {
+        stats.disconnectCount += 1;
+
+        if (editor === nextEditor) {
+          editor = null;
+        }
+      };
+    },
+    onEditorInput(snapshot) {
+      stats.inputCount += 1;
+
+      const requestId = `react-contenteditable-completion-${stats.inputCount}`;
+
+      stats.metrics.push({
+        type: "request_scheduled",
+        requestId,
+        completionLength: completionText.length,
+      });
+
+      if (snapshot.isComposingIME || snapshot.selection.start !== snapshot.selection.end) {
+        return;
+      }
+
+      editor?.renderGhostTextAtCaret(completionText, snapshot, {
+        requestId,
+        providerName: "react-mock-provider",
+        model: "react-mock-model",
+        latencyMs: 0,
+      });
+    },
+    onGhostTextAccept() {
+      stats.acceptCount += 1;
+    },
+    onGhostTextDismiss(reason) {
+      stats.dismissReasons.push(reason);
+    },
+    destroy() {
+      stats.destroyCount += 1;
+    },
+  };
 }
 
 function createFakeCore(

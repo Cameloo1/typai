@@ -1,13 +1,25 @@
 import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { isDelimiter } from "@typai/core";
 import { openTypaiCodeMirrorPopoverForMark } from "./commands";
-import { getCompletedTokenBeforeCursor, isProtectedCodeMirrorToken } from "./protectedContexts";
 import {
+  getCompletedTokenBeforeCursor,
+  isProtectedCodeMirrorCompletionContext,
+  isProtectedCodeMirrorToken,
+} from "./protectedContexts";
+import {
+  addTypaiCodeMirrorCompletionTransactionEffect,
   addTypaiCodeMirrorMarkEffect,
   addTypaiCodeMirrorTransactionEffect,
+  clearTypaiCodeMirrorGhostTextEffect,
   getTypaiCodeMirrorEffectiveOptions,
+  getTypaiCodeMirrorGhostText,
+  setTypaiCodeMirrorGhostTextEffect,
 } from "./state";
 import type {
+  CodeMirrorCompletionGhostMetadata,
+  CodeMirrorCompletionSnapshot,
+  CodeMirrorCompletionTransaction,
+  CodeMirrorGhostTextClearReason,
   CodeMirrorTypaiCorrectionTransaction,
   CodeMirrorTypaiCorrectionTrigger,
   CodeMirrorTypaiMark,
@@ -35,19 +47,54 @@ export function createTypaiCodeMirrorPlugin(resolvedOptions: TypaiCodeMirrorReso
     class TypaiCodeMirrorPlugin {
       nextMarkId = 1;
       documentVersion = 0;
+      readonly disconnectCompletion: (() => void) | undefined;
+
+      constructor(readonly view: EditorView) {
+        this.disconnectCompletion =
+          resolvedOptions.completion?.connectEditor?.({
+            renderGhostTextAtCaret: (text, snapshot, metadata) =>
+              this.renderGhostTextAtCaret(text, snapshot, metadata),
+            clearGhostText: (reason = "manual") => this.clearGhostText(reason),
+            isGhostTextVisible: () => getTypaiCodeMirrorGhostText(this.view.state) !== null,
+            getGhostText: () => getTypaiCodeMirrorGhostText(this.view.state)?.text ?? null,
+            getSnapshot: () => this.createCompletionSnapshot(),
+          }) ?? undefined;
+      }
 
       update(update: ViewUpdate): void {
-        if (!update.docChanged || update.view.composing) {
+        if (update.selectionSet && !update.docChanged) {
+          this.handleSelectionChange();
+        }
+
+        if (!update.docChanged) {
           return;
         }
 
         this.documentVersion += 1;
 
         if (isTypaiGeneratedUpdate(update)) {
+          if (isTypaiCorrectionGeneratedUpdate(update)) {
+            this.handleCorrectionTransaction(
+              getTypaiCodeMirrorGhostText(update.startState) !== null,
+            );
+          }
+
+          return;
+        }
+
+        this.clearGhostText("typing", getTypaiCodeMirrorGhostText(update.startState) !== null);
+
+        if (update.view.composing) {
           return;
         }
 
         const selection = update.state.selection.main;
+
+        if (selection.empty) {
+          this.notifyCompletionInput(update.view);
+        } else {
+          this.notifyCompletionSelectionChange();
+        }
 
         if (!selection.empty || !isDelimiterBeforeCursor(update.view)) {
           return;
@@ -135,12 +182,191 @@ export function createTypaiCodeMirrorPlugin(resolvedOptions: TypaiCodeMirrorReso
         }
       }
 
+      destroy(): void {
+        this.disconnectCompletion?.();
+        resolvedOptions.completion?.destroy?.();
+      }
+
       createId(prefix: string): string {
         const id = `typai-cm-${prefix}-${this.nextMarkId}`;
 
         this.nextMarkId += 1;
 
         return id;
+      }
+
+      createCompletionSnapshot(
+        protectedContext = isCompletionProtectedContext(this.view),
+      ): CodeMirrorCompletionSnapshot {
+        const selection = this.view.state.selection.main;
+
+        return {
+          text: this.view.state.doc.toString(),
+          version: this.documentVersion,
+          selection: {
+            start: selection.from,
+            end: selection.to,
+          },
+          isComposingIME: this.view.composing,
+          mode: resolvedOptions.completionMode,
+          protected: protectedContext,
+        };
+      }
+
+      renderGhostTextAtCaret(
+        text: string,
+        snapshot = this.createCompletionSnapshot(),
+        metadata?: CodeMirrorCompletionGhostMetadata,
+      ): boolean {
+        if (text.length === 0) {
+          return this.clearGhostText("manual");
+        }
+
+        if (!this.isFreshCompletionSnapshot(snapshot)) {
+          this.clearGhostText("stale");
+          return false;
+        }
+
+        this.view.dispatch({
+          effects: setTypaiCodeMirrorGhostTextEffect.of({
+            text,
+            from: snapshot.selection.end,
+            snapshot,
+            metadata,
+          }),
+        });
+
+        return true;
+      }
+
+      acceptGhostText(): boolean {
+        const ghost = getTypaiCodeMirrorGhostText(this.view.state);
+        const selection = this.view.state.selection.main;
+
+        if (
+          ghost === null ||
+          ghost.from !== selection.head ||
+          !this.isFreshCompletionSnapshot(ghost.snapshot)
+        ) {
+          if (ghost !== null) {
+            this.clearGhostText("stale");
+          }
+
+          return false;
+        }
+
+        const insertedText = ghost.text;
+        const transaction: CodeMirrorCompletionTransaction = {
+          id: this.createId("completion-tx"),
+          requestId: ghost.metadata?.requestId ?? this.createId("completion-request"),
+          documentVersion: this.documentVersion,
+          rangeBefore: {
+            from: selection.head,
+            to: selection.head,
+            text: "",
+          },
+          rangeAfter: {
+            from: selection.head,
+            to: selection.head + insertedText.length,
+            text: insertedText,
+          },
+          insertedText,
+          createdAt: Date.now(),
+          providerName: ghost.metadata?.providerName,
+          model: ghost.metadata?.model,
+          latencyMs: ghost.metadata?.latencyMs,
+        };
+
+        this.view.dispatch({
+          changes: {
+            from: transaction.rangeBefore.from,
+            to: transaction.rangeBefore.to,
+            insert: insertedText,
+          },
+          selection: {
+            anchor: transaction.rangeAfter.to,
+          },
+          effects: [
+            clearTypaiCodeMirrorGhostTextEffect.of(),
+            addTypaiCodeMirrorCompletionTransactionEffect.of(transaction),
+          ],
+          userEvent: "input.typai.completion.accept",
+        });
+
+        resolvedOptions.completion?.onCompletionAccepted?.(transaction);
+
+        return true;
+      }
+
+      clearGhostText(
+        reason: CodeMirrorGhostTextClearReason,
+        hadGhostBeforeUpdate = false,
+      ): boolean {
+        const currentGhost = getTypaiCodeMirrorGhostText(this.view.state);
+
+        if (currentGhost === null && !hadGhostBeforeUpdate) {
+          return false;
+        }
+
+        if (currentGhost !== null) {
+          this.view.dispatch({
+            effects: clearTypaiCodeMirrorGhostTextEffect.of(),
+          });
+        }
+
+        resolvedOptions.completion?.onGhostTextDismiss?.(reason, this.createCompletionSnapshot());
+
+        return true;
+      }
+
+      notifyCompletionInput(view: EditorView): void {
+        const protectedContext = isCompletionProtectedContext(view);
+
+        if (protectedContext) {
+          this.clearGhostText("protected_context");
+          return;
+        }
+
+        const snapshot = this.createCompletionSnapshot(false);
+
+        queueMicrotask(() => {
+          resolvedOptions.completion?.onEditorInput?.(snapshot);
+        });
+      }
+
+      notifyCompletionSelectionChange(): void {
+        const snapshot = this.createCompletionSnapshot();
+
+        queueMicrotask(() => {
+          resolvedOptions.completion?.onEditorSelectionChange?.(snapshot);
+        });
+      }
+
+      handleSelectionChange(): void {
+        queueMicrotask(() => {
+          this.clearGhostText("selection_change");
+        });
+        this.notifyCompletionSelectionChange();
+      }
+
+      handleCorrectionTransaction(hadGhostBeforeUpdate: boolean): void {
+        this.clearGhostText("correction_transaction", hadGhostBeforeUpdate);
+        resolvedOptions.completion?.onCorrectionTransaction?.();
+      }
+
+      isFreshCompletionSnapshot(snapshot: CodeMirrorCompletionSnapshot): boolean {
+        const selection = this.view.state.selection.main;
+
+        return (
+          snapshot.version === this.documentVersion &&
+          snapshot.text === this.view.state.doc.toString() &&
+          snapshot.selection.start === selection.from &&
+          snapshot.selection.end === selection.to &&
+          selection.empty &&
+          !snapshot.isComposingIME &&
+          !this.view.composing &&
+          !snapshot.protected
+        );
       }
 
       queueMark(
@@ -264,6 +490,28 @@ export function createTypaiCodeMirrorPlugin(resolvedOptions: TypaiCodeMirrorReso
           return openTypaiCodeMirrorPopoverForMark(view, markId);
         },
         keydown(event, view) {
+          if (event.key === "Tab") {
+            if (!this.acceptGhostText()) {
+              return false;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            return true;
+          }
+
+          if (event.key === "Escape") {
+            if (!this.clearGhostText("escape")) {
+              return false;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            return true;
+          }
+
           if (event.key !== "Enter" && event.key !== " ") {
             return false;
           }
@@ -278,6 +526,20 @@ export function createTypaiCodeMirrorPlugin(resolvedOptions: TypaiCodeMirrorReso
           event.stopPropagation();
 
           return openTypaiCodeMirrorPopoverForMark(view, markId);
+        },
+        compositionstart() {
+          this.clearGhostText("composition");
+          resolvedOptions.completion?.onEditorCompositionStart?.();
+          return false;
+        },
+        blur() {
+          this.clearGhostText("blur");
+          resolvedOptions.completion?.onEditorBlur?.();
+          return false;
+        },
+        paste() {
+          this.clearGhostText("paste");
+          return false;
         },
       },
     },
@@ -297,9 +559,30 @@ function isDelimiterBeforeCursor(view: EditorView): boolean {
 function isTypaiGeneratedUpdate(update: ViewUpdate): boolean {
   return update.transactions.some(
     (transaction) =>
-      transaction.isUserEvent("input.typai.correct") ||
-      transaction.isUserEvent("input.typai.suggestion") ||
-      transaction.isUserEvent("input.typai.revert"),
+      isTypaiCorrectionTransaction(transaction) || isTypaiCompletionTransaction(transaction),
+  );
+}
+
+function isTypaiCorrectionGeneratedUpdate(update: ViewUpdate): boolean {
+  return update.transactions.some((transaction) => isTypaiCorrectionTransaction(transaction));
+}
+
+function isTypaiCorrectionTransaction(transaction: {
+  isUserEvent(event: string): boolean;
+}): boolean {
+  return (
+    transaction.isUserEvent("input.typai.correct") ||
+    transaction.isUserEvent("input.typai.suggestion") ||
+    transaction.isUserEvent("input.typai.revert")
+  );
+}
+
+function isTypaiCompletionTransaction(transaction: {
+  isUserEvent(event: string): boolean;
+}): boolean {
+  return (
+    transaction.isUserEvent("input.typai.completion.accept") ||
+    transaction.isUserEvent("input.typai.completion.revert")
   );
 }
 
@@ -321,6 +604,16 @@ function getTriggerBeforeCursor(view: EditorView): CodeMirrorTypaiCorrectionTrig
   }
 
   return "punctuation";
+}
+
+function isCompletionProtectedContext(view: EditorView): boolean {
+  const selection = view.state.selection.main;
+
+  if (!selection.empty) {
+    return false;
+  }
+
+  return isProtectedCodeMirrorCompletionContext(view.state, selection.head);
 }
 
 function getTypaiMarkIdFromEventTarget(target: EventTarget | null): string | null {

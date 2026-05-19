@@ -1,3 +1,5 @@
+import type { CompletionProviderErrorKind } from "./provider";
+
 export type CompletionState =
   | { status: "idle" }
   | { status: "scheduled"; requestId: string }
@@ -6,7 +8,12 @@ export type CompletionState =
   | { status: "accepted"; requestId: string }
   | { status: "dismissed"; requestId: string; reason: string }
   | { status: "stale"; requestId: string }
-  | { status: "error"; requestId: string; error: string };
+  | {
+      status: "error";
+      requestId: string;
+      error: string;
+      providerErrorKind?: CompletionProviderErrorKind;
+    };
 
 export const idleCompletionState: CompletionState = { status: "idle" };
 

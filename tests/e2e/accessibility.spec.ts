@@ -33,7 +33,7 @@ test("settings and memory controls have no serious axe violations", async ({ pag
 
 test("textarea demo has no serious axe violations", async ({ page }, testInfo) => {
   await openDemo(page, testInfo);
-  await page.getByRole("button", { name: "Textarea Demo" }).click();
+  await page.getByRole("button", { name: /Textarea.*Demo/ }).click();
   await expect(page.getByTestId("textarea-demo-root")).toBeVisible();
 
   await expectNoSeriousAxeViolations(page, ["[data-testid='textarea-demo-root']"]);
@@ -49,7 +49,7 @@ test("chat input demo has no serious axe violations", async ({ page }, testInfo)
 
 test("React demo has no serious axe violations", async ({ page }, testInfo) => {
   await openDemo(page, testInfo);
-  await page.getByRole("button", { name: "React Demo" }).click();
+  await page.getByRole("button", { name: /React.*Demo/ }).click();
   await expect(page.getByTestId("react-demo-root")).toBeVisible();
   await expect(page.getByTestId("react-core-status")).toHaveText("ready");
 
@@ -58,7 +58,7 @@ test("React demo has no serious axe violations", async ({ page }, testInfo) => {
 
 test("CodeMirror demo has no serious axe violations", async ({ page }, testInfo) => {
   await openDemo(page, testInfo);
-  await page.getByRole("button", { name: "CodeMirror Demo" }).click();
+  await page.getByRole("button", { name: /CodeMirror.*Demo/ }).click();
   const root = page.getByTestId("codemirror-demo-root");
 
   await expect(root).toBeVisible();

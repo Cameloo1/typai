@@ -59,7 +59,7 @@ jobs:
           pnpm --filter @typai/react test
           pnpm --filter @typai/codemirror test
 
-      - name: Remote completion package tests
+      - name: Remote completion package tests and streaming mocks
         run: |
           pnpm --filter @typai/completion-remote build
           pnpm --filter @typai/completion-remote test
@@ -109,8 +109,8 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Playwright Chromium
-        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts tests/e2e/react-demo.spec.ts --project=chromium
+      - name: Playwright Chromium V4.1 surfaces
+        run: pnpm exec playwright test tests/e2e/accessibility.spec.ts tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts tests/e2e/textarea-ghost-feasibility.spec.ts tests/e2e/textarea-ghost-renderer.spec.ts tests/e2e/react-demo.spec.ts tests/e2e/v4-1-completion.spec.ts --project=chromium
 
       - name: Playwright CodeMirror Chromium
         run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=chromium
@@ -118,11 +118,11 @@ jobs:
       - name: Playwright Accessibility Firefox
         run: pnpm exec playwright test tests/e2e/accessibility.spec.ts --project=firefox
 
-      - name: Playwright React Firefox
-        run: pnpm exec playwright test tests/e2e/react-demo.spec.ts --project=firefox
+      - name: Playwright React and V4.1 Completion Firefox
+        run: pnpm exec playwright test tests/e2e/react-demo.spec.ts tests/e2e/v4-1-completion.spec.ts --project=firefox
 
       - name: Playwright Contenteditable, Remote Completion, and Textarea Firefox
-        run: pnpm exec playwright test tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts --project=firefox
+        run: pnpm exec playwright test tests/e2e/simple-demo-editor.spec.ts tests/e2e/remote-completion.spec.ts tests/e2e/textarea-demo.spec.ts tests/e2e/textarea-ghost-feasibility.spec.ts tests/e2e/textarea-ghost-renderer.spec.ts --project=firefox
 
       - name: Playwright CodeMirror Firefox
         run: pnpm exec playwright test tests/e2e/codemirror-demo.spec.ts --project=firefox
@@ -215,7 +215,7 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Browser benchmark smoke (contenteditable, textarea, and CodeMirror)
+      - name: Browser benchmark smoke (correction and V4.1 completion surfaces)
         run: pnpm bench:browser
 
       - name: Upload Playwright report

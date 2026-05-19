@@ -98,7 +98,8 @@ describe("createEndpointCompletionProvider", () => {
     controller.abort();
 
     await expect(pending).rejects.toMatchObject({
-      code: "aborted",
+      code: "abort",
+      kind: "abort",
       name: "EndpointCompletionProviderError",
     });
   });
@@ -113,7 +114,61 @@ describe("createEndpointCompletionProvider", () => {
 
     await expect(provider.complete(createTestRequest(), {})).rejects.toMatchObject({
       code: "timeout",
+      kind: "timeout",
       name: "EndpointCompletionProviderError",
+    });
+  });
+
+  it("classifies 429 responses as rate_limited", async () => {
+    mockFetch(async () =>
+      jsonResponse(
+        { error: "limited" },
+        {
+          status: 429,
+          headers: { "retry-after": "2" },
+        },
+      ),
+    );
+
+    const provider = createEndpointCompletionProvider({
+      endpoint: "/typai/complete",
+    });
+
+    await expect(provider.complete(createTestRequest(), {})).rejects.toMatchObject({
+      code: "rate_limited",
+      kind: "rate_limited",
+      name: "EndpointCompletionProviderError",
+      retryAfterMs: 2000,
+    });
+  });
+
+  it("classifies 5xx responses as server_error", async () => {
+    mockFetch(async () => jsonResponse({ error: "server" }, { status: 500 }));
+
+    const provider = createEndpointCompletionProvider({
+      endpoint: "/typai/complete",
+    });
+
+    await expect(provider.complete(createTestRequest(), {})).rejects.toMatchObject({
+      code: "server_error",
+      kind: "server_error",
+      name: "EndpointCompletionProviderError",
+      status: 500,
+    });
+  });
+
+  it("classifies 4xx responses as client_error", async () => {
+    mockFetch(async () => jsonResponse({ error: "client" }, { status: 400 }));
+
+    const provider = createEndpointCompletionProvider({
+      endpoint: "/typai/complete",
+    });
+
+    await expect(provider.complete(createTestRequest(), {})).rejects.toMatchObject({
+      code: "client_error",
+      kind: "client_error",
+      name: "EndpointCompletionProviderError",
+      status: 400,
     });
   });
 
@@ -125,7 +180,28 @@ describe("createEndpointCompletionProvider", () => {
     });
 
     await expect(provider.complete(createTestRequest(), {})).rejects.toMatchObject({
-      code: "malformed_response",
+      code: "invalid_response",
+      kind: "invalid_response",
+      name: "EndpointCompletionProviderError",
+    });
+  });
+
+  it("rejects malformed JSON as invalid_response", async () => {
+    mockFetch(
+      async () =>
+        new Response("{", {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        }),
+    );
+
+    const provider = createEndpointCompletionProvider({
+      endpoint: "/typai/complete",
+    });
+
+    await expect(provider.complete(createTestRequest(), {})).rejects.toMatchObject({
+      code: "invalid_response",
+      kind: "invalid_response",
       name: "EndpointCompletionProviderError",
     });
   });
@@ -141,6 +217,7 @@ describe("createEndpointCompletionProvider", () => {
 
     await expect(provider.complete(createTestRequest(), {})).rejects.toMatchObject({
       code: "network_error",
+      kind: "network_error",
       name: "EndpointCompletionProviderError",
       message: "Endpoint completion request failed.",
     });
@@ -154,6 +231,10 @@ describe("createEndpointCompletionProvider", () => {
 
     expect(error).toBeInstanceOf(Error);
     expect(error.code).toBe("network_error");
+    expect(error.providerError).toEqual({
+      kind: "network_error",
+      message: "Endpoint completion request failed.",
+    });
   });
 
   it("does not add an SDK import or browser key option", () => {

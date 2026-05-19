@@ -6,16 +6,31 @@ import {
   type CompletionMetricsSnapshot,
   createMemoryMetricsSink,
 } from "./metrics";
-import { type CompletionProvider, createNoopCompletionProvider } from "./provider";
+import {
+  type CompletionProvider,
+  type CompletionProviderError,
+  type CompletionRequestBudget,
+  createNoopCompletionProvider,
+  getSafeCompletionProviderErrorMessage,
+  normalizeCompletionProviderError,
+} from "./provider";
 import { sanitizeCompletionText } from "./sanitize";
 import type { CompletionState } from "./state";
-import type { CompletionMode, CompletionResponse } from "./types";
+import type {
+  CompletionDelta,
+  CompletionMode,
+  CompletionRequest,
+  CompletionResponse,
+} from "./types";
 
 export const DEFAULT_REMOTE_COMPLETION_OPTIONS = {
   debounceMs: 300,
   timeoutMs: 2500,
   minPrefixChars: 12,
   maxCompletionChars: 220,
+  maxConcurrentRequests: 1,
+  cooldownAfterRateLimitMs: 30_000,
+  streamingMinCharsBeforeRender: 1,
 } as const;
 
 export type CompletionDismissReason =
@@ -46,6 +61,11 @@ export type CompletionEventType =
   | "request_aborted_in_flight"
   | "provider_error"
   | "provider_latency"
+  | "stream_started"
+  | "stream_delta"
+  | "stream_completed"
+  | "stream_aborted"
+  | "stream_stale_delta_dropped"
   | "ghost_shown"
   | "ghost_dismissed"
   | "ghost_accepted"
@@ -60,6 +80,8 @@ export type CompletionEvent = {
   model?: string;
   latencyMs?: number;
   reason?: string;
+  providerErrorKind?: CompletionProviderError["kind"];
+  retryAfterMs?: number;
   metadata?: Record<string, unknown>;
 };
 
@@ -70,8 +92,15 @@ export type RemoteCompletionOptions = {
   minPrefixChars?: number;
   maxCompletionChars?: number;
   stopSequences?: string[];
+  streaming?: false | RemoteCompletionStreamingOptions;
   metrics?: CompletionMetricsSink;
   maxMetricEvents?: number;
+  requestBudget?: CompletionRequestBudget;
+};
+
+export type RemoteCompletionStreamingOptions = {
+  enabled: boolean;
+  minCharsBeforeRender?: number;
 };
 
 export type RemoteCompletionController = {
@@ -102,7 +131,10 @@ type ScheduledRequest = {
 type InFlightRequest = {
   requestId: string;
   controller: AbortController;
+  streaming: boolean;
 };
+
+type StreamAbortReason = CompletionDismissReason | "accept";
 
 type RequestMetricsContext = {
   requestId: string;
@@ -132,6 +164,8 @@ export function createRemoteCompletion(
   const maxCompletionChars =
     options.maxCompletionChars ?? DEFAULT_REMOTE_COMPLETION_OPTIONS.maxCompletionChars;
   const stopSequences = options.stopSequences ?? [];
+  const streaming = normalizeStreamingOptions(options.streaming);
+  const requestBudget = normalizeRequestBudget(options.requestBudget);
   const listeners = new Set<(event: CompletionEvent) => void>();
 
   let state: CompletionState = { status: "idle" };
@@ -140,6 +174,8 @@ export function createRemoteCompletion(
   let scheduledRequest: ScheduledRequest | null = null;
   let inFlightRequest: InFlightRequest | null = null;
   let showingResponse: CompletionResponse | null = null;
+  let cooldownUntilMs = 0;
+  const requestStartedAtMsWindow: number[] = [];
   const requestMetrics = new Map<string, RequestMetricsContext>();
   let destroyed = false;
 
@@ -154,9 +190,22 @@ export function createRemoteCompletion(
         return;
       }
 
+      const now = performance.now();
+
       cancelScheduledRequest("request_canceled_before_send");
-      abortInFlightRequest("request_aborted_in_flight");
       dismissShowingAsStale();
+      abortInFlightRequest("request_aborted_in_flight", "typing");
+
+      if (isInRateLimitCooldown(now)) {
+        activeRequestId = null;
+        state = { status: "idle" };
+        recordMetric("request_budget_exceeded", undefined, {
+          reason: "rate_limit_cooldown",
+          budgetLimit: "rate_limit_cooldown",
+          cooldownUntilMs,
+        });
+        return;
+      }
 
       if (input.contextBefore.length < minPrefixChars) {
         activeRequestId = null;
@@ -164,8 +213,19 @@ export function createRemoteCompletion(
         return;
       }
 
+      const budgetLimit = getExceededRequestBudget(now);
+      if (budgetLimit !== null) {
+        activeRequestId = null;
+        state = { status: "idle" };
+        recordMetric("request_budget_exceeded", undefined, {
+          reason: budgetLimit,
+          budgetLimit,
+        });
+        return;
+      }
+
       const requestId = createRequestId();
-      const scheduledAtMs = performance.now();
+      const scheduledAtMs = now;
       requestMetrics.set(requestId, {
         requestId,
         mode: input.mode,
@@ -196,11 +256,12 @@ export function createRemoteCompletion(
     },
     dismiss(reason) {
       if (state.status !== "showing") {
-        cancel();
+        cancel(reason);
         return;
       }
 
       const { requestId } = state;
+      abortInFlightRequestFor(requestId, "request_aborted_in_flight", reason);
       showingResponse = null;
       activeRequestId = null;
       state = { status: "dismissed", requestId, reason };
@@ -218,6 +279,7 @@ export function createRemoteCompletion(
 
       const response = showingResponse;
       const { requestId } = state;
+      abortInFlightRequestFor(requestId, "request_aborted_in_flight", "accept");
       showingResponse = null;
       activeRequestId = null;
       state = { status: "accepted", requestId };
@@ -295,17 +357,26 @@ export function createRemoteCompletion(
       metadata: input.metadata,
     });
 
+    const useStreaming = streaming.enabled && provider.streamComplete !== undefined;
+
     inFlightRequest = {
       requestId,
       controller: abortController,
+      streaming: useStreaming,
     };
     const requestStartedAtMs = performance.now();
     updateRequestMetrics(requestId, {
       requestStartedAtMs,
     });
+    recordRequestStartedAt(requestStartedAtMs);
     state = { status: "requesting", requestId };
 
     try {
+      if (useStreaming && provider.streamComplete !== undefined) {
+        await requestStreamingCompletion(requestId, request, abortController);
+        return;
+      }
+
       const response = await provider.complete(request, {
         signal: abortController.signal,
         timeoutMs,
@@ -411,24 +482,346 @@ export function createRemoteCompletion(
         return;
       }
 
-      const message = error instanceof Error ? error.message : String(error);
+      const providerError = normalizeCompletionProviderError(error);
+      const message = getSafeCompletionProviderErrorMessage(providerError);
+      const timestampMs = performance.now();
       activeRequestId = null;
       showingResponse = null;
-      state = { status: "error", requestId, error: message };
+      state = {
+        status: "error",
+        requestId,
+        error: message,
+        providerErrorKind: providerError.kind,
+      };
       emit({
         type: "provider_error",
         requestId,
-        reason: message,
+        reason: providerError.kind,
+        providerErrorKind: providerError.kind,
+        retryAfterMs: getRetryAfterMs(providerError),
       });
-      recordMetric("provider_error", requestId, {
-        reason: "provider_error",
-      });
+      recordMetric(
+        "provider_error",
+        requestId,
+        {
+          reason: providerError.kind,
+          providerErrorKind: providerError.kind,
+          retryAfterMs: getRetryAfterMs(providerError),
+        },
+        timestampMs,
+      );
+      recordProviderErrorSpecificMetrics(requestId, providerError, timestampMs);
     }
   }
 
-  function cancel(): void {
+  async function requestStreamingCompletion(
+    requestId: string,
+    request: CompletionRequest,
+    abortController: AbortController,
+  ): Promise<void> {
+    const streamStartedAtMs = performance.now();
+    const providerName = provider.name;
+    let accumulatedText = "";
+    let renderedText = "";
+    let ghostMetricRecorded = false;
+
+    updateRequestMetrics(requestId, {
+      providerName,
+    });
+    emit({
+      type: "stream_started",
+      requestId,
+      providerName,
+    });
+    recordMetric(
+      "stream_started",
+      requestId,
+      {
+        providerName,
+      },
+      streamStartedAtMs,
+    );
+
+    for await (const delta of provider.streamComplete?.(request, {
+      signal: abortController.signal,
+      timeoutMs,
+    }) ?? []) {
+      const deltaReceivedAtMs = performance.now();
+
+      if (delta.id !== requestId || !isCurrentInFlightRequest(requestId)) {
+        recordStaleStreamDelta(requestId, delta, deltaReceivedAtMs);
+        continue;
+      }
+
+      accumulatedText += delta.textDelta;
+
+      const text = sanitizeCompletionText(accumulatedText, {
+        contextBefore: request.contextBefore,
+        maxCompletionChars,
+        stopSequences,
+      });
+
+      updateRequestMetrics(requestId, {
+        completionLength: text.length,
+        providerName,
+      });
+      emit({
+        type: "stream_delta",
+        requestId,
+        providerName,
+      });
+      recordMetric(
+        "stream_delta",
+        requestId,
+        {
+          completionLength: text.length,
+          providerName,
+        },
+        deltaReceivedAtMs,
+      );
+
+      if (text.length >= streaming.minCharsBeforeRender && text !== renderedText) {
+        renderedText = text;
+        renderStreamingGhost({
+          requestId,
+          text,
+          providerName,
+          timestampMs: deltaReceivedAtMs,
+          ghostMetricRecorded,
+        });
+        ghostMetricRecorded = true;
+      }
+
+      if (delta.done === true) {
+        break;
+      }
+    }
+
+    if (!isCurrentInFlightRequest(requestId)) {
+      return;
+    }
+
+    const completedAtMs = performance.now();
+    const latencyMs = measureRequestLatency(requestId, completedAtMs);
+    inFlightRequest = null;
+    updateRequestMetrics(requestId, {
+      responseReceivedAtMs: completedAtMs,
+      completionLength: renderedText.length,
+      providerName,
+    });
+    emit({
+      type: "stream_completed",
+      requestId,
+      providerName,
+      latencyMs,
+    });
+    recordMetric(
+      "stream_completed",
+      requestId,
+      {
+        completionLength: renderedText.length,
+        providerName,
+        latencyMs,
+      },
+      completedAtMs,
+    );
+    emit({
+      type: "provider_latency",
+      requestId,
+      providerName,
+      latencyMs,
+    });
+    recordMetric(
+      "provider_latency",
+      requestId,
+      {
+        providerName,
+        latencyMs,
+        timeFromLastUserInputToRequestStartMs: measureInputToRequestStart(requestId),
+        timeFromRequestStartToResponseMs: measureRequestStartToResponse(requestId),
+      },
+      completedAtMs,
+    );
+
+    if (renderedText.length === 0) {
+      activeRequestId = null;
+      showingResponse = null;
+      state = { status: "idle" };
+    }
+  }
+
+  function renderStreamingGhost(options: {
+    requestId: string;
+    text: string;
+    providerName: string;
+    timestampMs: number;
+    ghostMetricRecorded: boolean;
+  }): void {
+    const latencyMs = measureRequestLatency(options.requestId, options.timestampMs);
+    const response: CompletionResponse = {
+      id: options.requestId,
+      text: options.text,
+      providerName: options.providerName,
+      latencyMs,
+      finishReason: "streaming",
+    };
+
+    activeRequestId = options.requestId;
+    showingResponse = response;
+    const metricsUpdates: Partial<RequestMetricsContext> = {
+      completionLength: options.text.length,
+      providerName: options.providerName,
+    };
+
+    if (!options.ghostMetricRecorded) {
+      metricsUpdates.ghostShownAtMs = options.timestampMs;
+    }
+
+    updateRequestMetrics(options.requestId, metricsUpdates);
+    state = {
+      status: "showing",
+      requestId: options.requestId,
+      text: options.text,
+    };
+    emit({
+      type: "ghost_shown",
+      requestId: options.requestId,
+      providerName: options.providerName,
+      latencyMs,
+    });
+
+    if (options.ghostMetricRecorded) {
+      return;
+    }
+
+    recordMetric(
+      "ghost_shown",
+      options.requestId,
+      {
+        completionLength: options.text.length,
+        providerName: options.providerName,
+        latencyMs,
+        timeFromLastUserInputToGhostVisibleMs: measureInputToGhostVisible(options.requestId),
+      },
+      options.timestampMs,
+    );
+  }
+
+  function recordStaleStreamDelta(
+    requestId: string,
+    delta: CompletionDelta,
+    timestampMs: number,
+  ): void {
+    emit({
+      type: "stream_stale_delta_dropped",
+      requestId,
+      providerName: provider.name,
+      reason: "stale",
+    });
+    recordMetric(
+      "stream_stale_delta_dropped",
+      requestId,
+      {
+        completionLength: delta.textDelta.length,
+        providerName: provider.name,
+        status: "stale",
+        reason: "stale",
+      },
+      timestampMs,
+    );
+  }
+
+  function isInRateLimitCooldown(now: number): boolean {
+    return cooldownUntilMs > now;
+  }
+
+  function getExceededRequestBudget(now: number): keyof CompletionRequestBudget | null {
+    trimRequestStartedAtWindow(now);
+
+    if (
+      requestBudget.maxRequestsPerMinute !== undefined &&
+      requestStartedAtMsWindow.length >= requestBudget.maxRequestsPerMinute
+    ) {
+      return "maxRequestsPerMinute";
+    }
+
+    return null;
+  }
+
+  function recordRequestStartedAt(timestampMs: number): void {
+    trimRequestStartedAtWindow(timestampMs);
+    requestStartedAtMsWindow.push(timestampMs);
+  }
+
+  function trimRequestStartedAtWindow(now: number): void {
+    const oneMinuteAgo = now - 60_000;
+
+    while (
+      requestStartedAtMsWindow.length > 0 &&
+      (requestStartedAtMsWindow[0] ?? 0) <= oneMinuteAgo
+    ) {
+      requestStartedAtMsWindow.shift();
+    }
+  }
+
+  function recordProviderErrorSpecificMetrics(
+    requestId: string,
+    providerError: CompletionProviderError,
+    timestampMs: number,
+  ): void {
+    if (providerError.kind === "timeout") {
+      recordMetric(
+        "provider_timeout",
+        requestId,
+        {
+          reason: providerError.kind,
+          providerErrorKind: providerError.kind,
+        },
+        timestampMs,
+      );
+      return;
+    }
+
+    if (providerError.kind === "invalid_response") {
+      recordMetric(
+        "invalid_response",
+        requestId,
+        {
+          reason: providerError.kind,
+          providerErrorKind: providerError.kind,
+        },
+        timestampMs,
+      );
+      return;
+    }
+
+    if (providerError.kind !== "rate_limited") {
+      return;
+    }
+
+    const cooldownMs = providerError.retryAfterMs ?? requestBudget.cooldownAfterRateLimitMs;
+
+    if (cooldownMs <= 0) {
+      return;
+    }
+
+    cooldownUntilMs = Math.max(cooldownUntilMs, timestampMs + cooldownMs);
+    recordMetric(
+      "rate_limit_cooldown_started",
+      requestId,
+      {
+        reason: providerError.kind,
+        providerErrorKind: providerError.kind,
+        retryAfterMs: cooldownMs,
+        cooldownUntilMs,
+      },
+      timestampMs,
+    );
+  }
+
+  function cancel(reason: StreamAbortReason = "manual"): void {
     cancelScheduledRequest("request_canceled_before_send");
-    abortInFlightRequest("request_aborted_in_flight");
+    abortInFlightRequest("request_aborted_in_flight", reason);
     activeRequestId = null;
     showingResponse = null;
     state = { status: "idle" };
@@ -449,12 +842,28 @@ export function createRemoteCompletion(
     recordMetric(eventType, requestId);
   }
 
-  function abortInFlightRequest(eventType: "request_aborted_in_flight"): void {
+  function abortInFlightRequest(
+    eventType: "request_aborted_in_flight",
+    reason: StreamAbortReason,
+  ): void {
     if (inFlightRequest === null) {
       return;
     }
 
-    const { requestId, controller: abortController } = inFlightRequest;
+    const { requestId } = inFlightRequest;
+    abortInFlightRequestFor(requestId, eventType, reason);
+  }
+
+  function abortInFlightRequestFor(
+    requestId: string,
+    eventType: "request_aborted_in_flight",
+    reason: StreamAbortReason,
+  ): void {
+    if (inFlightRequest === null || inFlightRequest.requestId !== requestId) {
+      return;
+    }
+
+    const { controller: abortController, streaming: isStreamingRequest } = inFlightRequest;
     inFlightRequest = null;
     abortController.abort();
     markRequestStale(requestId);
@@ -463,6 +872,21 @@ export function createRemoteCompletion(
       requestId,
     });
     recordMetric(eventType, requestId);
+
+    if (!isStreamingRequest) {
+      return;
+    }
+
+    emit({
+      type: "stream_aborted",
+      requestId,
+      providerName: provider.name,
+      reason,
+    });
+    recordMetric("stream_aborted", requestId, {
+      providerName: provider.name,
+      reason,
+    });
   }
 
   function dismissShowingAsStale(): void {
@@ -582,6 +1006,16 @@ export function createRemoteCompletion(
     return context.responseReceivedAtMs - context.requestStartedAtMs;
   }
 
+  function measureRequestLatency(requestId: string, timestampMs = performance.now()): number {
+    const context = requestMetrics.get(requestId);
+
+    if (context?.requestStartedAtMs === undefined) {
+      return 0;
+    }
+
+    return timestampMs - context.requestStartedAtMs;
+  }
+
   function measureInputToGhostVisible(requestId: string): number | undefined {
     const context = requestMetrics.get(requestId);
 
@@ -634,4 +1068,78 @@ function normalizeSurface(surface: string | undefined): string | undefined {
   }
 
   return normalized;
+}
+
+type NormalizedCompletionRequestBudget = {
+  maxRequestsPerMinute?: number;
+  maxConcurrentRequests: number;
+  cooldownAfterRateLimitMs: number;
+};
+
+type NormalizedRemoteCompletionStreamingOptions = {
+  enabled: boolean;
+  minCharsBeforeRender: number;
+};
+
+function normalizeStreamingOptions(
+  streaming: RemoteCompletionOptions["streaming"],
+): NormalizedRemoteCompletionStreamingOptions {
+  if (streaming === false || streaming?.enabled !== true) {
+    return {
+      enabled: false,
+      minCharsBeforeRender: DEFAULT_REMOTE_COMPLETION_OPTIONS.streamingMinCharsBeforeRender,
+    };
+  }
+
+  return {
+    enabled: true,
+    minCharsBeforeRender: normalizePositiveInteger(
+      streaming.minCharsBeforeRender,
+      DEFAULT_REMOTE_COMPLETION_OPTIONS.streamingMinCharsBeforeRender,
+    ),
+  };
+}
+
+function normalizeRequestBudget(
+  budget: CompletionRequestBudget | undefined,
+): NormalizedCompletionRequestBudget {
+  return {
+    maxRequestsPerMinute: normalizeOptionalNonNegativeInteger(budget?.maxRequestsPerMinute),
+    maxConcurrentRequests: normalizePositiveInteger(
+      budget?.maxConcurrentRequests,
+      DEFAULT_REMOTE_COMPLETION_OPTIONS.maxConcurrentRequests,
+    ),
+    cooldownAfterRateLimitMs: normalizeNonNegativeInteger(
+      budget?.cooldownAfterRateLimitMs,
+      DEFAULT_REMOTE_COMPLETION_OPTIONS.cooldownAfterRateLimitMs,
+    ),
+  };
+}
+
+function normalizeOptionalNonNegativeInteger(value: number | undefined): number | undefined {
+  if (value === undefined || !Number.isFinite(value) || value < 0) {
+    return undefined;
+  }
+
+  return Math.floor(value);
+}
+
+function normalizePositiveInteger(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value) || value < 1) {
+    return fallback;
+  }
+
+  return Math.floor(value);
+}
+
+function normalizeNonNegativeInteger(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value) || value < 0) {
+    return fallback;
+  }
+
+  return Math.floor(value);
+}
+
+function getRetryAfterMs(providerError: CompletionProviderError): number | undefined {
+  return providerError.kind === "rate_limited" ? providerError.retryAfterMs : undefined;
 }

@@ -45,6 +45,8 @@ provider credentials stay on the embedder's server.
 - [Security threat model](./security-threat-model.md)
 - [Privacy model](./privacy-model.md)
 - [V4.2 completion checkpoint](./v4-2-provider-public-beta-readiness-complete.md)
+- [Production Language Asset RC](./production-language-asset-rc.md)
+- [Production asset gate recap](./production-asset-gate-recap.md)
 - [Intelligence Quality Foundation](./intelligence-quality-foundation.md)
 - [Intelligence Quality Foundation checkpoint](./intelligence-quality-foundation-complete.md)
 - [Spell quality baseline](./spell-quality-baseline.md)

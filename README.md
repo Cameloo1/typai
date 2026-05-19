@@ -7,13 +7,14 @@ with optional remote completion kept in a separate package and routed through
 embedder-owned endpoints.
 
 Status: V4.2 public-beta readiness and Intelligence Quality Foundation are
-complete. Packages are local-ready and tested from this workspace, but they
-have not been published to npm.
+complete. Production Language Asset + Beta Release Candidate work is active.
+Packages are local-ready and tested from this workspace, but they have not been
+published to npm.
 
 ## Current Phase
 
-Intelligence Quality Foundation completed after V4.2 Provider + Public Beta
-Readiness.
+Production Language Asset + Beta Release Candidate follows the completed
+Intelligence Quality Foundation.
 
 - deterministic correction remains local through `@typai/core`
 - completion is optional through `@typai/completion-remote`
@@ -29,6 +30,10 @@ Readiness.
   dictionary coverage until an approved production asset lands
 - spell-quality benchmark gates and cross-surface E2E now guard the current
   safety baseline
+- production language asset RC work is next, but no production
+  dictionary/frequency asset is bundled until source, license, attribution,
+  manifest, hash, transform, size, quality, and review gates pass
+- npm publish has not happened
 
 ## Packages
 
@@ -62,6 +67,8 @@ will be added after a real npm publish.
 - [Troubleshooting](./docs/troubleshooting.md)
 - [Roadmap](./docs/roadmap.md)
 - [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
+- [Production Language Asset RC](./docs/production-language-asset-rc.md)
+- [Production asset gate recap](./docs/production-asset-gate-recap.md)
 - [Intelligence Quality Foundation](./docs/intelligence-quality-foundation.md)
 - [Intelligence Quality Foundation checkpoint](./docs/intelligence-quality-foundation-complete.md)
 - [Spell quality baseline](./docs/spell-quality-baseline.md)

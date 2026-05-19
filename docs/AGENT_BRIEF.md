@@ -8,10 +8,11 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: Intelligence Quality Foundation complete. V4.2 Provider +
-Public Beta Readiness is complete, and Prompts 99 through 107 have checkpointed
-the spell intelligence quality gates, real completion demo boundary, and
-hardening audit.
+Current phase: Production Language Asset + Beta Release Candidate. Production
+asset work is active, but npm publish is still out of scope. V4.2 Provider +
+Public Beta Readiness and Intelligence Quality Foundation are complete, and
+Prompts 99 through 107 have checkpointed the spell intelligence quality gates,
+real completion demo boundary, and hardening audit.
 
 Package readiness is not the same as product intelligence. The public beta
 package rails, provider proxy boundaries, and cross-surface completion
@@ -46,6 +47,13 @@ Production dictionary assets remain gated by license/source approval. Do not
 commit, pack, publish, or claim production dictionary/frequency assets until an
 approved asset PR includes source URLs, retrieval dates, notices, attribution,
 manifest counts, hashes, and deterministic transform commands.
+Do not bundle unclear-license assets. Do not publish. Do not start a real Codex
+adapter, grammar/style/tone/clarity work, local model inference, or next-edit
+logging in this phase. Preserve correction/completion boundaries: `@typai/core`
+stays local deterministic correction only, completion stays optional, valid
+words and protected tokens are never autocorrected, delete-index candidates are
+suggestions-only unless explicitly approved in the common typo table, and
+accepted completions are not blue correction marks.
 
 Prompt 100 approved the first source path only: ESDB/SCOWL `en-US` size 60 for
 dictionary data and Google Books Ngram American English 2019 unigrams for
@@ -176,7 +184,7 @@ correction settles.
 - No keyboard adjacency.
 - No edit-distance autocorrect.
 - No valid-word autocorrect.
-- No production dictionary asset.
+- No production dictionary/frequency asset without all approval gates passing.
 - No ProseMirror implementation.
 - No Monaco implementation.
 - Codex adapter integration remains out of scope.
@@ -207,6 +215,9 @@ Use `docs/dictionary-source-selection.md`,
 `docs/dictionary-asset-policy.md`, `docs/dictionary-production-approval.md`,
 and `docs/dictionary-asset-blockers.md` for Prompt 100 source approval and
 asset-ingestion gates.
+
+Use `docs/production-language-asset-rc.md` as the current phase scope lock and
+`docs/production-asset-gate-recap.md` as the current asset gate summary.
 
 ## V4 Scope Reference
 

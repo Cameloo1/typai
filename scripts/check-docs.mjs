@@ -25,6 +25,8 @@ const requiredFiles = [
   "docs/release-checklist.md",
   "docs/troubleshooting.md",
   "docs/roadmap.md",
+  "docs/production-language-asset-rc.md",
+  "docs/production-asset-gate-recap.md",
   "docs/intelligence-quality-foundation-complete.md",
   "docs/dictionary-source-selection.md",
   "docs/dictionary-asset-policy.md",

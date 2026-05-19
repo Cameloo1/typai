@@ -27,8 +27,9 @@ snapshot tests.
 - Do not export provider API-key configuration for browser use.
 - Do not make `@typai/core` depend on `@typai/completion-remote`.
 - Keep type exports and runtime exports covered by source-level snapshot tests.
-- Treat `@typai/ui` and `@typai/adapter-testkit` as internal unless a later
-  packaging prompt promotes specific APIs.
+- Treat `@typai/ui`, `@typai/adapter-testkit`, and
+  `@typai/provider-proxy-testkit` as internal unless a later packaging prompt
+  promotes specific APIs.
 
 ## `@typai/core`
 
@@ -180,6 +181,15 @@ Package label: `internal`.
 
 Current exports are test-only conformance fixtures, assertions, drivers, and
 types for adapter packages. They are not consumer APIs.
+
+## `@typai/provider-proxy-testkit`
+
+Package label: `internal`.
+
+Current exports are test-only provider proxy schemas, validation helpers, safe
+error helpers, fixtures, and the `runProviderProxyContractSuite()` conformance
+harness for future server-side provider proxy examples. They are not browser
+runtime APIs and do not authorize provider API keys in browser code.
 
 ## Deprecations
 

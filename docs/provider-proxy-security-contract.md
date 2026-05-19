@@ -107,7 +107,7 @@ Errors must be safe and structured:
 }
 ```
 
-Use stable error codes such as:
+Use the stable V4.2 provider-proxy error code set:
 
 - `invalid_method`
 - `invalid_content_type`
@@ -115,14 +115,27 @@ Use stable error codes such as:
 - `invalid_request`
 - `context_too_large`
 - `completion_too_large`
-- `unauthorized`
-- `forbidden_origin`
-- `rate_limited`
 - `provider_timeout`
-- `provider_unavailable`
+- `provider_rate_limited`
+- `provider_server_error`
+- `provider_client_error`
+- `provider_invalid_response`
 - `internal_error`
 
 Do not forward raw provider errors to browsers.
+
+## Validation And Unknown Fields
+
+The reusable contract harness lives in internal package
+`@typai/provider-proxy-testkit`. Future provider proxy examples must use its
+schema validation, safe error helpers, fixtures, and
+`runProviderProxyContractSuite()` conformance tests.
+
+The default validation policy is strict: unknown fields are rejected at the
+top-level payload, `request`, and `instruction` objects. `metadata` is the only
+extension object and is bounded by serialized JSON byte size. This keeps public
+beta examples from silently accepting private provider-key fields or
+unreviewed prompt-control fields.
 
 ## Safe Logging Policy
 

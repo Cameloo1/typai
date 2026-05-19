@@ -41,6 +41,7 @@ deterministic correction adapters in this phase.
 - `@typai/react`
 - `@typai/codemirror`
 - `@typai/completion-remote`
+- Internal private `@typai/provider-proxy-testkit`
 - `examples/simple-demo-editor`
 - `tests/golden-corpus`
 
@@ -62,6 +63,9 @@ deterministic correction adapters in this phase.
   blue correction marks.
 - Mock providers are used in tests, demos, E2E, and browser benchmark smoke.
 - API export snapshot tests must stay explicit when public exports change.
+- Provider proxy examples must satisfy `@typai/provider-proxy-testkit`
+  validation, safe-error, fixture, and contract-suite coverage before they are
+  trusted.
 - Endpoint providers require an embedder backend; browser code must not call
   model providers directly.
 - Browser examples must not contain private provider API keys.

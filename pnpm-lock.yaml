@@ -115,6 +115,12 @@ importers:
 
   packages/completion-remote: {}
 
+  packages/provider-proxy-testkit:
+    dependencies:
+      '@typai/completion-remote':
+        specifier: workspace:*
+        version: link:../completion-remote
+
   packages/contenteditable:
     dependencies:
       '@typai/core':

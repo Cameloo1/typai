@@ -43,6 +43,10 @@ readiness. It covers current packages and the planned provider-proxy boundary.
   server-side OpenAI Responses path only.
 - The manual real-provider smoke requires explicit opt-in flags and is not a CI
   gate.
+- Public beta smoke installs packed tarballs into disposable consumer apps and
+  runs mock-only package, completion, artifact, and browser-key-path checks.
+- Public beta readiness CI uses mock provider mode, requires no provider
+  secrets, and does not run the manual real-provider script.
 - No Codex adapter, local inference path, next-edit logging, browser extension,
   npm publish, or bundled production dictionary asset is present in this phase.
 
@@ -61,6 +65,8 @@ readiness. It covers current packages and the planned provider-proxy boundary.
 | Prompt injection into provider instructions | Proxies must keep server-owned instructions separate from user context. |
 | Test fixture using real provider | CI and tests use mocks; the manual real-provider smoke exits unless explicit env gates are set. |
 | Package artifact leakage | Package dry-run and smoke install remain release-readiness gates. |
+| Browser package provider-key path | Package secret scan and public beta smoke inspect packed browser artifacts for provider-key strings and direct provider endpoints. |
+| Public beta app drift | Public beta smoke builds vanilla, React, CodeMirror, and proxy-backed consumer apps from packed tarballs in temporary directories. |
 | IndexedDB data exposure | Memory import/export/reset stays user-controlled and local. |
 
 ## Security Requirements For Later V4.2 Work

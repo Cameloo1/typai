@@ -61,9 +61,13 @@ pnpm lint
 pnpm docs:check
 pnpm pack:dry
 pnpm smoke:install
+pnpm smoke:public-beta
 pnpm scan:package-secrets
 pnpm release:check
 ```
+
+The public beta smoke matrix installs packed local tarballs into temporary
+consumer apps and uses mock provider paths only.
 
 ## License
 

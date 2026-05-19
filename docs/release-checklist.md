@@ -12,6 +12,8 @@ future public beta packaging.
 - Package metadata audit passes.
 - Package secret scan passes.
 - Package tarball inspection passes.
+- Public beta smoke matrix passes from packed tarballs.
+- Public beta readiness CI is green.
 - Generated artifacts are not tracked.
 - No provider credentials are committed.
 - No real provider calls run in CI.
@@ -27,6 +29,7 @@ pnpm test:e2e
 pnpm bench:browser
 pnpm pack:dry
 pnpm smoke:install
+pnpm smoke:public-beta
 pnpm scan:package-secrets
 pnpm release:check
 pnpm release:version:dry
@@ -54,6 +57,16 @@ changes the package boundary.
 
 ## Deferred Gates
 
-- Public beta smoke matrix, once added later.
-- CI release-readiness workflow, once added later.
 - Real npm publish, only after explicit manual approval.
+
+## Public Beta Readiness CI
+
+`.github/workflows/public-beta-readiness.yml` is the CI gate for beta
+packaging. It uses frozen installs, builds, lint, unit tests, Chromium and
+Firefox E2E, axe/accessibility specs, deterministic correction benchmarks,
+browser completion benchmarks, package dry-runs, install smoke,
+`pnpm smoke:public-beta`, release dry-runs, package secret scan, and provider
+proxy contract tests.
+
+The workflow intentionally does not run WebKit, does not require provider
+secrets, does not run the manual real-provider smoke, and does not publish.

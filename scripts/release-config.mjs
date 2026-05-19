@@ -96,4 +96,5 @@ export const requiredReleaseScripts = [
   "scan:package-secrets",
   "pack:dry",
   "smoke:install",
+  "smoke:public-beta",
 ];

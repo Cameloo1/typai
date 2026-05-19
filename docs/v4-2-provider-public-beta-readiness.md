@@ -164,8 +164,12 @@ V4.2 should make public beta readiness inspectable:
 - Future release dry-runs prove tarball contents, metadata, and import
   surfaces.
 - Future changelog and versioning flow are documented before npm publish.
-- Future CI release-readiness workflow uses no real provider calls.
-- Future public beta smoke matrix covers supported packages and surfaces.
+- Public beta smoke matrix installs packed tarballs into disposable consumer
+  apps, covers supported public packages, verifies mock completion, checks the
+  core/completion package boundary, inspects package artifacts, and scans for
+  browser provider-key paths.
+- CI release-readiness workflow uses no real provider calls and requires no
+  provider secrets.
 - Future manual real-provider checks are opt-in, env-gated, and excluded from
   CI.
 
@@ -208,8 +212,11 @@ V4.2 is ready only when these gates are true:
 - Browser examples contain no API keys or direct model-provider calls.
 - Consumer install examples are verified.
 - Package dry-run and smoke install pass.
-- Tests, build, lint, E2E, and browser benchmarks pass with mock providers.
-- Release-readiness CI runs without real provider credentials.
+- Public beta smoke matrix passes from packed tarballs.
+- Tests, build, lint, E2E, browser benchmarks, and package smoke pass with mock
+  providers.
+- Release-readiness CI runs without real provider credentials, without WebKit,
+  and without npm publish.
 - Security and privacy threat model is complete.
 - Public beta smoke matrix is documented and executed.
 - V4.2 hardening audit records current verified behavior and remaining

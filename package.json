@@ -13,6 +13,7 @@
     "pack:dry": "node scripts/pack-dry.mjs",
     "pack:local": "node scripts/pack-local.mjs",
     "smoke:install": "node scripts/package-smoke.mjs",
+    "smoke:public-beta": "node scripts/public-beta-smoke.mjs",
     "smoke:real-provider:manual": "node scripts/manual-real-provider-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "scan:package-secrets": "node scripts/scan-package-secrets.mjs",

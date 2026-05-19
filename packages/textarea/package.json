@@ -1,11 +1,18 @@
 {
   "name": "@typai/textarea",
   "version": "0.0.0-dev",
+  "description": "Typai textarea adapter with overlay correction rendering and optional completion support.",
+  "license": "UNLICENSED",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cameloo1/typai.git",
+    "directory": "packages/textarea"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,6 +23,7 @@
     "dist",
     "README.md"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "prepack": "pnpm run build",

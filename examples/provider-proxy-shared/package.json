@@ -1,0 +1,16 @@
+{
+  "name": "@typai/provider-proxy-example-utils",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true});\""
+  },
+  "dependencies": {
+    "@typai/completion-remote": "workspace:*",
+    "@typai/provider-proxy-testkit": "workspace:*"
+  }
+}

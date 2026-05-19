@@ -1,6 +1,6 @@
 # Package Readiness
 
-Status date: 2026-05-18.
+Status date: 2026-05-19.
 
 Typai package readiness covers local dry-run packaging, local tarball install
 smoke tests, CI build/test coverage, and browser benchmark smoke tests. No npm
@@ -9,7 +9,8 @@ publish step is part of this readiness gate.
 V4 Remote Completion Prototype package readiness is complete for V4.0. V4.1
 readiness now covers contenteditable, textarea, React, and CodeMirror
 completion surfaces. The hardening checkpoint is recorded in
-`docs/v4-remote-completion-complete.md`.
+`docs/v4-remote-completion-complete.md`, and the V4.1 checkpoint is recorded in
+`docs/v4-1-completion-surface-expansion-complete.md`.
 
 ## Packages
 
@@ -25,7 +26,8 @@ Readiness currently covers:
 
 `@typai/completion-remote` is optional. It is not imported by `@typai/core`,
 and deterministic correction packages must keep working without it installed or
-configured.
+configured. V4.1 smoke and E2E coverage verify that existing adapters still
+work without completion controllers/options.
 
 ## Remote Completion Package Surface
 
@@ -47,7 +49,9 @@ behavior.
 
 The V4 hardening audit confirms this package remains optional, has no OpenAI SDK
 dependency, has no browser API-key path, and is not imported by `@typai/core` or
-required by deterministic correction adapters.
+required by deterministic correction adapters. The V4.1 hardening audit extends
+that boundary across contenteditable, textarea, React, and CodeMirror
+completion surfaces.
 
 ## Local Gates
 
@@ -110,3 +114,7 @@ package dry-run and smoke install, runs Chromium and Firefox Playwright E2E for
 V4.1 completion surfaces, and runs the browser benchmark smoke. WebKit is
 skipped. CI does not publish to npm and does not require real provider
 credentials.
+
+The V4.1 audit confirms there is no real provider call path in demos, tests,
+E2E, or benchmarks; endpoint provider usage is routed through an
+embedder-controlled endpoint.

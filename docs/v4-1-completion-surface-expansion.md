@@ -1,11 +1,12 @@
 # V4.1 Completion Surface Expansion
 
-Status date: 2026-05-18.
+Status date: 2026-05-19.
 
 V4.1 expands the optional remote completion surface beyond the V4.0
 contenteditable prototype while preserving Typai's local deterministic
-correction contract. This phase is a scope lock for surface expansion, shared
-contracts, and provider resilience.
+correction contract. This phase is complete for the current checkpoint. The
+complete hardening audit lives in
+`docs/v4-1-completion-surface-expansion-complete.md`.
 
 ## Current V4.0 State
 
@@ -128,6 +129,8 @@ Recommended V4.1 sequence:
     after non-streaming surfaces are stable.
 13. V4.1-12: package readiness, CI, smoke install, and browser benchmark gates
     for V4.1 completion surfaces.
+14. V4.1-13: hardening audit, documentation checkpoint, and phase complete
+    commit.
 
 Each implementation prompt should preserve contenteditable completion behavior
 and keep tests mocked.
@@ -149,6 +152,10 @@ and CodeMirror, and confirms `@typai/core` still works without depending on
 CI covers completion-remote tests, mocked streaming tests, Chromium and Firefox
 V4.1 E2E, package smoke, and browser benchmarks. WebKit remains skipped and no
 real provider secrets are required.
+
+V4.1-13 completes the phase with a forbidden-source audit, dependency audit,
+surface contract audit, metrics/privacy audit, full validation pass, and
+`docs/v4-1-completion-surface-expansion-complete.md`.
 
 ## V4.1 Demo Expansion
 

@@ -8,7 +8,7 @@ today; the same engine compiles natively for editor plugins, desktop
 applications, and other host environments.
 
 Status: alpha. Packages are local-ready and tested but not yet published to npm.
-Current phase: V4.1 Completion Surface Expansion package readiness. V4 Remote
+Current phase: V4.1 Completion Surface Expansion is complete. V4 Remote
 Completion Prototype is complete, and completion is now an optional package.
 Current completion support covers contenteditable, textarea, React wrappers,
 and CodeMirror ghost rendering, dismiss, Tab accept, completion transactions,
@@ -181,9 +181,10 @@ package named `@typai/completion-remote`. It is scoped to contenteditable first
 and is not imported by `@typai/core` or bundled implicitly into existing
 correction adapters.
 
-V4.1 expands completion to textarea, React, and CodeMirror. CodeMirror
-completion now supports ghost rendering, dismiss, Tab accept, completion
-transactions, and exact revert. Core correction remains local and no-remote.
+V4.1 expands completion to textarea, React, and CodeMirror. The V4.1 hardening
+audit is complete: completion is mocked in demos/tests, accepted completions are
+transaction/revert-safe, accepted completions are not blue correction marks, and
+core correction remains local and no-remote.
 
 Future planned work also includes async grammar/style assistance, richer
 adapters, Codex integration, persistent memory, and next-writing-edit
@@ -258,6 +259,7 @@ CodeMirror, and verifies `@typai/core` does not depend on
 - [docs/v4-remote-completion.md](./docs/v4-remote-completion.md) - V4 remote completion prototype scope
 - [docs/v4-remote-completion-complete.md](./docs/v4-remote-completion-complete.md) - V4 hardening audit and completion checkpoint
 - [docs/v4-1-completion-surface-expansion.md](./docs/v4-1-completion-surface-expansion.md) - V4.1 completion surface expansion scope
+- [docs/v4-1-completion-surface-expansion-complete.md](./docs/v4-1-completion-surface-expansion-complete.md) - V4.1 hardening audit and completion checkpoint
 - [docs/package-readiness.md](./docs/package-readiness.md) - local package, smoke install, CI, and benchmark gates
 - [docs/textarea-adapter-foundation-complete.md](./docs/textarea-adapter-foundation-complete.md) - textarea completion audit
 

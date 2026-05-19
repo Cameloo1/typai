@@ -8,8 +8,7 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: V4.1 Completion Surface Expansion package readiness and
-benchmark hardening.
+Current phase: V4.1 Completion Surface Expansion is complete.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
 `@typai/completion-remote`. It is a separate, opt-in remote
@@ -20,7 +19,8 @@ readiness, and mocked benchmark coverage.
 Contenteditable, textarea, React, and CodeMirror completion exist today.
 CodeMirror completion supports ghost-text rendering, dismiss behavior, Tab
 accept, completion transactions, and exact revert. Package dry-run, smoke
-install, V4.1 E2E, and browser benchmark gates cover these surfaces.
+install, V4.1 E2E, browser benchmark gates, and the hardening audit cover these
+surfaces.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -60,6 +60,8 @@ deterministic correction adapters in this phase.
 - Browser examples must not contain private provider API keys.
 - Browser package code calls an embedder endpoint; the embedder endpoint calls
   the provider.
+- Accepted completions are completion transactions, not blue correction marks.
+- Ghost text is visual only until explicit Tab acceptance.
 - Optional streaming is allowed only after non-streaming V4.1 surfaces are
   stable, behind a feature flag, and with mocked tests only.
 - Browser benchmarks cover deterministic correction plus mocked completion for
@@ -136,3 +138,6 @@ completion, browser extension behavior, local model inference, next-edit
 logging, private browser provider-key paths, real provider calls in tests or
 demos, completion auto-accept, silent rewrite, or streaming outside the V4.1
 feature-flag/mock-test gate.
+
+Use `docs/v4-1-completion-surface-expansion-complete.md` as the V4.1 hardening
+audit and completion checkpoint.

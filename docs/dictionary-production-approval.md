@@ -8,10 +8,16 @@ Asset ingestion status: **BLOCKED**.
 
 Transform pipeline status: **AVAILABLE in gated fixture mode**.
 
+Package inclusion status: **EXCLUDED FROM `@typai/core`; host-provided only**.
+
 Prompt 109 verifies and pins the first production source path. It does not
 ingest, commit, package, publish, or ship generated production assets.
 Prompt 110 adds the deterministic transform entrypoint, but production mode
 still refuses to run while the manifest review status is blocked.
+Prompt 111 wires the runtime/package policy for the blocked state: packaged
+production assets remain unavailable, `dictionary.mode: "production"` throws a
+clear initialization error, and host-provided assets remain the supported
+external asset path.
 
 ## Approved Dictionary Source
 
@@ -133,6 +139,28 @@ The placeholder license and attribution files are:
 
 - `packages/core/assets/production/LICENSES/README.md`
 - `packages/core/assets/production/ATTRIBUTION.md`
+
+## Runtime And Package Policy
+
+Current package inclusion decision:
+
+- Production generated binary: not committed.
+- Production prepack generation: disabled while `review.status` is blocked.
+- `@typai/core` tarball: excludes `assets/`, raw source files, production
+  manifest/license placeholders, generated production binaries, and generated
+  frequency tables.
+- Default runtime mode: built-in deterministic correction with no dynamic asset.
+- External asset path: host-provided Typai Dictionary Blob v1 bytes during
+  `createTypaiCore()` initialization.
+- Future path: optional language pack or explicit packaged production asset
+  only after size, license, attribution, quality, and review gates pass.
+
+Runtime dictionary modes:
+
+- `built-in`: no dynamic dictionary is loaded.
+- `host-provided`: `bytes`, `load`, or `url` is resolved during
+  initialization, then token checking and suggestions stay synchronous.
+- `production`: reserved for a future approved asset and currently unavailable.
 
 ## Transform Pipeline Status
 

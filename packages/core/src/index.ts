@@ -23,6 +23,7 @@ export type {
   TypaiCore,
   TypaiDictionaryLoadResult,
   TypaiDictionaryLoadSource,
+  TypaiDictionaryMode,
   TypaiLanguage,
   TypaiMemoryExport,
   TypaiRange,

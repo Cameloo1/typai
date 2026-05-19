@@ -52,6 +52,13 @@ state, `pnpm --filter @typai/core build:dictionary:production` fails before
 processing and `pnpm --filter @typai/core validate:dictionary:production`
 validates the fixture/mock path only.
 
+Prompt 111 keeps package inclusion as **excluded from `@typai/core` and
+host-provided only** while production approval is blocked. The package does not
+include `packages/core/assets/production/`, raw source files, generated
+production binaries, or generated frequency tables. `dictionary.mode:
+"production"` is reserved for a future approved asset and currently throws a
+clear unavailable error during `createTypaiCore()` initialization.
+
 ## Phase Scope
 
 This phase covers:
@@ -98,6 +105,8 @@ This phase covers:
 - Accepted completions are not blue correction marks.
 - Static language assets stay separate from personal, user, and project
   dictionary memory.
+- Dictionary assets load only during `createTypaiCore()` initialization. Token
+  checking and suggestions stay synchronous after initialization.
 - A production asset cannot be bundled unless license, redistribution,
   attribution, manifest, source hash, transform, size, quality, and review
   gates pass.
@@ -136,6 +145,8 @@ If any gate is missing, unclear, or contradictory, package inclusion remains
 6. Load the generated asset through the existing C++/Rust/Wasm dictionary blob
    boundary and keep malformed-load recovery intact.
 7. Decide package inclusion using measured compressed and uncompressed size.
+   Current blocked-state decision is `none`: do not include assets in
+   `@typai/core`; use host-provided assets only.
 8. Expand spell quality and false-positive corpora against the generated asset.
 9. Run package dry-run, smoke install, public beta smoke, docs, lint, test, and
    build gates.

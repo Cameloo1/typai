@@ -33,6 +33,8 @@ Intelligence Quality Foundation.
 - production language asset RC work is next, but no production
   dictionary/frequency asset is bundled until source, license, attribution,
   manifest, hash, transform, size, quality, and review gates pass
+- the deterministic production transform pipeline exists, but package inclusion
+  is currently host-provided only while the production manifest is blocked
 - npm publish has not happened
 
 ## Packages

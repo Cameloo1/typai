@@ -39,6 +39,7 @@ const expectedExports = {
     "TypaiCore",
     "TypaiDictionaryLoadResult",
     "TypaiDictionaryLoadSource",
+    "TypaiDictionaryMode",
     "TypaiLanguage",
     "TypaiMemoryExport",
     "TypaiRange",

@@ -15,6 +15,11 @@ benchmark gates, cross-surface spelling parity, source/asset policy evidence,
 and a hardening checkpoint without publishing or bundling production language
 assets.
 
+Production Language Asset RC readiness currently keeps production language
+assets excluded from package tarballs. Until the production manifest is
+approved, `@typai/core` supports only built-in deterministic correction and
+host-provided Typai Dictionary Blob v1 bytes loaded during initialization.
+
 The hardening checkpoints are recorded in:
 
 - `docs/v4-remote-completion-complete.md`
@@ -41,6 +46,19 @@ packing it does not make its exports a consumer API promise.
 and deterministic correction packages must keep working without it installed or
 configured. V4.1 smoke and E2E coverage verify that existing adapters still
 work without completion controllers/options.
+
+`@typai/core` does not currently publish production dictionary or frequency
+assets. Its package policy is:
+
+- `built-in` dictionary mode: default, no dynamic asset.
+- `host-provided` dictionary mode: initialization-time `bytes`, `load`, or
+  `url` source supplied by the embedder.
+- `production` dictionary mode: reserved for a future approved packaged asset;
+  currently unavailable while the production manifest is blocked.
+
+The dry-run gate fails if blocked production assets, raw dictionary files, raw
+frequency files, or generated production dictionary binaries appear in the
+`@typai/core` tarball.
 
 ## Remote Completion Package Surface
 
@@ -76,6 +94,10 @@ pnpm pack:dry
 
 The dry-run validates tarball contents and includes
 `@typai/completion-remote`.
+
+For `@typai/core`, the dry-run requires `dist`, generated Wasm `pkg`, package
+metadata, and `README.md`, while rejecting `assets/` and blocked
+dictionary/frequency artifacts in the current blocked state.
 
 Release metadata and package-boundary audit:
 

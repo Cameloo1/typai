@@ -66,7 +66,10 @@ export interface SuggestTokenResult {
   reasonCodes: string[];
 }
 
+export type TypaiDictionaryMode = "built-in" | "host-provided" | "production";
+
 export interface TypaiDictionaryLoadSource {
+  mode?: TypaiDictionaryMode;
   bytes?: Uint8Array;
   url?: string;
   load?: () => Promise<Uint8Array>;

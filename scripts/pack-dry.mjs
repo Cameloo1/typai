@@ -83,6 +83,10 @@ function validatePackedFiles(pkg, cwd, files) {
   validatePackedMetadata(pkg, cwd, files);
   validatePackedSecrets(pkg, cwd, files);
 
+  if (pkg.name === "@typai/core") {
+    validateCorePackedFiles(pkg, cwd, files);
+  }
+
   if (
     pkg.name === "@typai/react" ||
     pkg.name === "@typai/codemirror" ||
@@ -92,6 +96,36 @@ function validatePackedFiles(pkg, cwd, files) {
     for (const requiredFile of ["dist/index.js", "dist/index.d.ts", "README.md"]) {
       if (!files.includes(requiredFile)) {
         throw new Error(`${pkg.name} dry-run is missing ${requiredFile}`);
+      }
+    }
+  }
+}
+
+function validateCorePackedFiles(pkg, cwd, files) {
+  for (const requiredFile of [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "pkg/typai_wasm.js",
+    "pkg/typai_wasm_bg.wasm",
+    "README.md",
+  ]) {
+    if (!files.includes(requiredFile)) {
+      throw new Error(`${pkg.name} dry-run is missing ${requiredFile}`);
+    }
+  }
+
+  const productionStatus = readProductionManifestStatus(cwd);
+
+  if (productionStatus === "blocked") {
+    for (const file of files) {
+      if (
+        file.startsWith("assets/") ||
+        /production.*dictionary/i.test(file) ||
+        /(?:dictionary|frequency).*\.(?:bin|gz|dic|aff|tsv|txt)$/i.test(file)
+      ) {
+        throw new Error(
+          `${pkg.name} dry-run includes blocked production or raw asset file: ${file}`,
+        );
       }
     }
   }
@@ -133,6 +167,23 @@ function validatePackedSecrets(pkg, cwd, files) {
       throw new Error(`${pkg.name} dry-run includes provider secret-like content in ${file}`);
     }
   }
+}
+
+function readProductionManifestStatus(cwd) {
+  for (const manifestFile of [
+    "assets/production/MANIFEST.json",
+    "assets/production/MANIFEST.template.json",
+  ]) {
+    try {
+      const manifest = JSON.parse(readFileSync(resolve(cwd, manifestFile), "utf8"));
+
+      return manifest.review?.status ?? "unknown";
+    } catch {
+      // Try the fallback manifest path.
+    }
+  }
+
+  return "unknown";
 }
 
 function resolveCommand(command, args) {

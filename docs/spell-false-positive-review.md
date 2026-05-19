@@ -6,6 +6,9 @@ This is a stable public review table for Prompt 103. It records the conservative
 autocorrect gate and the local debug-table fields that should be watched during
 manual demos. It is not telemetry and it is not a raw event export.
 
+Prompt 106 keeps this table as the human review companion to
+`docs/spell-quality-report.md` and `pnpm bench:spell-quality`.
+
 ## Review Table
 
 | Category | Examples | Source | Expected result | False-positive control |

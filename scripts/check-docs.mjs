@@ -29,6 +29,9 @@ const requiredFiles = [
   "docs/dictionary-asset-policy.md",
   "docs/dictionary-production-approval.md",
   "docs/dictionary-asset-blockers.md",
+  "docs/spell-quality-report.md",
+  "docs/spell-false-positive-review.md",
+  "docs/common-typo-table.md",
 ];
 
 const forbiddenOverclaims = [

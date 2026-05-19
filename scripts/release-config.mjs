@@ -93,6 +93,7 @@ export const requiredReleaseScripts = [
   "release:version:dry",
   "release:pack",
   "release:publish:dry",
+  "bench:spell-quality",
   "scan:package-secrets",
   "pack:dry",
   "smoke:install",

@@ -28,6 +28,7 @@ pnpm test
 pnpm build
 pnpm lint
 pnpm test:e2e
+pnpm bench:spell-quality
 pnpm bench:browser
 pnpm pack:dry
 pnpm smoke:install

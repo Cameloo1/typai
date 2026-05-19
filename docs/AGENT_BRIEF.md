@@ -17,7 +17,8 @@ package rails, provider proxy boundaries, and cross-surface completion
 contracts are in place. The local spell engine now has delete-index
 suggestions and an explicit common-typo autocorrect gate, but it is still not
 production dictionary coverage until an approved dictionary/frequency asset and
-quality gates land.
+source pipeline land. Prompt 106 quality gates now measure the current
+non-production spell behavior and fail safety regressions.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
 `@typai/completion-remote`. It is a separate, opt-in remote
@@ -109,6 +110,9 @@ deterministic correction adapters in this phase.
   stable, behind a feature flag, and with mocked tests only.
 - Browser benchmarks cover deterministic correction plus mocked completion for
   contenteditable, textarea, React textarea, and CodeMirror.
+- `pnpm bench:spell-quality` covers the committed spell-quality corpus,
+  autocorrect precision, suggestion recall, valid-word safety, protected-token
+  safety, and direct core p95.
 - Package smoke verifies `@typai/completion-remote` imports, structural
   completion options, and `@typai/core` no-remote behavior.
 - Public beta smoke verifies packed tarball imports, minimal correction, mock
@@ -186,6 +190,11 @@ Use `docs/intelligence-quality-foundation.md` as the Prompt 99 scope lock.
 Use `docs/spell-quality-baseline.md` as the current spell quality diagnosis.
 It is a baseline report, not evidence that Typai has product-grade spell
 coverage.
+
+Use `docs/spell-quality-report.md` as the Prompt 106 stable quality report.
+It documents the live safety gates, false-positive review summary, and
+cross-surface quality report. It is not telemetry and does not imply
+production dictionary coverage.
 
 Use `docs/dictionary-source-selection.md`,
 `docs/dictionary-asset-policy.md`, `docs/dictionary-production-approval.md`,

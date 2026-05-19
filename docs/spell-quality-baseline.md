@@ -19,6 +19,7 @@ rails and safety behavior, but coverage is intentionally narrow.
 - Prompt 102 C++ delete-index suggestion path and exposed index stats
 - Prompt 103 explicit common-typo gate, case preservation, punctuation
   preservation, and suggestions-only contraction/plural handling
+- Prompt 106 quality benchmark gates from `pnpm bench:spell-quality`
 
 ## Current Asset Size
 
@@ -190,14 +191,39 @@ Additional Prompt 104 coverage:
   current surface design.
 - Accepted completion text is asserted not to create a blue correction mark.
 
-Remaining gap:
+Remaining gaps:
 
-- no default local demo proves a real provider completion path yet.
+- no production dictionary/frequency asset is bundled
+- no product-scale language corpus is loaded by default
+- no default CI path makes real provider calls; the real-provider completion
+  demo remains manual and environment-gated
+
+## Prompt 106 Quality Benchmark
+
+Prompt 106 adds `pnpm bench:spell-quality` as a committed quality gate. The
+benchmark reports allowed autocorrect count, autocorrect precision, suggestion
+recall, valid-word false autocorrect count, protected-token false write count,
+suggestions-only count, average direct core latency, and p95 direct core
+latency.
+
+Hard failures:
+
+- allowed autocorrect cases must produce the expected replacement
+- autocorrect precision must stay at or above 99% on the committed corpus
+- valid-word false autocorrections must remain 0
+- protected-token false writes must remain 0
+- direct core p95 must remain below 100 ms
+
+Warnings:
+
+- suggestion recall below 90%
+- direct core p95 above 20 ms
+- browser completion p95 warnings remain in `pnpm bench:browser`
 
 ## Future Gates
 
-Do not turn these into failing tests until the asset and engine improvements
-land:
+Prompt 106 turns the safety and direct-core latency subset into failing gates.
+Future asset/engine work still owns the broader language-quality gates:
 
 - protected-token writes = 0
 - valid-word autocorrections = 0

@@ -53,10 +53,13 @@ The current local spell intelligence is intentionally thin:
   behavior
 - Prompt 105 optional local real-provider completion demo path through the
   secure proxy boundary
+- Prompt 106 spell-quality benchmark gates and a stable false-positive review
+  report
 - no production dictionary or frequency asset
 - no product-scale dictionary behind the delete index by default
 - no broad morphology or context-aware correction
-- no product-scale false-positive review corpus
+- no product-scale false-positive review corpus beyond the current curated
+  safety benchmark
 
 That means Typai can prove the correction pipeline and safety boundaries, but
 it cannot yet feel like a high-coverage spellchecker without an approved
@@ -125,12 +128,19 @@ No model/local inference is included in this phase.
 - Accepted completions are not blue correction marks.
 - No real provider calls occur in tests, demos, E2E, smoke scripts, or CI.
 
-## Quality Targets
+## Quality Targets And Live Gates
 
-Future quality gates should target:
+Prompt 106 turns the first quality targets into live gates through
+`pnpm bench:spell-quality`:
 
 - protected-token writes: 0
 - valid-word autocorrections: 0
+- autocorrect precision: at least 99% on the committed corpus
+- direct core p95: fail above 100 ms and warn above 20 ms
+- suggestion recall: warn below 90%
+
+Future quality targets continue to include:
+
 - edit-distance/SymSpell autocorrections: 0 unless the token is explicitly in
   the common-typo/high-confidence gate
 - unknown non-words receive red unresolved marks
@@ -196,6 +206,8 @@ Future phase acceptance:
 - expanded common typo autocorrects preserve casing and trailing punctuation
   while keeping protected-token and valid-word writes at zero
 - valid-word and protected-token write counts remain zero
+- `pnpm bench:spell-quality` reports corpus precision, suggestion recall,
+  direct core latency, and fails safety regressions
 - cross-surface correction behavior remains consistent across contenteditable,
   textarea, React textarea, React contenteditable, and CodeMirror
 - accepted completion text never creates blue correction marks

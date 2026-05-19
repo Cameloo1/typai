@@ -62,6 +62,7 @@ will be added after a real npm publish.
 - [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
 - [Intelligence Quality Foundation](./docs/intelligence-quality-foundation.md)
 - [Spell quality baseline](./docs/spell-quality-baseline.md)
+- [Spell quality report](./docs/spell-quality-report.md)
 - [Common typo table](./docs/common-typo-table.md)
 - [Spell false-positive review](./docs/spell-false-positive-review.md)
 - [Dictionary source selection](./docs/dictionary-source-selection.md)
@@ -73,6 +74,7 @@ will be added after a real npm publish.
 pnpm build
 pnpm test
 pnpm lint
+pnpm bench:spell-quality
 pnpm docs:check
 pnpm pack:dry
 pnpm smoke:install

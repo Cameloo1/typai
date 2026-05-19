@@ -10,13 +10,17 @@ V4 Remote Completion Prototype package readiness is complete for V4.0. V4.1
 readiness covers contenteditable, textarea, React, and CodeMirror completion
 surfaces. V4.2 readiness adds provider/proxy contracts, consumer examples,
 release dry-runs, package secret scanning, public beta smoke, and public beta
-readiness CI.
+readiness CI. Intelligence Quality Foundation readiness adds spell-quality
+benchmark gates, cross-surface spelling parity, source/asset policy evidence,
+and a hardening checkpoint without publishing or bundling production language
+assets.
 
 The hardening checkpoints are recorded in:
 
 - `docs/v4-remote-completion-complete.md`
 - `docs/v4-1-completion-surface-expansion-complete.md`
 - `docs/v4-2-provider-public-beta-readiness-complete.md`
+- `docs/intelligence-quality-foundation-complete.md`
 
 ## Packages
 
@@ -148,15 +152,28 @@ Browser benchmark surfaces now cover:
 
 Benchmark summaries report count, mean, p50, p95, p99, and max.
 
+Spell-quality benchmark smoke:
+
+```sh
+pnpm bench:spell-quality
+```
+
+This gate reports allowed autocorrect count, autocorrect precision, suggestion
+recall, valid-word false autocorrect count, protected-token false write count,
+suggestions-only count, average direct core latency, and p95 direct core
+latency. It fails protected-token writes, valid-word autocorrections,
+autocorrect precision below the committed target, and direct core p95 above the
+hard threshold.
+
 ## CI
 
 CI builds and tests the workspace, explicitly runs
 `@typai/completion-remote` build/test including mocked streaming tests, runs
 package dry-run and smoke install, runs public beta smoke, runs Chromium and
 Firefox Playwright E2E for V4.1 completion surfaces, runs provider proxy
-contract tests, runs package secret scan, and runs the browser benchmark smoke.
-WebKit is skipped. CI does not publish to npm and does not require real
-provider credentials.
+contract tests, runs package secret scan, runs spell-quality benchmark gates,
+and runs the browser benchmark smoke. WebKit is skipped. CI does not publish to
+npm and does not require real provider credentials.
 
 The V4.1 audit confirms there is no real provider call path in demos, tests,
 E2E, or benchmarks; endpoint provider usage is routed through an

@@ -8,9 +8,10 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: Intelligence Quality Foundation. V4.2 Provider + Public Beta
-Readiness is complete. The next work is spell intelligence and real completion
-demo quality.
+Current phase: Intelligence Quality Foundation complete. V4.2 Provider +
+Public Beta Readiness is complete, and Prompts 99 through 107 have checkpointed
+the spell intelligence quality gates, real completion demo boundary, and
+hardening audit.
 
 Package readiness is not the same as product intelligence. The public beta
 package rails, provider proxy boundaries, and cross-surface completion
@@ -18,7 +19,8 @@ contracts are in place. The local spell engine now has delete-index
 suggestions and an explicit common-typo autocorrect gate, but it is still not
 production dictionary coverage until an approved dictionary/frequency asset and
 source pipeline land. Prompt 106 quality gates now measure the current
-non-production spell behavior and fail safety regressions.
+non-production spell behavior and fail safety regressions. Prompt 107 records
+the completion checkpoint in `docs/intelligence-quality-foundation-complete.md`.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
 `@typai/completion-remote`. It is a separate, opt-in remote
@@ -186,6 +188,11 @@ correction settles.
 ## Intelligence Quality Foundation Reference
 
 Use `docs/intelligence-quality-foundation.md` as the Prompt 99 scope lock.
+
+Use `docs/intelligence-quality-foundation-complete.md` as the Prompt 107
+hardening audit and phase checkpoint. It is the current proof document for the
+source/license, engine/FFI, correction safety, surface parity, completion
+boundary, metrics/privacy, and preserved non-goal audits.
 
 Use `docs/spell-quality-baseline.md` as the current spell quality diagnosis.
 It is a baseline report, not evidence that Typai has product-grade spell

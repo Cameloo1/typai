@@ -2,6 +2,9 @@
 
 Status date: 2026-05-19.
 
+Completion status: complete. The hardening audit and checkpoint are recorded in
+`docs/intelligence-quality-foundation-complete.md`.
+
 Prompt 99 starts the quality phase after V4.2 Provider + Public Beta
 Readiness. V4.2 made Typai safe to package, test, document, and route through
 server-side provider rails. It did not make the local spell engine broadly
@@ -55,6 +58,7 @@ The current local spell intelligence is intentionally thin:
   secure proxy boundary
 - Prompt 106 spell-quality benchmark gates and a stable false-positive review
   report
+- Prompt 107 hardening audit and completion checkpoint
 - no production dictionary or frequency asset
 - no product-scale dictionary behind the delete index by default
 - no broad morphology or context-aware correction
@@ -173,6 +177,9 @@ Future quality targets continue to include:
    rails, still disabled from CI by default.
 8. Prompt 106: add quality benchmarks, false-positive review, and release
    readiness evidence for the intelligence phase.
+9. Prompt 107: audit source/license status, engine/FFI safety, correction
+   safety, cross-surface parity, completion boundaries, metrics/privacy, and
+   checkpoint the completed foundation.
 
 ## Acceptance Gates
 
@@ -213,3 +220,5 @@ Future phase acceptance:
 - accepted completion text never creates blue correction marks
 - real-provider demo path stays server-side and manually gated
 - CI remains mock-only for completion providers
+- `docs/intelligence-quality-foundation-complete.md` records the final
+  hardening audit for Prompts 99 through 106

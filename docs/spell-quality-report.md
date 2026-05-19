@@ -7,6 +7,9 @@ quality gates and review tables; machine-local timings should be read from
 `pnpm bench:spell-quality` and `pnpm bench:browser` output for the run being
 evaluated.
 
+Prompt 107 keeps this report as the public quality summary and records the
+full phase audit in `docs/intelligence-quality-foundation-complete.md`.
+
 ## Quality Benchmark
 
 Run:
@@ -114,6 +117,22 @@ unless the explicit real-provider environment gates are set.
 
 `pnpm bench:browser` remains the source for browser correction and mocked
 completion p95 timings. Completion warnings do not trigger provider calls.
+
+## Prompt 107 Audit Summary
+
+- Source/license: no production dictionary or frequency asset is bundled; the
+  checked-in dictionary fixture is mock-only and generated production outputs
+  remain blocked by policy gates.
+- Engine/FFI: native correction and suggestion APIs use primitive returns and
+  caller-owned buffers; no C++ heap ownership crosses into Rust or JavaScript.
+- Correction safety: valid-word autocorrections, protected-token writes, and
+  arbitrary delete-index autocorrections remain gated at zero.
+- Surface parity: Prompt 104 E2E covers contenteditable, textarea, React
+  textarea, React contenteditable, and CodeMirror.
+- Completion boundary: mock remains default, proxy mode is optional, and real
+  provider use remains manual and server-side.
+- Metrics/privacy: no next-edit logging or full-document spell-quality report
+  is introduced.
 
 ## Known Limitations
 

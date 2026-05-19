@@ -46,6 +46,7 @@ provider credentials stay on the embedder's server.
 - [Privacy model](./privacy-model.md)
 - [V4.2 completion checkpoint](./v4-2-provider-public-beta-readiness-complete.md)
 - [Intelligence Quality Foundation](./intelligence-quality-foundation.md)
+- [Intelligence Quality Foundation checkpoint](./intelligence-quality-foundation-complete.md)
 - [Spell quality baseline](./spell-quality-baseline.md)
 - [Spell quality report](./spell-quality-report.md)
 - [Common typo table](./common-typo-table.md)

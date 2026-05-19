@@ -16,6 +16,8 @@ future public beta packaging.
 - Public beta readiness CI is green.
 - V4.2 hardening checkpoint has been reviewed when releasing from the V4.2
   baseline.
+- Intelligence Quality Foundation checkpoint has been reviewed when releasing
+  with the current spell-quality gates.
 - Generated artifacts are not tracked.
 - No provider credentials are committed.
 - No real provider calls run in CI.
@@ -80,3 +82,11 @@ The completed V4.2 audit is recorded in
 `docs/v4-2-provider-public-beta-readiness-complete.md`. Review it before the
 first public beta publish so package boundaries, provider security defaults,
 manual real-provider gates, and preserved non-goals are still accurate.
+
+## Intelligence Quality Foundation Checkpoint
+
+The completed intelligence quality audit is recorded in
+`docs/intelligence-quality-foundation-complete.md`. Review it before publishing
+from the current branch so dictionary asset status, spell-quality gates,
+surface parity, completion boundaries, and preserved non-goals are still
+accurate.

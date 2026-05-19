@@ -47,7 +47,16 @@ describe("blocked-branch dictionary asset pipeline", () => {
     expect(scaledBlob.wordCount).toBeGreaterThan(mockBlob.wordCount);
     expect(scaledBlob.wordCount).toBeGreaterThanOrEqual(1200);
 
-    for (const word of ["the", "and", "because", "receive", "address", "receipt"]) {
+    for (const word of [
+      "the",
+      "and",
+      "because",
+      "receive",
+      "address",
+      "receipt",
+      "separate",
+      "tomorrow",
+    ]) {
       expect(words.has(word)).toBe(true);
     }
 
@@ -89,6 +98,12 @@ describe("blocked-branch dictionary asset pipeline", () => {
     const suggestions = core.suggestToken({ token: "reciept", maxSuggestions: 4 });
 
     expect(suggestions.suggestions).toContain("receipt");
+    expect(core.suggestToken({ token: "seperate", maxSuggestions: 4 }).suggestions).toContain(
+      "separate",
+    );
+    expect(core.suggestToken({ token: "tommorow", maxSuggestions: 4 }).suggestions).toContain(
+      "tomorrow",
+    );
     expect(suggestions.scores).toHaveLength(suggestions.suggestions.length);
     expect(suggestions.scores.every((score) => Number.isFinite(score) && score > 0)).toBe(true);
   });

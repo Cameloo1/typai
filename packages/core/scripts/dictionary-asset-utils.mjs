@@ -41,6 +41,8 @@ export const mockFixtureEntries = [
   ["correct", 34000, 0],
   ["recipe", 30000, 0],
   ["spelling", 30000, 0],
+  ["separate", 28000, 0],
+  ["tomorrow", 27000, 0],
   ["typing", 20000, 0],
   ["message", 20000, 0],
   ["prompt", 15000, 0],

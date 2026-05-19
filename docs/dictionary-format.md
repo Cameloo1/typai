@@ -8,8 +8,8 @@ Public Alpha Readiness loader work.
 - TypeScript can fetch or read dictionary assets asynchronously.
 - TypeScript passes compact binary data into Rust/Wasm.
 - Rust passes a pointer and length to C++.
-- C++ ingests the blob into internal dictionary/trie structures during
-  initialization.
+- C++ ingests the blob into internal dictionary, trie, and delete-index
+  structures during initialization.
 
 This format is for proving runtime loading architecture first. The current
 checked-in asset is a generated mock fixture, not a production dictionary.
@@ -22,9 +22,8 @@ Prompt 101 also adds an ignored scaled mock generator for loader stress tests.
 - No C++ memory is returned to JavaScript or Rust for them to free.
 - C++ uses fixed internal storage during dictionary initialization and does not
   expose ownership across FFI.
-- Do not use raw `new`, `malloc`, or `free` in the loader. Prefer
-  `std::vector` and `std::string` internally when useful, and never expose that
-  ownership across FFI.
+- Do not use raw `new`, `malloc`, or `free` in the loader or delete-index FFI
+  path.
 - Frequency scores rank suggestions only in this phase.
 - Frequency scores must not expand autocorrect triggers in this phase.
 
@@ -70,9 +69,29 @@ Payload:
 - Frequency must not be used to create new autocorrection triggers during Public
   Alpha Readiness.
 
+## Delete-Index Suggestions
+
+Prompt 102 adds a deterministic C++ delete index for suggestion candidate
+generation. The index is built from the loaded dictionary asset and the tiny
+built-in fallback word list. It is cleared and rebuilt with dictionary state,
+and malformed dictionary blobs do not replace the existing loaded dictionary or
+delete index.
+
+Current delete-index limits:
+
+- max edit distance: 2
+- max indexed word length: 32 lowercase ASCII letters
+- output still uses caller-owned suggestion and score buffers
+- exposed stats are primitive counts and byte estimates only
+
+The delete index only improves suggestion recall and latency. It is not an
+autocorrect source.
+
 ## Suggestion Ranking And Scores
 
-When a runtime dictionary is loaded, C++ ranks edit-distance suggestions by:
+When a runtime dictionary is loaded, C++ uses the delete index to find candidate
+word IDs, verifies actual bounded Levenshtein distance, and ranks suggestions
+by:
 
 1. Lower edit distance.
 2. Higher loaded frequency.
@@ -88,7 +107,7 @@ score = ((max_edit_distance + 1 - edit_distance) * 2)
 
 The distance component preserves edit-distance priority. The capped frequency
 component ranks same-distance candidates. Scores must not be used to
-auto-correct edit-distance candidates during Public Alpha Readiness.
+auto-correct delete-index candidates during Public Alpha Readiness.
 
 ## Validation
 
@@ -169,3 +188,9 @@ existing `createTypaiCore({ dictionary })` option:
 The bytes still have to pass Typai Dictionary Blob v1 validation. Host-provided
 assets are separate from user/personal dictionaries and must not loosen
 protected-token, valid-word, or autocorrect gates.
+
+Runtime stats are available through `@typai/core`:
+
+- `getLoadedDictionaryWordCount()`
+- `getDeleteIndexEntryCount()`
+- `getDeleteIndexMemoryEstimateBytes()`

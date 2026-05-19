@@ -147,7 +147,8 @@ correction settles.
 - No storage reads, network calls, server calls, local-service calls, or model
   calls inside the deterministic correction hot path.
 - Valid words are never autocorrected.
-- Edit-distance candidates are suggestions only and are never autocorrected.
+- Edit-distance/delete-index candidates are suggestions only and are never
+  autocorrected.
 - Protected spans are hard write barriers.
 - Stale writes are blocked with current token/range text and editor-version
   checks.
@@ -164,7 +165,7 @@ correction settles.
 
 ## Current Non-Goals
 
-- No SymSpell/delete index.
+- No delete-index autocorrect.
 - No keyboard adjacency.
 - No edit-distance autocorrect.
 - No valid-word autocorrect.

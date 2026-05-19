@@ -22,6 +22,8 @@ const tokens = [
   "adress",
   "corection",
   "speling",
+  "seperate",
+  "tommorow",
   "form",
   "user@example.com",
   "zzzzword",
@@ -52,6 +54,12 @@ const scaledCore = await createTypaiCore({
     bytes: scaledMockBytes,
   },
 });
+
+console.log("");
+console.log("loaded scaled mock delete index");
+console.log(`entries: ${scaledCore.getDeleteIndexEntryCount()}`);
+console.log(`memory estimate: ${scaledCore.getDeleteIndexMemoryEstimateBytes()} bytes`);
+
 const scaledCheckSummary = await runScenario(
   "loaded scaled mock dictionary check mode",
   scaledCore,
@@ -151,7 +159,15 @@ async function runDictionaryLoadScenario(name, bytes) {
 }
 
 async function runSuggestScenario(name, core) {
-  const suggestionTokens = ["reciept", "adress", "corection", "speling", "zzzzword"];
+  const suggestionTokens = [
+    "reciept",
+    "adress",
+    "corection",
+    "speling",
+    "seperate",
+    "tommorow",
+    "zzzzword",
+  ];
   let tokenIndex = 0;
   const summary = measureSyncLatency(
     () => {

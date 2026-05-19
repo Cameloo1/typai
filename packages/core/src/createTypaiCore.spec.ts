@@ -15,6 +15,7 @@ describe("createTypaiCore", () => {
 
     expect(core).toHaveProperty("checkCompletedToken");
     expect(core).toHaveProperty("suggestToken");
+    expect(core).toHaveProperty("getDeleteIndexEntryCount");
   });
 
   it.each([
@@ -88,6 +89,42 @@ describe("createTypaiCore", () => {
     expect(result.scores).toHaveLength(result.suggestions.length);
     expect(result.scores.every((score) => Number.isFinite(score) && score > 0)).toBe(true);
     expect(result.reasonCodes).toContain("EDIT_DISTANCE_SUGGESTIONS");
+    expect(result.reasonCodes).toContain("DELETE_INDEX_SUGGESTIONS");
+  });
+
+  it("uses delete-index candidates from a host-provided dictionary for broader misspellings", async () => {
+    const bytes = encodeTypaiDictionaryBlob({
+      language: "en-US",
+      entries: [
+        { word: "separate", frequency: 900, flags: 0 },
+        { word: "tomorrow", frequency: 800, flags: 0 },
+      ],
+    });
+    const core = await createTypaiCore({
+      dictionary: {
+        bytes,
+      },
+    });
+
+    expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(core.getLoadedDictionaryWordCount());
+
+    for (const [token, expected] of [
+      ["seperate", "separate"],
+      ["tommorow", "tomorrow"],
+    ] as const) {
+      const result = core.suggestToken({ token, maxSuggestions: 4 });
+      const decision = core.checkCompletedToken({ token });
+
+      expect(result.suggestions).toContain(expected);
+      expect(result.reasonCodes).toContain("DELETE_INDEX_SUGGESTIONS");
+      expect(decision.action).toBe("mark_unresolved");
+
+      if (decision.action === "mark_unresolved") {
+        expect(decision.suggestions).toContain(expected);
+        expect(decision.mark).toBe("red_spelling_issue");
+        expect(decision.reasonCodes).toContain("DELETE_INDEX_SUGGESTIONS");
+      }
+    }
   });
 
   it("loads the mock dictionary blob through Wasm during initialization", async () => {
@@ -177,6 +214,7 @@ describe("createTypaiCore", () => {
     expect(result.suggestions[0]).toBe(expected);
     expect(result.scores[0]).toBeGreaterThan(0);
     expect(result.reasonCodes).toContain("EDIT_DISTANCE_SUGGESTIONS");
+    expect(result.reasonCodes).toContain("DELETE_INDEX_SUGGESTIONS");
   });
 
   it("uses frequency as the same-distance suggestion tie-breaker", async () => {
@@ -196,6 +234,21 @@ describe("createTypaiCore", () => {
 
     expect(result.suggestions).toEqual(["abc", "abb"]);
     expect(result.scores[0]).toBeGreaterThan(result.scores[1]);
+  });
+
+  it("returns deterministic duplicate-free delete-index suggestions", async () => {
+    const core = await createTypaiCore({
+      dictionary: {
+        bytes: readFileSync(mockDictionaryUrl),
+      },
+    });
+    const first = core.suggestToken({ token: "adress", maxSuggestions: 4 });
+    const second = core.suggestToken({ token: "adress", maxSuggestions: 4 });
+
+    expect(first).toEqual(second);
+    expect(first.suggestions.filter((suggestion) => suggestion === "address")).toHaveLength(1);
+    expect(new Set(first.suggestions).size).toBe(first.suggestions.length);
+    expect(first.reasonCodes).toContain("DELETE_INDEX_SUGGESTIONS");
   });
 
   it.each([
@@ -235,6 +288,27 @@ describe("createTypaiCore", () => {
     const decision = core.checkCompletedToken({ token: "adress" });
 
     expect(decision.action).toBe("mark_unresolved");
+  });
+
+  it("exposes delete-index stats without changing autocorrect gates", async () => {
+    const core = await createTypaiCore({
+      dictionary: {
+        bytes: readFileSync(mockDictionaryUrl),
+      },
+    });
+
+    expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(core.getLoadedDictionaryWordCount());
+    expect(core.getDeleteIndexMemoryEstimateBytes()).toBeGreaterThan(0);
+    expect(core.checkCompletedToken({ token: "speling" }).action).toBe("mark_unresolved");
+    expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
+    expect(core.checkCompletedToken({ token: "form" })).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH"],
+    });
+    expect(core.checkCompletedToken({ token: "user@example.com" })).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["PROTECTED_LOOKING_TOKEN"],
+    });
   });
 
   it("does nothing for protected-looking tokens", async () => {

@@ -65,6 +65,12 @@ export async function createTypaiCore(options: CreateTypaiCoreOptions = {}): Pro
     getLoadedDictionaryWordCount() {
       return wasm.loadedDictionaryWordCount();
     },
+    getDeleteIndexEntryCount() {
+      return wasm.deleteIndexEntryCount();
+    },
+    getDeleteIndexMemoryEstimateBytes() {
+      return wasm.deleteIndexMemoryEstimateBytes();
+    },
     clearLoadedDictionary() {
       wasm.clearLoadedDictionary();
     },

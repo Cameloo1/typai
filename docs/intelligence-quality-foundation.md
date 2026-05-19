@@ -44,15 +44,16 @@ The current local spell intelligence is intentionally thin:
   tests
 - an ignored Prompt 101 scaled mock dictionary generator for loader stress
   testing only
-- edit-distance suggestions over tiny word sources only
+- Prompt 102 C++ delete-index candidate generation for suggestions
 - no production dictionary or frequency asset
-- no SymSpell/delete index or equivalent scalable candidate generation
+- no product-scale dictionary behind the delete index by default
 - no expanded common typo map
 - no broad casing, plural, contraction, or morphology handling
 - no product-scale false-positive review corpus
 
 That means Typai can prove the correction pipeline and safety boundaries, but
-it cannot yet feel like a high-coverage spellchecker.
+it cannot yet feel like a high-coverage spellchecker without an approved
+language asset.
 
 ## Why Completion Is Structurally Correct But Not Product-Smart
 
@@ -142,8 +143,8 @@ Future quality gates should target:
    license-gated asset policy without committing production assets.
 3. Prompt 101: harden dictionary blob loading and add the blocked-branch scaled
    mock plus host-provided asset pipeline without production ingestion.
-4. Prompt 102: add scalable C++ candidate generation using SymSpell/delete
-   index or an equivalent deterministic lookup.
+4. Prompt 102: add scalable C++ candidate generation using a deterministic
+   delete-index lookup for suggestions only.
 5. Prompt 103: add ranking, conservative confidence gates, and expanded common
    typo coverage.
 6. Prompt 104: add casing preservation, contraction handling, and plural
@@ -180,6 +181,8 @@ Future phase acceptance:
 - host-provided dictionary loading validates the same blob bounds and does not
   change autocorrect behavior
 - scalable candidate generation is measured against direct core latency budgets
+- delete-index candidates remain red unresolved suggestions until a later
+  explicit autocorrect gate is approved
 - broad common misspellings receive suggestions without opening autocorrect
   beyond the approved common-typo/high-confidence gate
 - valid-word and protected-token write counts remain zero

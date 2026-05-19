@@ -16,6 +16,7 @@ rails and safety behavior, but coverage is intentionally narrow.
   `packages/core/assets/mock-en-us.dictionary.json`
 - Core behavior through `createTypaiCore().checkCompletedToken()` and
   `createTypaiCore().suggestToken()`
+- Prompt 102 C++ delete-index suggestion path and exposed index stats
 
 ## Current Asset Size
 
@@ -40,9 +41,26 @@ loader can be stressed without bundling third-party language data.
 - The loader rejects bad magic, unsupported versions, bad bounds, unsupported
   language, protected-looking words, duplicates, and truncation without
   replacing a previously loaded dictionary.
-- Autocorrect behavior is unchanged: common typos remain the only deterministic
-  autocorrections, and edit-distance candidates remain red unresolved
-  suggestions.
+- Autocorrect behavior was unchanged in Prompt 101: common typos remained the
+  only deterministic autocorrections, and edit-distance candidates stayed red
+  unresolved suggestions.
+
+## Prompt 102 Delete-Index Baseline
+
+Prompt 102 adds C++ delete-index candidate generation for suggestions. It does
+not add production dictionary data and does not expand autocorrect.
+
+- The delete index builds from the loaded dictionary plus the tiny built-in
+  fallback word list.
+- Default max edit distance remains 2.
+- Duplicate candidates are removed before suggestions are returned.
+- Suggestion ordering remains deterministic: edit distance, frequency, then
+  alphabetical order.
+- Malformed dictionary blobs do not replace the existing dictionary or delete
+  index.
+- Exposed stats: loaded dictionary word count, delete-index entry count, and
+  delete-index memory estimate.
+- Delete-index candidates remain red unresolved suggestions only.
 
 ## Current Supported Typos
 
@@ -81,6 +99,10 @@ tiny.
 | `publically` | `mark_unresolved` | none |
 | `neccessary` | `mark_unresolved` | none |
 
+With a host-provided or scaled mock dictionary containing `separate` and
+`tomorrow`, Prompt 102 delete-index lookup suggests `separate` for `seperate`
+and `tomorrow` for `tommorow`. Those candidates still do not autocorrect.
+
 ## Current Autocorrect Behavior
 
 - Supported common typo autocorrects: 5 of 5.
@@ -89,7 +111,7 @@ tiny.
 - Valid-word autocorrections: 0 of 6.
 - Protected-token autocorrection writes: 0 of 9 measured terms.
 
-Edit-distance candidates currently stay suggestion-only and red-marked. This
+Delete-index candidates currently stay suggestion-only and red-marked. This
 must remain true until a later prompt adds an explicit common-typo or
 high-confidence gate.
 

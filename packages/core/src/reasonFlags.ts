@@ -14,6 +14,7 @@ export const TypaiReasonFlag = {
   DICTIONARY_EMPTY: 1 << 12,
   DICTIONARY_CLEARED: 1 << 13,
   DYNAMIC_DICTIONARY_MATCH: 1 << 14,
+  DELETE_INDEX_SUGGESTIONS: 1 << 15,
 } as const;
 
 const reasonFlagEntries = [
@@ -32,6 +33,7 @@ const reasonFlagEntries = [
   ["DICTIONARY_EMPTY", TypaiReasonFlag.DICTIONARY_EMPTY],
   ["DICTIONARY_CLEARED", TypaiReasonFlag.DICTIONARY_CLEARED],
   ["DYNAMIC_DICTIONARY_MATCH", TypaiReasonFlag.DYNAMIC_DICTIONARY_MATCH],
+  ["DELETE_INDEX_SUGGESTIONS", TypaiReasonFlag.DELETE_INDEX_SUGGESTIONS],
 ] as const;
 
 export function reasonFlagsToCodes(reasonFlags: number): string[] {

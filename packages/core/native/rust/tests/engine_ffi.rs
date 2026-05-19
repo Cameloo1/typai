@@ -11,6 +11,7 @@ const TYPAI_REASON_DICTIONARY_INVALID_MAGIC: u32 = 1 << 9;
 const TYPAI_REASON_DICTIONARY_UNSUPPORTED_VERSION: u32 = 1 << 10;
 const TYPAI_REASON_DICTIONARY_BOUNDS_ERROR: u32 = 1 << 11;
 const TYPAI_REASON_DYNAMIC_DICTIONARY_MATCH: u32 = 1 << 14;
+const TYPAI_REASON_DELETE_INDEX_SUGGESTIONS: u32 = 1 << 15;
 const TYPAI_DICTIONARY_LOAD_OK: i32 = 1;
 const TYPAI_DICTIONARY_LOAD_INVALID_MAGIC: i32 = -2;
 const TYPAI_DICTIONARY_LOAD_UNSUPPORTED_VERSION: i32 = -3;
@@ -49,6 +50,12 @@ unsafe extern "C" {
     fn typai_clear_loaded_dictionary();
 
     fn typai_loaded_dictionary_word_count() -> u32;
+
+    fn typai_delete_index_entry_count() -> u32;
+
+    fn typai_delete_index_memory_estimate_bytes() -> u32;
+
+    fn typai_clear_delete_index();
 }
 
 #[derive(Debug)]
@@ -141,6 +148,20 @@ fn clear_loaded_dictionary() {
 
 fn loaded_dictionary_word_count() -> u32 {
     unsafe { typai_loaded_dictionary_word_count() }
+}
+
+fn delete_index_entry_count() -> u32 {
+    unsafe { typai_delete_index_entry_count() }
+}
+
+fn delete_index_memory_estimate_bytes() -> u32 {
+    unsafe { typai_delete_index_memory_estimate_bytes() }
+}
+
+fn clear_delete_index() {
+    unsafe {
+        typai_clear_delete_index();
+    }
 }
 
 fn load_dictionary_blob(blob: &[u8]) -> (i32, u32, u32) {
@@ -336,6 +357,11 @@ fn edit_distance_suggestions_include_seed_candidates() {
             0,
             "{token}",
         );
+        assert_ne!(
+            result.reason_flags & TYPAI_REASON_DELETE_INDEX_SUGGESTIONS,
+            0,
+            "{token}",
+        );
     }
 }
 
@@ -370,6 +396,11 @@ fn edit_distance_candidates_are_suggestions_only() {
             0,
             "{token}",
         );
+        assert_ne!(
+            decision.reason_flags & TYPAI_REASON_DELETE_INDEX_SUGGESTIONS,
+            0,
+            "{token}",
+        );
     }
 
     let valid_word = check_token("form");
@@ -392,6 +423,141 @@ fn valid_mock_dictionary_blob_loads_and_counts_words() {
     assert_eq!(word_count, mock_word_count(&blob));
     assert_eq!(loaded_dictionary_word_count(), mock_word_count(&blob));
     assert_ne!(reason_flags & TYPAI_REASON_DICTIONARY_LOADED, 0);
+
+    clear_loaded_dictionary();
+}
+
+#[test]
+fn delete_index_builds_after_dictionary_load() {
+    clear_loaded_dictionary();
+    let blob = mock_dictionary_blob();
+
+    assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
+    assert_eq!(loaded_dictionary_word_count(), mock_word_count(&blob));
+    assert!(delete_index_entry_count() > loaded_dictionary_word_count());
+    assert!(delete_index_memory_estimate_bytes() > 0);
+
+    clear_loaded_dictionary();
+}
+
+#[test]
+fn delete_index_clears_and_rebuilds_safely() {
+    clear_loaded_dictionary();
+    let blob = mock_dictionary_blob();
+
+    assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
+    assert!(delete_index_entry_count() > 0);
+
+    clear_delete_index();
+
+    assert_eq!(delete_index_entry_count(), 0);
+
+    let result = suggest_token("adress");
+
+    assert!(result.suggestions.iter().any(|suggestion| suggestion == "address"));
+    assert!(delete_index_entry_count() > 0);
+
+    clear_loaded_dictionary();
+}
+
+#[test]
+fn malformed_dictionary_does_not_replace_existing_delete_index() {
+    clear_loaded_dictionary();
+    let blob = mock_dictionary_blob();
+
+    assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
+
+    let word_count_before = loaded_dictionary_word_count();
+    let index_count_before = delete_index_entry_count();
+    let index_memory_before = delete_index_memory_estimate_bytes();
+    let mut invalid = blob;
+    invalid[0] = b'X';
+
+    assert_eq!(load_dictionary_blob(&invalid).0, TYPAI_DICTIONARY_LOAD_INVALID_MAGIC);
+    assert_eq!(loaded_dictionary_word_count(), word_count_before);
+    assert_eq!(delete_index_entry_count(), index_count_before);
+    assert_eq!(delete_index_memory_estimate_bytes(), index_memory_before);
+    assert!(suggest_token("adress").suggestions.iter().any(|suggestion| suggestion == "address"));
+
+    clear_loaded_dictionary();
+}
+
+#[test]
+fn delete_index_suggestions_are_duplicate_free_and_deterministic() {
+    clear_loaded_dictionary();
+    let blob = mock_dictionary_blob();
+
+    assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
+
+    let first = suggest_token("adress");
+    let second = suggest_token("adress");
+    let address_count = first
+        .suggestions
+        .iter()
+        .filter(|suggestion| suggestion.as_str() == "address")
+        .count();
+
+    assert_eq!(first.suggestions, second.suggestions);
+    assert_eq!(first.scores, second.scores);
+    assert_eq!(address_count, 1);
+
+    for (index, suggestion) in first.suggestions.iter().enumerate() {
+        assert_eq!(
+            first
+                .suggestions
+                .iter()
+                .filter(|candidate| candidate.as_str() == suggestion)
+                .count(),
+            1,
+            "duplicate suggestion at index {index}: {suggestion}",
+        );
+    }
+
+    clear_loaded_dictionary();
+}
+
+#[test]
+fn delete_index_suggests_host_dictionary_words_without_autocorrecting() {
+    clear_loaded_dictionary();
+    let blob = dictionary_blob(
+        &[
+            ("separate", 900, 0),
+            ("tomorrow", 800, 0),
+            ("address", 700, 0),
+            ("spelling", 600, 0),
+            ("correction", 500, 0),
+        ],
+        "en-US",
+    );
+
+    assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
+
+    for (token, expected) in [
+        ("adress", "address"),
+        ("speling", "spelling"),
+        ("corection", "correction"),
+        ("seperate", "separate"),
+        ("tommorow", "tomorrow"),
+    ] {
+        let suggestions = suggest_token(token);
+        let decision = check_token(token);
+
+        assert!(
+            suggestions
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion == expected),
+            "{token} suggestions were {:?}",
+            suggestions.suggestions,
+        );
+        assert_ne!(
+            suggestions.reason_flags & TYPAI_REASON_DELETE_INDEX_SUGGESTIONS,
+            0,
+            "{token}",
+        );
+        assert_eq!(decision.code, 2, "{token}");
+        assert_eq!(decision.replacement, "", "{token}");
+    }
 
     clear_loaded_dictionary();
 }

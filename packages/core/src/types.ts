@@ -133,6 +133,8 @@ export interface TypaiCore {
   checkCompletedToken(input: CheckCompletedTokenInput): CorrectionDecision;
   suggestToken(input: SuggestTokenInput): SuggestTokenResult;
   getLoadedDictionaryWordCount(): number;
+  getDeleteIndexEntryCount(): number;
+  getDeleteIndexMemoryEstimateBytes(): number;
   clearLoadedDictionary(): void;
   addToPersonalDictionary(word: string): Promise<void>;
   removeFromPersonalDictionary(word: string): Promise<void>;

@@ -8,8 +8,15 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: V4.2 Provider + Public Beta Readiness is complete. The next
-phase has not been selected.
+Current phase: Intelligence Quality Foundation. V4.2 Provider + Public Beta
+Readiness is complete. The next work is spell intelligence and real completion
+demo quality.
+
+Package readiness is not the same as product intelligence. The public beta
+package rails, provider proxy boundaries, and cross-surface completion
+contracts are in place, but the local spell engine is still narrow until the
+production dictionary/frequency asset, candidate generation, ranking, and
+quality gates land.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
 `@typai/completion-remote`. It is a separate, opt-in remote
@@ -30,6 +37,13 @@ OpenAI Responses examples, consumer install docs, release dry-runs, beta API
 boundaries, package secret scanning, public-beta smoke gates, and the
 public-beta readiness CI workflow. Provider examples must keep private keys
 server-side.
+
+Production dictionary assets remain gated by license/source approval. Do not
+commit, pack, publish, or claim production dictionary/frequency assets until an
+approved asset PR includes source URLs, retrieval dates, notices, attribution,
+manifest counts, hashes, and deterministic transform commands.
+
+No local model inference or next-edit logging is active in this phase.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -157,6 +171,14 @@ correction settles.
 - No next-edit logging.
 - No private provider key in browser code.
 - No local model inference.
+
+## Intelligence Quality Foundation Reference
+
+Use `docs/intelligence-quality-foundation.md` as the Prompt 99 scope lock.
+
+Use `docs/spell-quality-baseline.md` as the current spell quality diagnosis.
+It is a baseline report, not evidence that Typai has product-grade spell
+coverage.
 
 ## V4 Scope Reference
 

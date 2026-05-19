@@ -1,0 +1,142 @@
+# Spell Quality Baseline
+
+Status date: 2026-05-19.
+
+This baseline records current spell intelligence after V4.2. It is a diagnosis,
+not a product-quality claim. The current engine proves deterministic correction
+rails and safety behavior, but coverage is intentionally narrow.
+
+## Sources Measured
+
+- Built-in common typo map:
+  `packages/core/native/cpp/common_typos.hpp`
+- Built-in valid-word list:
+  `packages/core/native/cpp/dictionary.hpp`
+- Mock dictionary/frequency fixture:
+  `packages/core/assets/mock-en-us.dictionary.json`
+- Core behavior through `createTypaiCore().checkCompletedToken()` and
+  `createTypaiCore().suggestToken()`
+
+## Current Asset Size
+
+| Asset | Current size | Notes |
+| --- | ---: | --- |
+| Built-in common typo map | 5 entries | Autocorrect source for current known typos only. |
+| Built-in valid-word list | 37 entries | Tiny deterministic guard list, not a production dictionary. |
+| Mock dictionary fixture | 20 entries | Loader/ranking fixture only, not loaded by default. |
+
+## Current Supported Typos
+
+These are the only built-in common typo autocorrections.
+
+| Token | Current action | Replacement | Mark |
+| --- | --- | --- | --- |
+| `teh` | `auto_correct` | `the` | `blue_applied_correction` |
+| `adn` | `auto_correct` | `and` | `blue_applied_correction` |
+| `recieve` | `auto_correct` | `receive` | `blue_applied_correction` |
+| `becuase` | `auto_correct` | `because` | `blue_applied_correction` |
+| `thier` | `auto_correct` | `their` | `blue_applied_correction` |
+
+## Common Misspellings Not Yet Well Covered
+
+Current result: 16 of 16 are not autocorrected. That is the intended safety
+posture today. Only 3 of 16 receive suggestions because the word sources are
+tiny.
+
+| Token | Current action | Current suggestions |
+| --- | --- | --- |
+| `adress` | `mark_unresolved` | `address` |
+| `speling` | `mark_unresolved` | `spelling` |
+| `corection` | `mark_unresolved` | `correction` |
+| `seperate` | `mark_unresolved` | none |
+| `definitly` | `mark_unresolved` | none |
+| `accomodate` | `mark_unresolved` | none |
+| `occured` | `mark_unresolved` | none |
+| `untill` | `mark_unresolved` | none |
+| `tommorow` | `mark_unresolved` | none |
+| `goverment` | `mark_unresolved` | none |
+| `enviroment` | `mark_unresolved` | none |
+| `arguement` | `mark_unresolved` | none |
+| `calender` | `mark_unresolved` | none |
+| `embarass` | `mark_unresolved` | none |
+| `publically` | `mark_unresolved` | none |
+| `neccessary` | `mark_unresolved` | none |
+
+## Current Autocorrect Behavior
+
+- Supported common typo autocorrects: 5 of 5.
+- Broad common misspelling autocorrects: 0 of 16.
+- Edit-distance suggestion autocorrects: 0.
+- Valid-word autocorrections: 0 of 6.
+- Protected-token autocorrection writes: 0 of 9 measured terms.
+
+Edit-distance candidates currently stay suggestion-only and red-marked. This
+must remain true until a later prompt adds an explicit common-typo or
+high-confidence gate.
+
+## Must-Not-Autocorrect Valid Words
+
+| Token | Current action | Reason |
+| --- | --- | --- |
+| `form` | `do_nothing` | `KNOWN_VALID_WORD` |
+| `lead` | `do_nothing` | `KNOWN_VALID_WORD` |
+| `to` | `do_nothing` | `KNOWN_VALID_WORD` |
+| `its` | `do_nothing` | `KNOWN_VALID_WORD` |
+| `there` | `do_nothing` | `KNOWN_VALID_WORD` |
+| `their` | `do_nothing` | `KNOWN_VALID_WORD` |
+
+## Protected Terms
+
+Core and tokenizer protection are related but not identical. Editor adapters
+use tokenizer protection before asking core to write. Direct core checks also
+protect syntax-shaped tokens. The current gap is `kubectl`: it is not protected
+by the tokenizer and is not in the valid-word list, so direct core marks it as
+an unresolved non-word.
+
+| Token | Tokenizer protected | Direct core action | Direct core reason |
+| --- | --- | --- | --- |
+| `user@example.com` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
+| `https://example.com` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
+| `/etc/passwd` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
+| `snake_case_identifier` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
+| `camelCaseIdentifier` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
+| `CVE-2024-1234` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN` |
+| `nmap` | yes | `do_nothing` | `KNOWN_VALID_WORD` |
+| `sqlmap` | yes | `do_nothing` | `KNOWN_VALID_WORD` |
+| `kubectl` | no | `mark_unresolved` | `UNKNOWN_NON_WORD`, `NO_SUGGESTIONS` |
+
+## Surface Parity
+
+Known parity coverage today:
+
+- contenteditable, textarea, React, and CodeMirror share the same core decision
+  contract.
+- adapter conformance tests cover a common typo, unresolved non-word, valid
+  word, protected email/path/identifier/CVE samples, and suggestion-only
+  `reciept`.
+- CodeMirror also has code-block protection coverage.
+
+Known gaps:
+
+- broad spell quality samples are not yet tested across every surface.
+- the adapter testkit uses a mock conformance core, so it proves adapter
+  contracts rather than full production dictionary quality.
+- `kubectl` is not yet a protected technical token or known valid word.
+- no default local demo proves a real provider completion path yet.
+
+## Future Gates
+
+Do not turn these into failing tests until the asset and engine improvements
+land:
+
+- protected-token writes = 0
+- valid-word autocorrections = 0
+- edit-distance/SymSpell autocorrects = 0 unless explicitly common-typo or
+  high-confidence gated
+- red unresolved mark for unknown non-words
+- suggestions for broad common misspellings after dictionary/SymSpell
+- expanded common typo map precision >= 99% on the approved golden corpus
+- p95 direct core token check remains under existing thresholds
+- browser correction p95 remains under existing thresholds
+- no regression in completion p95 smoke thresholds
+- no completion provider real calls in CI

@@ -6,12 +6,14 @@ typai is a local deterministic correction layer for browser writing surfaces,
 with optional remote completion kept in a separate package and routed through
 embedder-owned endpoints.
 
-Status: V4.2 public-beta readiness is complete. Packages are local-ready and
-tested from this workspace, but they have not been published to npm.
+Status: V4.2 public-beta readiness is complete. The current phase is
+Intelligence Quality Foundation. Packages are local-ready and tested from this
+workspace, but they have not been published to npm.
 
 ## Current Phase
 
-V4.2 Provider + Public Beta Readiness is complete.
+Intelligence Quality Foundation has started after V4.2 Provider + Public Beta
+Readiness.
 
 - deterministic correction remains local through `@typai/core`
 - completion is optional through `@typai/completion-remote`
@@ -20,6 +22,8 @@ V4.2 Provider + Public Beta Readiness is complete.
 - no direct browser-to-provider path is supported
 - no production dictionary asset, Codex adapter, next-edit logging, or local
   model inference is included
+- current local spell coverage is narrow until the approved production
+  dictionary/SymSpell-quality candidate path lands
 
 ## Packages
 
@@ -52,6 +56,8 @@ will be added after a real npm publish.
 - [Troubleshooting](./docs/troubleshooting.md)
 - [Roadmap](./docs/roadmap.md)
 - [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
+- [Intelligence Quality Foundation](./docs/intelligence-quality-foundation.md)
+- [Spell quality baseline](./docs/spell-quality-baseline.md)
 
 ## Verification
 

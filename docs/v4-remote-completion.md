@@ -5,14 +5,17 @@ Status date: 2026-05-18.
 This document tracks the V4 Remote Completion Prototype scope and current
 readiness boundary. V4 includes an optional package, mocked demo, E2E coverage,
 package readiness checks, and mocked benchmark coverage. It still does not add a
-production server, real provider credential path, streaming, or model
-integration.
+production server, real provider credential path, real provider streaming, or
+model integration.
 
 Completion checkpoint: `docs/v4-remote-completion-complete.md`.
 
 V4.1 begins by hardening the shared remote provider layer before expanding
 completion beyond contenteditable. The V4.0 browser-key, mocked-test, and
 no-real-provider-call boundaries still apply.
+
+V4.1 also adds optional mocked streaming behind an explicit feature flag.
+Non-streaming remains the default path.
 
 ## Phase
 
@@ -207,6 +210,40 @@ never mutate editor source text, and do not create completion transactions.
 There is no automatic retry by default. Tests and demos continue to use mocked
 providers only.
 
+## Optional Mock Streaming
+
+Streaming is available only when the host opts in:
+
+```ts
+createRemoteCompletion({
+  provider,
+  streaming: {
+    enabled: true,
+    minCharsBeforeRender: 4,
+  },
+});
+```
+
+If `streaming.enabled` is omitted or false, the scheduler calls `complete()` and
+uses the existing non-streaming path. If streaming is enabled but the provider
+does not implement `streamComplete`, the scheduler also falls back to
+`complete()`.
+
+The supported streaming provider for this phase is the deterministic mock
+streaming provider. It yields test-controlled deltas and does not perform
+network streaming. Endpoint streaming, server-sent events, OpenAI streaming, and
+provider SDK streaming remain future work.
+
+Streaming behavior:
+
+- Deltas accumulate into visual ghost text after `minCharsBeforeRender`.
+- Ghost text updates as the accumulated text grows.
+- Escape and typing abort the active stream.
+- Tab accepts the currently visible accumulated text and aborts remaining
+  deltas.
+- Deltas from stale or aborted streams are ignored.
+- Provider completion finalizes the visible ghost text.
+
 ## Latency
 
 Remote completion has a separate latency budget from deterministic correction.
@@ -241,6 +278,11 @@ V4 local metrics track:
 - `invalid_response`.
 - `rate_limit_cooldown_started`.
 - `provider_latency`.
+- `stream_started`.
+- `stream_delta`.
+- `stream_completed`.
+- `stream_aborted`.
+- `stream_stale_delta_dropped`.
 - `ghost_shown`.
 - `ghost_dismissed_by_typing`.
 - `ghost_dismissed_by_escape`.
@@ -346,8 +388,9 @@ tests, reports, examples, or browser artifacts in the dry-run tarball.
 - No production server implementation is added.
 - No real provider calls are required by tests, E2E, demos, or benchmarks.
 - No automatic retry is enabled by default.
-- No streaming provider is implemented.
-- No textarea, React, or CodeMirror completion surface is added.
+- No real streaming provider or endpoint streaming is implemented.
+- Textarea, React, and CodeMirror completion are V4.1 surface-expansion work,
+  not part of the original V4.0 contenteditable prototype boundary.
 - No real Codex integration is added.
 - No next-edit logging is added.
 

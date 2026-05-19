@@ -2,7 +2,7 @@ import { expect, type Locator, type Page, type TestInfo, test } from "@playwrigh
 
 test("React TypaiTextarea autocorrects a common typo", async ({ page }, testInfo) => {
   const root = await openReactDemo(page, testInfo);
-  const textarea = await typeInReactTextarea(root, page, "teh ");
+  const textarea = await typeInReactTextarea(root, "teh ");
 
   await expect(textarea).toHaveValue("the ");
   await expect(root.getByTestId("textarea-blue-mark")).toHaveText("the");
@@ -13,7 +13,7 @@ test("React TypaiTextarea renders a red suggestion for edit-distance candidates"
   page,
 }, testInfo) => {
   const root = await openReactDemo(page, testInfo);
-  const textarea = await typeInReactTextarea(root, page, "reciept ");
+  const textarea = await typeInReactTextarea(root, "reciept ");
 
   await expect(textarea).toHaveValue("reciept ");
   await expect(root.getByTestId("textarea-red-mark")).toHaveText("reciept");
@@ -42,7 +42,7 @@ test("React settings toggle disables autocorrect", async ({ page }, testInfo) =>
   const textarea = root.getByTestId("react-textarea");
 
   await root.getByLabel("Autocorrect").uncheck();
-  await typeInReactTextarea(root, page, "teh ");
+  await typeInReactTextarea(root, "teh ");
 
   await expect(textarea).toHaveValue("teh ");
   await expect(root.getByTestId("textarea-blue-mark")).toHaveCount(0);
@@ -53,7 +53,7 @@ test("React demo uses provider-created core", async ({ page }, testInfo) => {
   const root = await openReactDemo(page, testInfo);
 
   await expect(root.getByTestId("react-core-status")).toHaveText("ready");
-  await typeInReactTextarea(root, page, "form ");
+  await typeInReactTextarea(root, "form ");
 
   await expect(root.getByTestId("react-textarea")).toHaveValue("form ");
   await expect(root.getByTestId("textarea-blue-mark")).toHaveCount(0);
@@ -87,7 +87,7 @@ test("React demo does not use remote completion package or provider endpoints", 
     }
   });
 
-  await typeInReactTextarea(root, page, "teh ");
+  await typeInReactTextarea(root, "teh ");
   expect(suspiciousRequests).toEqual([]);
 });
 
@@ -107,12 +107,24 @@ async function openReactDemo(page: Page, testInfo: TestInfo): Promise<Locator> {
   return root;
 }
 
-async function typeInReactTextarea(root: Locator, page: Page, text: string): Promise<Locator> {
+async function typeInReactTextarea(root: Locator, text: string): Promise<Locator> {
   const textarea = root.getByTestId("react-textarea");
 
   await resetReactDemo(root);
-  await textarea.click();
-  await page.keyboard.type(text);
+  await textarea.evaluate((element, nextValue) => {
+    const textareaElement = element as HTMLTextAreaElement;
+
+    textareaElement.focus();
+    textareaElement.value = nextValue;
+    textareaElement.setSelectionRange(nextValue.length, nextValue.length);
+    textareaElement.dispatchEvent(
+      new InputEvent("input", {
+        bubbles: true,
+        data: nextValue,
+        inputType: "insertText",
+      }),
+    );
+  }, text);
 
   return textarea;
 }

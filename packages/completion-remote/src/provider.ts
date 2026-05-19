@@ -63,6 +63,12 @@ export type MockCompletionResolver =
       options: CompletionProviderOptions,
     ) => string | CompletionResponse | Promise<string | CompletionResponse>);
 
+export type MockStreamingCompletionProviderOptions = {
+  deltas?: string[];
+  chunkSize?: number;
+  latencyMs?: number;
+};
+
 export function createNoopCompletionProvider(): CompletionProvider {
   return {
     name: "noop",
@@ -142,4 +148,75 @@ export function createMockCompletionProvider(resolver: MockCompletionResolver): 
       };
     },
   };
+}
+
+export function createMockStreamingCompletionProvider(
+  resolver: MockCompletionResolver,
+  options: MockStreamingCompletionProviderOptions = {},
+): CompletionProvider {
+  const nonStreamingProvider = createMockCompletionProvider(resolver);
+
+  return {
+    ...nonStreamingProvider,
+    async *streamComplete(request, providerOptions) {
+      const result =
+        typeof resolver === "function" ? await resolver(request, providerOptions) : resolver;
+      const text = typeof result === "string" ? result : result.text;
+      const deltas = options.deltas ?? chunkText(text, options.chunkSize ?? 4);
+
+      for (const textDelta of deltas) {
+        await waitForMockStreamLatency(options.latencyMs ?? 0, providerOptions.signal);
+
+        yield {
+          id: request.id,
+          textDelta,
+        };
+      }
+
+      yield {
+        id: request.id,
+        textDelta: "",
+        done: true,
+      };
+    },
+  };
+}
+
+function chunkText(text: string, chunkSize: number): string[] {
+  const normalizedChunkSize =
+    Number.isFinite(chunkSize) && chunkSize > 0 ? Math.floor(chunkSize) : 4;
+  const chunks: string[] = [];
+
+  for (let index = 0; index < text.length; index += normalizedChunkSize) {
+    chunks.push(text.slice(index, index + normalizedChunkSize));
+  }
+
+  return chunks;
+}
+
+function waitForMockStreamLatency(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
+    const normalizedMs = Number.isFinite(ms) ? Math.max(0, Math.min(1500, ms)) : 0;
+
+    if (normalizedMs === 0) {
+      resolve();
+      return;
+    }
+
+    const timerId = setTimeout(resolve, normalizedMs);
+
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timerId);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
 }

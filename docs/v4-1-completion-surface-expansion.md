@@ -52,9 +52,9 @@ Provider resilience basics are in scope:
 - No automatic retry by default.
 - Mocked tests for retry/rate-limit behavior; no real provider calls.
 
-Optional streaming support may be added only after non-streaming textarea,
-React, and CodeMirror completion surfaces are stable. Streaming must remain
-behind a feature flag and must use mocked tests only.
+Optional streaming support was added only after non-streaming textarea, React,
+and CodeMirror completion surfaces stabilized. Streaming remains behind the
+`streaming.enabled` feature flag and uses mocked providers/tests only.
 
 ## Target Surfaces
 
@@ -105,8 +105,8 @@ opens them:
 - Real OpenAI or provider calls in E2E, demos, or tests.
 - Completion auto-accept.
 - Silent rewrite.
-- Streaming before stable non-streaming textarea, React, and CodeMirror
-  completion surfaces.
+- Streaming by default.
+- Real provider streaming, server streaming, or OpenAI streaming.
 
 ## Implementation Prompt Sequence
 
@@ -129,6 +129,12 @@ Recommended V4.1 sequence:
 
 Each implementation prompt should preserve contenteditable completion behavior
 and keep tests mocked.
+
+V4.1-11 keeps non-streaming as the default. The scheduler only uses
+`streamComplete` when the host passes `streaming: { enabled: true }` and the
+provider implements streaming. The mock streaming provider yields deterministic
+deltas for unit tests; endpoint streaming and real provider streaming remain
+out of scope.
 
 ## V4.1 Demo Expansion
 
@@ -159,6 +165,7 @@ Required invariants:
 - Stale accept is blocked by checking the current editor state before
   insertion.
 - Provider responses are discarded if stale.
+- Streaming deltas are discarded if stale.
 - Provider errors never render ghost text.
 - Provider errors never mutate editor text.
 - Scheduler cooldown and budget rejections never create editor transactions.
@@ -167,6 +174,7 @@ Required invariants:
 - Default retry count is zero.
 - Completion auto-accept is forbidden.
 - Silent rewrite is forbidden.
+- Streaming accept inserts only the currently visible accumulated ghost text.
 
 ## Package Boundary
 
@@ -178,7 +186,7 @@ Required invariants:
 - Scheduling, debounce, abort, stale response handling, and metrics.
 - Typed provider error classification.
 - Request budget controls and rate-limit cooldown.
-- Feature flags for later optional streaming support.
+- Feature-flagged mocked streaming support.
 
 Adapters own:
 

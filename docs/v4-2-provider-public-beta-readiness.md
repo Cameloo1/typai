@@ -2,15 +2,20 @@
 
 Status date: 2026-05-19.
 
+Status: complete. The V4.2 hardening audit and checkpoint are recorded in
+`docs/v4-2-provider-public-beta-readiness-complete.md`.
+
 V4.2 prepares Typai for public beta adoption without expanding product scope
 into new intelligence features. V4.1 proved mocked completion across existing
 editor surfaces; V4.2 focuses on provider security, package clarity, install
 examples, release dry-runs, beta API boundaries, API stability labels, privacy
 threat modeling, and public-beta smoke gates.
 
-This scope began as docs, contracts, and tests only. Follow-up V4.2 prompts now
-add mock-first provider examples and server-side-only, env-gated OpenAI
-Responses example paths while preserving the no-real-provider-calls default.
+This scope began as docs, contracts, and tests only. Follow-up V4.2 prompts
+added mock-first provider examples, server-side-only env-gated OpenAI Responses
+example paths, consumer examples, release tooling, package scanning, public beta
+smoke, and public beta readiness CI while preserving the no-real-provider-calls
+default.
 
 ## Current V4.1 Completed State
 
@@ -159,10 +164,9 @@ V4.2 should make public beta readiness inspectable:
 - Security threats are documented in `docs/security-threat-model.md`.
 - Privacy defaults are documented in `docs/privacy-model.md`.
 - Future provider proxy examples are secure by construction.
-- Future install examples work from local packages and future published
-  packages.
-- Future release dry-runs prove tarball contents, metadata, and import
-  surfaces.
+- Provider proxy examples are mock-first and contract-tested.
+- Consumer install examples work from local workspace packages.
+- Release dry-runs prove tarball contents, metadata, and import surfaces.
 - Future changelog and versioning flow are documented before npm publish.
 - Public beta smoke matrix installs packed tarballs into disposable consumer
   apps, covers supported public packages, verifies mock completion, checks the
@@ -170,8 +174,7 @@ V4.2 should make public beta readiness inspectable:
   browser provider-key paths.
 - CI release-readiness workflow uses no real provider calls and requires no
   provider secrets.
-- Future manual real-provider checks are opt-in, env-gated, and excluded from
-  CI.
+- Manual real-provider checks are opt-in, env-gated, and excluded from CI.
 
 ## Compressed Prompt Sequence
 

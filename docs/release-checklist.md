@@ -14,6 +14,8 @@ future public beta packaging.
 - Package tarball inspection passes.
 - Public beta smoke matrix passes from packed tarballs.
 - Public beta readiness CI is green.
+- V4.2 hardening checkpoint has been reviewed when releasing from the V4.2
+  baseline.
 - Generated artifacts are not tracked.
 - No provider credentials are committed.
 - No real provider calls run in CI.
@@ -70,3 +72,10 @@ proxy contract tests.
 
 The workflow intentionally does not run WebKit, does not require provider
 secrets, does not run the manual real-provider smoke, and does not publish.
+
+## V4.2 Checkpoint
+
+The completed V4.2 audit is recorded in
+`docs/v4-2-provider-public-beta-readiness-complete.md`. Review it before the
+first public beta publish so package boundaries, provider security defaults,
+manual real-provider gates, and preserved non-goals are still accurate.

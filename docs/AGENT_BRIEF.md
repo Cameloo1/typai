@@ -8,7 +8,8 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: V4.2 Provider + Public Beta Readiness.
+Current phase: V4.2 Provider + Public Beta Readiness is complete. The next
+phase has not been selected.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
 `@typai/completion-remote`. It is a separate, opt-in remote
@@ -22,11 +23,13 @@ accept, completion transactions, and exact revert. Package dry-run, smoke
 install, V4.1 E2E, browser benchmark gates, and the hardening audit cover these
 surfaces.
 
-V4.2 does not add new editor surfaces. Provider/proxy/security work is active:
-API stability labels, source-level API export snapshot tests, provider endpoint
-contracts, security/privacy baselines, future server-side-only provider
-examples, consumer install docs, release dry-runs, beta API boundaries, and
-public-beta smoke gates. Provider examples must keep private keys server-side.
+V4.2 did not add new editor surfaces. It completed API stability labels,
+source-level API export snapshot tests, provider endpoint contracts,
+security/privacy baselines, server-side-only provider examples, env-gated
+OpenAI Responses examples, consumer install docs, release dry-runs, beta API
+boundaries, package secret scanning, public-beta smoke gates, and the
+public-beta readiness CI workflow. Provider examples must keep private keys
+server-side.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -42,7 +45,13 @@ deterministic correction adapters in this phase.
 - `@typai/codemirror`
 - `@typai/completion-remote`
 - Internal private `@typai/provider-proxy-testkit`
+- Internal private `@typai/provider-proxy-example-utils`
 - `examples/simple-demo-editor`
+- `examples/provider-proxy-express`
+- `examples/provider-proxy-next`
+- `examples/provider-proxy-cloudflare-worker`
+- consumer examples for contenteditable, textarea, React, CodeMirror, and
+  completion with a proxy
 - `tests/golden-corpus`
 
 ## V4 / V4.1 / V4.2 Remote Completion Boundary
@@ -82,6 +91,13 @@ deterministic correction adapters in this phase.
   contenteditable, textarea, React textarea, and CodeMirror.
 - Package smoke verifies `@typai/completion-remote` imports, structural
   completion options, and `@typai/core` no-remote behavior.
+- Public beta smoke verifies packed tarball imports, minimal correction, mock
+  completion, endpoint mock proxy behavior, package artifact boundaries,
+  browser-key-path absence, and consumer app builds.
+- Public beta readiness CI covers build, test, lint, Chromium/Firefox E2E,
+  accessibility checks, core and browser benchmarks, package dry-run,
+  smoke install, public beta smoke, release dry-runs, package secret scan,
+  provider proxy contract tests, and docs safety checks.
 - Codex adapter integration remains out of scope.
 - No browser extension.
 - No local model inference.
@@ -161,9 +177,12 @@ Use `docs/v4-1-completion-surface-expansion-complete.md` as the V4.1 hardening
 audit and completion checkpoint.
 
 Use `docs/v4-2-provider-public-beta-readiness.md` as the V4.2 Provider + Public
-Beta Readiness scope lock. Do not implement provider examples until the relevant
-V4.2 prompt opens them. Keep real provider calls out of tests, demos, E2E,
-benchmarks, and CI unless explicitly env-gated for a manual script.
+Beta Readiness scope lock.
+
+Use `docs/v4-2-provider-public-beta-readiness-complete.md` as the V4.2
+hardening audit and completion checkpoint. Keep real provider calls out of
+tests, demos, E2E, benchmarks, and CI unless explicitly env-gated for a manual
+script.
 
 Use `docs/api-stability.md` for public API labels. Use
 `docs/provider-proxy-security-contract.md`, `docs/security-threat-model.md`, and

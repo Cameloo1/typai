@@ -43,3 +43,4 @@ provider credentials stay on the embedder's server.
 - [Provider proxy security contract](./provider-proxy-security-contract.md)
 - [Security threat model](./security-threat-model.md)
 - [Privacy model](./privacy-model.md)
+- [V4.2 completion checkpoint](./v4-2-provider-public-beta-readiness-complete.md)

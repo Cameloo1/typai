@@ -6,12 +6,12 @@ typai is a local deterministic correction layer for browser writing surfaces,
 with optional remote completion kept in a separate package and routed through
 embedder-owned endpoints.
 
-Status: public-beta readiness work is in progress. Packages are local-ready and
+Status: V4.2 public-beta readiness is complete. Packages are local-ready and
 tested from this workspace, but they have not been published to npm.
 
 ## Current Phase
 
-V4.2 Provider + Public Beta Readiness is active.
+V4.2 Provider + Public Beta Readiness is complete.
 
 - deterministic correction remains local through `@typai/core`
 - completion is optional through `@typai/completion-remote`
@@ -51,6 +51,7 @@ will be added after a real npm publish.
 - [Privacy](./docs/privacy.md)
 - [Troubleshooting](./docs/troubleshooting.md)
 - [Roadmap](./docs/roadmap.md)
+- [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
 
 ## Verification
 

@@ -30,6 +30,14 @@ That command may incur provider cost and must not be added to CI.
 - no provider key required
 - no raw context logging
 
+## Production Controls To Add
+
+This example is a reference route shape. Before exposing a real provider mode,
+mount it behind your normal server authentication or same-origin session and
+add a rate limit keyed by user/session/IP. The V4.2 provider proxy contract
+requires rate limiting for deployed provider endpoints; this example keeps that
+control as an embedder-owned production hook.
+
 ## OpenAI Responses Mode
 
 This example includes a server-side OpenAI Responses adapter through the shared

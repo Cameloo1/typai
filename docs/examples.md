@@ -45,6 +45,12 @@ disabled unless explicit environment gates are set.
 contenteditable, textarea, React, CodeMirror, chat-input, and mocked completion
 tabs.
 
+The demo is also the Prompt 104 cross-surface spell-quality harness. Playwright
+checks the same expanded typo autocorrections, suggestions-only behavior,
+valid-word safety, protected-token safety, casing/punctuation preservation,
+personal dictionary flow, and correction-rule flow across contenteditable,
+textarea, React textarea, React contenteditable, and CodeMirror.
+
 ```sh
 pnpm --filter simple-demo-editor dev
 ```

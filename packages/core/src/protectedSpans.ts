@@ -29,19 +29,19 @@ export function classifyToken(text: string): Pick<Token, "tokenType" | "protecte
     return protectedToken("number");
   }
 
+  if (isWordLike(token)) {
+    return {
+      tokenType: "word",
+      protected: false,
+    };
+  }
+
   if (isIdentifierLike(token)) {
     return protectedToken("identifier");
   }
 
   if (isMixedToken(token)) {
     return protectedToken("mixed");
-  }
-
-  if (/^[a-z]+(?:'[a-z]+)?$/.test(token)) {
-    return {
-      tokenType: "word",
-      protected: false,
-    };
   }
 
   return protectedToken("mixed");
@@ -87,10 +87,17 @@ function isPathLike(text: string): boolean {
 
 function isIdentifierLike(text: string): boolean {
   return (
-    /^[A-Z]{2,}$/.test(text) ||
     /^[a-z]+(?:[A-Z][A-Za-z0-9]*)+$/.test(text) ||
     /^[A-Z][a-z0-9]+(?:[A-Z][A-Za-z0-9]*)+$/.test(text) ||
     /^[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+$/.test(text)
+  );
+}
+
+function isWordLike(text: string): boolean {
+  return (
+    /^[a-z]+(?:'[a-z]+)?$/.test(text) ||
+    /^[A-Z][a-z]+(?:'[a-z]+)?$/.test(text) ||
+    /^[A-Z]+(?:'[A-Z]+)?$/.test(text)
   );
 }
 

@@ -49,6 +49,8 @@ The current local spell intelligence is intentionally thin:
 - Prompt 103 case and trailing-punctuation preservation for approved
   corrections
 - Prompt 103 suggestions-only contraction and plural-ambiguity handling
+- Prompt 104 cross-surface E2E parity coverage for the Prompt 103 spelling
+  behavior
 - no production dictionary or frequency asset
 - no product-scale dictionary behind the delete index by default
 - no broad morphology or context-aware correction
@@ -152,13 +154,12 @@ Future quality gates should target:
 5. Prompt 103: add ranking, conservative confidence gates, expanded common
    typo coverage, case preservation, contraction suggestions, and plural
    ambiguity handling.
-6. Prompt 104: broaden cross-surface quality evidence for the Prompt 103 spell
-   intelligence behavior without adding context or model-based correction.
-7. Prompt 105: add cross-surface spell quality tests for contenteditable,
-   textarea, React, and CodeMirror.
-8. Prompt 106: add a real proxy completion demo mode through secure server-side
+6. Prompt 104: add cross-surface spell quality E2E coverage and integration
+   bugfixes for contenteditable, textarea, React textarea, React
+   contenteditable, and CodeMirror.
+7. Prompt 105: add a real proxy completion demo mode through secure server-side
    rails, still disabled from CI by default.
-9. Prompt 107: add quality benchmarks, false-positive review, and release
+8. Prompt 106: add quality benchmarks, false-positive review, and release
    readiness evidence for the intelligence phase.
 
 ## Acceptance Gates
@@ -193,6 +194,8 @@ Future phase acceptance:
 - expanded common typo autocorrects preserve casing and trailing punctuation
   while keeping protected-token and valid-word writes at zero
 - valid-word and protected-token write counts remain zero
-- cross-surface correction behavior remains consistent
+- cross-surface correction behavior remains consistent across contenteditable,
+  textarea, React textarea, React contenteditable, and CodeMirror
+- accepted completion text never creates blue correction marks
 - real-provider demo path stays server-side and manually gated
 - CI remains mock-only for completion providers

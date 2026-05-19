@@ -53,6 +53,7 @@ test("remote completion Tab accepts visible ghost text", async ({ page }, testIn
   await expect(remoteGhost(page)).toHaveCount(0);
   await expect.poll(() => getRemoteSourceText(page)).toBe(`${prefix}${defaultCompletion}`);
   await expect(page.getByTestId("remote-accept-count")).toHaveText("1");
+  await expect(page.getByTestId("blue-mark")).toHaveCount(0);
   await expectMetric(page, "acceptCount", 1);
 });
 
@@ -156,6 +157,8 @@ test("remote completion coexists with correction transactions", async ({ page },
 
   await expect(remoteGhost(page)).toHaveText(defaultCompletion, { timeout: 5_000 });
   await expect.poll(() => getRemoteSourceText(page)).toBe(`${prefix} the again`);
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("blue-mark")).toHaveCount(0);
 });
 
 test("remote completion demo makes no real OpenAI or provider calls", async ({

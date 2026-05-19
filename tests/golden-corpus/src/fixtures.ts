@@ -70,3 +70,25 @@ export const unresolvedSuggestionCases: SuggestionCase[] = [
   { token: "it;s", suggestion: "it's" },
   { token: "adresss", suggestion: "address" },
 ];
+
+export const surfaceParityAutocorrections: AllowedAutocorrectionCase[] = [
+  { token: "adress", replacement: "address" },
+  { token: "speling", replacement: "spelling" },
+  { token: "corection", replacement: "correction" },
+  { token: "seperate", replacement: "separate" },
+  { token: "definitly", replacement: "definitely" },
+];
+
+export const surfaceParityValidWords = ["form", "lead", "to", "its", "there", "their"];
+
+export const surfaceParityProtectedTerms = [
+  "user@example.com",
+  "https://example.com",
+  "/etc/passwd",
+  "snake_case_identifier",
+  "camelCaseIdentifier",
+  "CVE-2024-1234",
+  "nmap",
+  "sqlmap",
+  "kubectl",
+];

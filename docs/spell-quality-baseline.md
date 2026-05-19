@@ -150,6 +150,12 @@ Core and tokenizer protection are related but not identical. Editor adapters
 use tokenizer protection before asking core to write. Prompt 103 adds `kubectl`
 to the protected technical-token set.
 
+Prompt 104 fixed one adapter boundary bug: simple word-shaped capitalized and
+uppercase tokens, such as `Teh` and `TEH`, now reach the core case-preservation
+gate instead of being skipped by tokenizer protection. Mixed-case identifiers,
+CVEs, URLs, emails, paths, and explicit code-like technical terms remain
+protected.
+
 | Token | Tokenizer protected | Direct core action | Direct core reason |
 | --- | --- | --- | --- |
 | `user@example.com` | yes | `do_nothing` | `PROTECTED_LOOKING_TOKEN`, `PROTECTED_TOKEN_BLOCK` |
@@ -164,20 +170,28 @@ to the protected technical-token set.
 
 ## Surface Parity
 
-Known parity coverage today:
+Prompt 104 adds Playwright parity coverage for the same spell-quality behavior
+across all implemented editor surfaces.
 
-- contenteditable, textarea, React, and CodeMirror share the same core decision
-  contract.
-- adapter conformance tests cover a common typo, unresolved non-word, valid
-  word, protected email/path/identifier/CVE samples, and suggestion-only
-  `reciept`.
-- CodeMirror also has code-block protection coverage.
+| Surface | Expanded autocorrect | Suggestions-only | Valid-word safety | Protected-token safety | Casing/punctuation | Personal dictionary | Always/never rules |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| contenteditable | covered | covered | covered | covered | covered | covered | covered |
+| textarea | covered | covered | covered | covered | covered | covered | covered |
+| React textarea | covered | covered | covered | covered | covered | covered | covered |
+| React contenteditable | covered | covered | covered | covered | covered | covered | covered |
+| CodeMirror | covered | covered | covered | covered | covered | covered | covered |
 
-Known gaps:
+Additional Prompt 104 coverage:
 
-- broad spell quality samples are not yet tested across every surface.
-- the adapter testkit uses a mock conformance core, so it proves adapter
-  contracts rather than full production dictionary quality.
+- CodeMirror Markdown skips inline code and fenced code while ordinary prose
+  still autocorrects approved typos.
+- Suggestions-only misspellings remain red until a user chooses a suggestion.
+- Choosing a suggestion creates a blue accepted correction mark under the
+  current surface design.
+- Accepted completion text is asserted not to create a blue correction mark.
+
+Remaining gap:
+
 - no default local demo proves a real provider completion path yet.
 
 ## Future Gates

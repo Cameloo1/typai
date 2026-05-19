@@ -8,7 +8,7 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: V4.1 Completion Surface Expansion is complete.
+Current phase: V4.2 Provider + Public Beta Readiness.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
 `@typai/completion-remote`. It is a separate, opt-in remote
@@ -21,6 +21,11 @@ CodeMirror completion supports ghost-text rendering, dismiss behavior, Tab
 accept, completion transactions, and exact revert. Package dry-run, smoke
 install, V4.1 E2E, browser benchmark gates, and the hardening audit cover these
 surfaces.
+
+V4.2 does not add new editor surfaces. It prepares provider endpoint contracts,
+server-side-only provider examples, consumer install docs, release dry-runs,
+beta API boundaries, security/privacy review, and public-beta smoke gates.
+Provider examples must keep private keys server-side.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -38,7 +43,7 @@ deterministic correction adapters in this phase.
 - `examples/simple-demo-editor`
 - `tests/golden-corpus`
 
-## V4 / V4.1 Remote Completion Boundary
+## V4 / V4.1 / V4.2 Remote Completion Boundary
 
 - `@typai/core` must not import `@typai/completion-remote`.
 - Existing adapters must still work without completion installed or configured.
@@ -60,6 +65,9 @@ deterministic correction adapters in this phase.
 - Browser examples must not contain private provider API keys.
 - Browser package code calls an embedder endpoint; the embedder endpoint calls
   the provider.
+- V4.2 provider examples must be server-side only.
+- V4.2 real-provider examples or scripts must be env-gated, manually invoked,
+  and disabled in CI by default.
 - Accepted completions are completion transactions, not blue correction marks.
 - Ghost text is visual only until explicit Tab acceptance.
 - Optional streaming is allowed only after non-streaming V4.1 surfaces are
@@ -72,6 +80,9 @@ deterministic correction adapters in this phase.
 - No browser extension.
 - No local model inference.
 - No next-edit logging.
+- No grammar, style, tone, or clarity expansion in V4.2.
+- No SymSpell/delete index or production dictionary asset in V4.2.
+- No direct browser OpenAI/provider calls.
 
 Deterministic correction runs first. Remote completion waits for debounce after
 correction settles.
@@ -141,3 +152,8 @@ feature-flag/mock-test gate.
 
 Use `docs/v4-1-completion-surface-expansion-complete.md` as the V4.1 hardening
 audit and completion checkpoint.
+
+Use `docs/v4-2-provider-public-beta-readiness.md` as the V4.2 Provider + Public
+Beta Readiness scope lock. Do not implement provider examples until the relevant
+V4.2 prompt opens them. Keep real provider calls out of tests, demos, E2E,
+benchmarks, and CI unless explicitly env-gated for a manual script.

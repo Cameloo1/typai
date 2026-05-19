@@ -38,6 +38,7 @@ provider credentials stay on the embedder's server.
 - [Security](./security.md)
 - [Privacy](./privacy.md)
 - [API stability](./api-stability.md)
+- [Release checklist](./release-checklist.md)
 - [Roadmap](./roadmap.md)
 - [Provider proxy security contract](./provider-proxy-security-contract.md)
 - [Security threat model](./security-threat-model.md)

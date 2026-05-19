@@ -22,6 +22,7 @@ const requiredFiles = [
   "docs/security.md",
   "docs/privacy.md",
   "docs/api-stability.md",
+  "docs/release-checklist.md",
   "docs/troubleshooting.md",
   "docs/roadmap.md",
 ];

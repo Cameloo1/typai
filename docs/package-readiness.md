@@ -19,10 +19,13 @@ Readiness currently covers:
 - `@typai/core`
 - `@typai/contenteditable`
 - `@typai/textarea`
-- internal `@typai/ui`
 - `@typai/react`
 - `@typai/codemirror`
 - `@typai/completion-remote`
+
+`@typai/ui` is a required support package because `@typai/react` and
+`@typai/codemirror` currently depend on it. It remains internal and unstable;
+packing it does not make its exports a consumer API promise.
 
 `@typai/completion-remote` is optional. It is not imported by `@typai/core`,
 and deterministic correction packages must keep working without it installed or
@@ -63,6 +66,26 @@ pnpm pack:dry
 
 The dry-run validates tarball contents and includes
 `@typai/completion-remote`.
+
+Release metadata and package-boundary audit:
+
+```sh
+pnpm release:check
+```
+
+The release check verifies package metadata, public/support package boundaries,
+workspace dependency boundaries, required Readmes, generated Wasm output for
+`@typai/core`, and dry-run tarball contents.
+
+Package secret scan:
+
+```sh
+pnpm scan:package-secrets
+```
+
+The scan inspects packed package output for provider secrets, direct provider
+domains, `.env` files, reports, raw debug dump names, private-key-like strings,
+and server example files that should not ship in browser/runtime packages.
 
 Smoke install:
 

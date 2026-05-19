@@ -28,8 +28,9 @@ snapshot tests.
 - Do not make `@typai/core` depend on `@typai/completion-remote`.
 - Keep type exports and runtime exports covered by source-level snapshot tests.
 - Treat `@typai/ui`, `@typai/adapter-testkit`, and
-  `@typai/provider-proxy-testkit` as internal unless a later packaging prompt
-  promotes specific APIs.
+  `@typai/provider-proxy-testkit` as internal. `@typai/ui` may be packed as a
+  required support package while `@typai/react` and `@typai/codemirror` depend
+  on it, but that does not promote its APIs to a consumer contract.
 
 ## `@typai/core`
 
@@ -172,8 +173,9 @@ Package label: `internal`.
 
 Current exports are internal/unstable DOM UI utilities used by Typai adapters:
 popovers, live region helpers, focus helpers, settings panel helpers, debug
-table helpers, style helpers, and their types. They remain private to the
-workspace even when package-readiness tooling packs them for local smoke tests.
+table helpers, style helpers, and their types. They may be packaged only as a
+required support dependency for public packages, and consumers should not depend
+on the UI entrypoint directly.
 
 ## `@typai/adapter-testkit`
 

@@ -61,6 +61,8 @@ pnpm lint
 pnpm docs:check
 pnpm pack:dry
 pnpm smoke:install
+pnpm scan:package-secrets
+pnpm release:check
 ```
 
 ## License

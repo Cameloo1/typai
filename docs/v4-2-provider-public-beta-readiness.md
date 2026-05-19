@@ -199,7 +199,10 @@ V4.2 is ready only when these gates are true:
 - API stability labels are documented.
 - Provider proxy contract is documented and tested.
 - Security and privacy baseline docs exist.
-- Reference provider examples keep private keys server-side.
+- Reference provider examples exist for Express-shaped, Next route-handler, and
+  Cloudflare Worker-shaped server proxies; they are mock-only by default,
+  require no provider keys, and pass the shared proxy contract harness.
+- Future real-provider examples keep private keys server-side.
 - OpenAI Responses example is server-side, env-gated, and disabled by default.
 - Browser examples contain no API keys or direct model-provider calls.
 - Consumer install examples are verified.

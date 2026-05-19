@@ -36,6 +36,33 @@ importers:
         specifier: ^4.0.0
         version: 4.1.6(jsdom@27.4.0)(vite@7.3.3)
 
+  examples/provider-proxy-cloudflare-worker:
+    dependencies:
+      '@typai/completion-remote':
+        specifier: workspace:*
+        version: link:../../packages/completion-remote
+      '@typai/provider-proxy-testkit':
+        specifier: workspace:*
+        version: link:../../packages/provider-proxy-testkit
+
+  examples/provider-proxy-express:
+    dependencies:
+      '@typai/completion-remote':
+        specifier: workspace:*
+        version: link:../../packages/completion-remote
+      '@typai/provider-proxy-testkit':
+        specifier: workspace:*
+        version: link:../../packages/provider-proxy-testkit
+
+  examples/provider-proxy-next:
+    dependencies:
+      '@typai/completion-remote':
+        specifier: workspace:*
+        version: link:../../packages/completion-remote
+      '@typai/provider-proxy-testkit':
+        specifier: workspace:*
+        version: link:../../packages/provider-proxy-testkit
+
   examples/simple-demo-editor:
     dependencies:
       '@codemirror/lang-markdown':
@@ -115,12 +142,6 @@ importers:
 
   packages/completion-remote: {}
 
-  packages/provider-proxy-testkit:
-    dependencies:
-      '@typai/completion-remote':
-        specifier: workspace:*
-        version: link:../completion-remote
-
   packages/contenteditable:
     dependencies:
       '@typai/core':
@@ -132,6 +153,12 @@ importers:
         version: link:../adapter-testkit
 
   packages/core: {}
+
+  packages/provider-proxy-testkit:
+    dependencies:
+      '@typai/completion-remote':
+        specifier: workspace:*
+        version: link:../completion-remote
 
   packages/react:
     dependencies:

@@ -14,6 +14,10 @@ playwright-report/
 .env.*
 !.env.example
 
+# Local manual real-provider smoke config. Keep provider keys out of git.
+.env.openai.local
+*.local.ps1
+
 packages/*/dist/
 packages/core/pkg/
 packages/core/dist/

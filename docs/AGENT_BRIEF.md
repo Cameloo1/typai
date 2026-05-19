@@ -8,7 +8,8 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: V4.1 Completion Surface Expansion.
+Current phase: V4.1 Completion Surface Expansion package readiness and
+benchmark hardening.
 
 V4.0 Remote Completion Prototype is complete. The V4 package is
 `@typai/completion-remote`. It is a separate, opt-in remote
@@ -18,7 +19,8 @@ readiness, and mocked benchmark coverage.
 
 Contenteditable, textarea, React, and CodeMirror completion exist today.
 CodeMirror completion supports ghost-text rendering, dismiss behavior, Tab
-accept, completion transactions, and exact revert.
+accept, completion transactions, and exact revert. Package dry-run, smoke
+install, V4.1 E2E, and browser benchmark gates cover these surfaces.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -60,6 +62,10 @@ deterministic correction adapters in this phase.
   the provider.
 - Optional streaming is allowed only after non-streaming V4.1 surfaces are
   stable, behind a feature flag, and with mocked tests only.
+- Browser benchmarks cover deterministic correction plus mocked completion for
+  contenteditable, textarea, React textarea, and CodeMirror.
+- Package smoke verifies `@typai/completion-remote` imports, structural
+  completion options, and `@typai/core` no-remote behavior.
 - No real Codex integration.
 - No browser extension.
 - No local model inference.

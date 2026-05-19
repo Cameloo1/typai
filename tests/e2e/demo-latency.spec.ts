@@ -45,6 +45,10 @@ type LatencySummary = {
   max: number;
 };
 
+type CompletionMetrics = {
+  p95GhostLatencyMs: number | null;
+};
+
 declare global {
   interface Window {
     __typaiDebug?: {
@@ -59,10 +63,23 @@ declare global {
       getText(): string;
       getMetrics(): { latencySamples: number[] };
       clearLatencies(): void;
+      reset(): void;
+      setCompletionLatencyMs(value: number): void;
+      getCompletionMetrics(): CompletionMetrics;
     };
     __typaiRemoteCompletionDebug?: {
       getMetrics(): { ghostLatencySamples: number[] };
       resetMetrics(): void;
+    };
+    __typaiTextareaCompletionDebug?: {
+      getMetrics(): CompletionMetrics;
+      setLatencyMs(value: number): void;
+    };
+    __typaiReactDebug?: {
+      getCompletionMetrics(): {
+        textarea: CompletionMetrics;
+      };
+      setCompletionLatencyMs(value: number): void;
     };
   }
 }
@@ -266,6 +283,124 @@ test("reports V4 remote completion mocked ghost latency smoke metrics", async ({
   expect(summary.p95).toBeLessThan(remoteCompletionHardFailureThresholdMs);
 });
 
+test("reports textarea completion mocked ghost latency smoke metrics", async ({ page }) => {
+  await page.goto(`/?typaiDbName=typai-textarea-completion-latency-${Date.now()}&storage=memory`);
+  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await page.getByRole("button", { name: /Textarea.*Demo/ }).click();
+  await expect(page.getByTestId("textarea-demo-root")).toBeVisible();
+  await page.getByTestId("textarea-completion-text").fill(" with benchmark textarea completion.");
+  await page.evaluate(
+    (latencyMs) => window.__typaiTextareaCompletionDebug?.setLatencyMs(latencyMs),
+    remoteCompletionMockLatencyMs,
+  );
+
+  const textarea = page.getByTestId("textarea-editor");
+  const samples: number[] = [];
+
+  for (let round = 0; round < remoteCompletionRounds; round += 1) {
+    await page.getByTestId("textarea-reset").click();
+    await expect(textarea).toHaveValue("");
+    await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
+
+    await textarea.click();
+    await page.keyboard.type(`Benchmark prompt ${round} for textarea completion`);
+    const startedAt = Date.now();
+    await expect(page.getByTestId("textarea-ghost-text")).toHaveText(
+      " with benchmark textarea completion.",
+      { timeout: 5_000 },
+    );
+    samples.push(Date.now() - startedAt);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("textarea-ghost-text")).toHaveCount(0);
+  }
+
+  reportRemoteCompletionBenchmark(
+    "Typai textarea completion mocked ghost latency smoke benchmark",
+    samples,
+  );
+});
+
+test("reports React textarea completion mocked ghost latency smoke metrics", async ({ page }) => {
+  await page.goto(
+    `/?typaiDbName=typai-react-textarea-completion-latency-${Date.now()}&storage=memory`,
+  );
+  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await page.getByRole("button", { name: /React.*Demo/ }).click();
+  const root = page.getByTestId("react-demo-root");
+
+  await expect(root).toBeVisible();
+  await expect(root.getByTestId("react-core-status")).toHaveText("ready");
+  await page.evaluate(
+    (latencyMs) => window.__typaiReactDebug?.setCompletionLatencyMs(latencyMs),
+    remoteCompletionMockLatencyMs,
+  );
+
+  const textarea = root.getByTestId("react-textarea");
+  const ghost = root.getByTestId("textarea-ghost-text");
+  const samples: number[] = [];
+
+  for (let round = 0; round < remoteCompletionRounds; round += 1) {
+    await root.getByTestId("react-reset").click();
+    await expect(textarea).toHaveValue("");
+    await expect(ghost).toHaveCount(0);
+
+    await textarea.click();
+    await page.keyboard.type(`Benchmark prompt ${round} for React textarea completion`);
+    const startedAt = Date.now();
+    await expect(ghost).toHaveText(" with mocked React textarea completion.", { timeout: 5_000 });
+    samples.push(Date.now() - startedAt);
+    await page.keyboard.press("Escape");
+    await expect(ghost).toHaveCount(0);
+  }
+
+  reportRemoteCompletionBenchmark(
+    "Typai React textarea completion mocked ghost latency smoke benchmark",
+    samples,
+  );
+});
+
+test("reports CodeMirror completion mocked ghost latency smoke metrics", async ({ page }) => {
+  await page.goto(`/?typaiDbName=typai-codemirror-completion-latency-${Date.now()}&storage=memory`);
+  await expect(page.getByTestId("last-decision")).toHaveText("Ready.");
+  await page.getByRole("button", { name: /CodeMirror.*Demo/ }).click();
+  const root = page.getByTestId("codemirror-demo-root");
+
+  await expect(root).toBeVisible();
+  await expect(root.getByTestId("codemirror-core-status")).toHaveText("ready");
+  await root
+    .getByTestId("codemirror-completion-text")
+    .fill(" with benchmark CodeMirror completion.");
+  await page.evaluate(
+    (latencyMs) => window.__typaiCodeMirrorDemo?.setCompletionLatencyMs(latencyMs),
+    remoteCompletionMockLatencyMs,
+  );
+
+  const editor = root.locator(".cm-content");
+  const ghost = root.locator(".typai-cm-ghost-text");
+  const samples: number[] = [];
+
+  for (let round = 0; round < remoteCompletionRounds; round += 1) {
+    await page.evaluate(() => window.__typaiCodeMirrorDemo?.reset());
+    await expect
+      .poll(() => page.evaluate(() => window.__typaiCodeMirrorDemo?.getText() ?? null))
+      .toBe("");
+    await expect(ghost).toHaveCount(0);
+
+    await editor.click();
+    await page.keyboard.type(`Benchmark prompt ${round} for CodeMirror completion`);
+    const startedAt = Date.now();
+    await expect(ghost).toHaveText(" with benchmark CodeMirror completion.", { timeout: 5_000 });
+    samples.push(Date.now() - startedAt);
+    await page.keyboard.press("Escape");
+    await expect(ghost).toHaveCount(0);
+  }
+
+  reportRemoteCompletionBenchmark(
+    "Typai CodeMirror completion mocked ghost latency smoke benchmark",
+    samples,
+  );
+});
+
 async function clearEditor(editor: Locator, page: Page): Promise<void> {
   await editor.evaluate((element) => {
     element.textContent = "";
@@ -374,6 +509,33 @@ function expectFiniteSummary(summary: LatencySummary): void {
   for (const [key, value] of Object.entries(summary)) {
     expect(Number.isFinite(value), `${key} should be finite`).toBe(true);
   }
+}
+
+function reportRemoteCompletionBenchmark(label: string, samples: number[]): void {
+  const summary = summarizeLatencies(samples);
+
+  console.log(label);
+  console.log(`mock provider latency: ${remoteCompletionMockLatencyMs} ms`);
+  console.log(`count: ${summary.count}`);
+  console.log(`mean: ${formatMs(summary.mean)}`);
+  console.log(`p50: ${formatMs(summary.p50)}`);
+  console.log(`p95: ${formatMs(summary.p95)}`);
+  console.log(`p99: ${formatMs(summary.p99)}`);
+  console.log(`max: ${formatMs(summary.max)}`);
+
+  if (summary.p95 > remoteCompletionWarningTargetMs) {
+    console.warn(`warning: ${label} p95 exceeded ${remoteCompletionWarningTargetMs} ms target`);
+  }
+
+  if (summary.p95 > remoteCompletionHardFailureThresholdMs) {
+    console.error(
+      `error: ${label} p95 exceeded ${remoteCompletionHardFailureThresholdMs} ms hard failure threshold`,
+    );
+  }
+
+  expect(summary.count).toBeGreaterThanOrEqual(remoteCompletionRounds);
+  expectFiniteSummary(summary);
+  expect(summary.p95).toBeLessThan(remoteCompletionHardFailureThresholdMs);
 }
 
 function formatMs(value: number): string {

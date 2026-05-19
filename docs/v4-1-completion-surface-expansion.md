@@ -126,6 +126,8 @@ Recommended V4.1 sequence:
 11. V4.1-10: cross-surface conformance audit.
 12. V4.1-11: optional streaming experiment behind a feature flag, mocked only,
     after non-streaming surfaces are stable.
+13. V4.1-12: package readiness, CI, smoke install, and browser benchmark gates
+    for V4.1 completion surfaces.
 
 Each implementation prompt should preserve contenteditable completion behavior
 and keep tests mocked.
@@ -135,6 +137,18 @@ V4.1-11 keeps non-streaming as the default. The scheduler only uses
 provider implements streaming. The mock streaming provider yields deterministic
 deltas for unit tests; endpoint streaming and real provider streaming remain
 out of scope.
+
+V4.1-12 adds readiness gates for the expanded completion surface. Dry-run
+packaging includes `@typai/completion-remote`, excludes tests/reports/server
+routes/demo files, and checks packed metadata and inspectable code for provider
+secret-like values. Smoke install imports the completion package entrypoints,
+verifies structural completion options for contenteditable, textarea, React,
+and CodeMirror, and confirms `@typai/core` still works without depending on
+`@typai/completion-remote`.
+
+CI covers completion-remote tests, mocked streaming tests, Chromium and Firefox
+V4.1 E2E, package smoke, and browser benchmarks. WebKit remains skipped and no
+real provider secrets are required.
 
 ## V4.1 Demo Expansion
 
@@ -151,6 +165,24 @@ Each demo uses mock providers by default, includes request/ghost/accept/dismiss/
 revert metrics, reports status, and documents manual Tab accept, Escape
 dismiss, typing dismiss, and exact revert checks. Browser demos do not include
 private provider keys or real provider calls.
+
+## V4.1 Benchmark Readiness
+
+Browser benchmark smoke now reports count, mean, p50, p95, p99, and max for
+deterministic correction and mocked remote completion surfaces.
+
+Thresholds:
+
+- Deterministic correction warns above 20 ms p95 and fails above 100 ms p95.
+- Mocked remote completion targets p95 below 800 ms, warns above 800 ms, and
+  fails above 2000 ms.
+
+Current benchmarked completion surfaces:
+
+- Contenteditable completion.
+- Textarea completion.
+- React textarea completion.
+- CodeMirror completion.
 
 ## Safety Contract
 

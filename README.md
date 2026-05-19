@@ -8,15 +8,15 @@ today; the same engine compiles natively for editor plugins, desktop
 applications, and other host environments.
 
 Status: alpha. Packages are local-ready and tested but not yet published to npm.
-Current phase: V4.1 Completion Surface Expansion. V4 Remote Completion
-Prototype is complete, and completion is now an optional package. Current
-completion support covers contenteditable, textarea, React wrappers, and
-CodeMirror ghost rendering, dismiss, Tab accept, completion transactions, and
-exact revert. Rich Editor Adapter Foundation is complete for this checkpoint.
-React is available as the app-level integration surface, and CodeMirror 6 is
-the first serious editor integration with protected contexts, safe correction
-transactions, V1B red/blue popovers, and optional ghost decorations.
-Deterministic correction remains local and no-remote.
+Current phase: V4.1 Completion Surface Expansion package readiness. V4 Remote
+Completion Prototype is complete, and completion is now an optional package.
+Current completion support covers contenteditable, textarea, React wrappers,
+and CodeMirror ghost rendering, dismiss, Tab accept, completion transactions,
+and exact revert. Rich Editor Adapter Foundation is complete for this
+checkpoint. React is available as the app-level integration surface, and
+CodeMirror 6 is the first serious editor integration with protected contexts,
+safe correction transactions, V1B red/blue popovers, and optional ghost
+decorations. Deterministic correction remains local and no-remote.
 
 ## What this is, structurally
 
@@ -238,16 +238,19 @@ pnpm bench:browser
 
 Browser benchmark gates keep deterministic correction and remote completion
 separate. Correction paths warn above 20 ms p95 and fail above 100 ms p95. The
-V4 mocked remote completion path warns above 800 ms p95 typing-pause-to-ghost
-latency and fails above 2000 ms p95. WebKit is intentionally skipped for this
-phase.
+V4.1 mocked remote completion paths warn above 800 ms p95
+typing-pause-to-ghost latency and fail above 2000 ms p95. Current benchmarked
+completion surfaces are contenteditable, textarea, React textarea, and
+CodeMirror. WebKit is intentionally skipped for this phase.
 
 Package readiness currently covers `@typai/core`, `@typai/contenteditable`,
 `@typai/textarea`, internal `@typai/ui`, `@typai/react`, and
 `@typai/codemirror`, plus optional `@typai/completion-remote`, in local dry-run
 and smoke install. The smoke app imports React, CodeMirror, and remote
 completion entrypoints, initializes the deterministic core, runs a mocked remote
-completion request, and verifies `@typai/core` does not depend on
+completion request, checks mocked streaming provider exports, verifies
+structural completion options for contenteditable, textarea, React, and
+CodeMirror, and verifies `@typai/core` does not depend on
 `@typai/completion-remote`.
 
 ## Docs

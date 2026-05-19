@@ -106,7 +106,7 @@ The endpoint returns:
 `@typai/completion-remote` does not include a production server and does not
 call provider APIs directly from browser code.
 
-## No Browser API Key Policy
+## Provider Credentials Stay Server-Side
 
 Private provider API keys must stay server-side. Browser examples, demos, tests,
 benchmarks, and E2E must not ask for, store, display, or transmit a private
@@ -222,7 +222,7 @@ Allowed hits were limited to:
 No real browser OpenAI call, OpenAI SDK dependency, browser provider-key path,
 textarea ghost implementation, React completion implementation, CodeMirror
 completion implementation, next-edit logging, local model inference, silent
-rewrite, or real Codex integration was found in the current V4 surface.
+rewrite, or Codex adapter integration was found in the current V4 surface.
 
 ## Known Limitations
 
@@ -233,7 +233,7 @@ rewrite, or real Codex integration was found in the current V4 surface.
 - No streaming provider implementation.
 - No multi-provider routing.
 - No production server implementation.
-- No real Codex integration.
+- Codex adapter integration remains out of scope.
 - No local model inference.
 - No specialized model training.
 - No next-edit logging or prediction away from the caret.
@@ -251,7 +251,7 @@ V4.1 should expand completion surfaces in this order:
 - Optional streaming only after non-streaming surfaces are stable, behind a
   feature flag, and with mocked tests only.
 
-The following remain out of scope for the V4.1 handoff: real Codex integration,
+The following remain out of scope for the V4.1 handoff: Codex adapter integration,
 ProseMirror/Monaco completion, browser extension behavior, local model
 inference, Path B local completion engine, next-edit logging, private provider
 API keys in browser code, real provider calls in tests/demos/E2E, completion

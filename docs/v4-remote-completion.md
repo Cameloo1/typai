@@ -391,7 +391,7 @@ tests, reports, examples, or browser artifacts in the dry-run tarball.
 - No real streaming provider or endpoint streaming is implemented.
 - Textarea, React, and CodeMirror completion are V4.1 surface-expansion work,
   not part of the original V4.0 contenteditable prototype boundary.
-- No real Codex integration is added.
+- Codex adapter integration is not added.
 - No next-edit logging is added.
 
 ## Hardening Checkpoint

@@ -36,6 +36,76 @@ importers:
         specifier: ^4.0.0
         version: 4.1.6(jsdom@27.4.0)(vite@7.3.3)
 
+  examples/consumer-codemirror:
+    dependencies:
+      '@codemirror/lang-markdown':
+        specifier: ^6.0.0
+        version: 6.5.0
+      '@codemirror/state':
+        specifier: ^6.0.0
+        version: 6.6.0
+      '@codemirror/view':
+        specifier: ^6.0.0
+        version: 6.43.0
+      '@typai/codemirror':
+        specifier: workspace:*
+        version: link:../../packages/codemirror
+      '@typai/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
+  examples/consumer-completion-with-proxy:
+    dependencies:
+      '@typai/completion-remote':
+        specifier: workspace:*
+        version: link:../../packages/completion-remote
+      '@typai/contenteditable':
+        specifier: workspace:*
+        version: link:../../packages/contenteditable
+      '@typai/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
+  examples/consumer-react:
+    dependencies:
+      '@typai/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@typai/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      react:
+        specifier: ^19.0.0
+        version: 19.2.6
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.6(react@19.2.6)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.14)
+
+  examples/consumer-vanilla-contenteditable:
+    dependencies:
+      '@typai/contenteditable':
+        specifier: workspace:*
+        version: link:../../packages/contenteditable
+      '@typai/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
+  examples/consumer-vanilla-textarea:
+    dependencies:
+      '@typai/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@typai/textarea':
+        specifier: workspace:*
+        version: link:../../packages/textarea
+
   examples/provider-proxy-cloudflare-worker:
     dependencies:
       '@typai/completion-remote':

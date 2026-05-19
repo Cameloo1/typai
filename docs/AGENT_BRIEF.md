@@ -82,7 +82,7 @@ deterministic correction adapters in this phase.
   contenteditable, textarea, React textarea, and CodeMirror.
 - Package smoke verifies `@typai/completion-remote` imports, structural
   completion options, and `@typai/core` no-remote behavior.
-- No real Codex integration.
+- Codex adapter integration remains out of scope.
 - No browser extension.
 - No local model inference.
 - No next-edit logging.
@@ -136,7 +136,7 @@ correction settles.
 - No production dictionary asset.
 - No ProseMirror implementation.
 - No Monaco implementation.
-- No real Codex integration.
+- Codex adapter integration remains out of scope.
 - No real OpenAI/provider calls in browser examples, tests, E2E, or benchmarks.
 - No next-edit logging.
 - No private provider key in browser code.

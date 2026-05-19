@@ -43,8 +43,8 @@ readiness. It covers current packages and the planned provider-proxy boundary.
   server-side OpenAI Responses path only.
 - The manual real-provider smoke requires explicit opt-in flags and is not a CI
   gate.
-- No real Codex adapter, local model inference, next-edit logging, browser
-  extension, npm publish, or production dictionary asset exists in this phase.
+- No Codex adapter, local inference path, next-edit logging, browser extension,
+  npm publish, or bundled production dictionary asset is present in this phase.
 
 ## Threats And Controls
 

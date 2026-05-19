@@ -102,5 +102,5 @@ function readGlobalProcessEnv(): ProcessEnvSource {
     };
   };
 
-  return globalWithProcess.process?.["env"] ?? {};
+  return globalWithProcess.process?.env ?? {};
 }

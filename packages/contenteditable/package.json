@@ -1,6 +1,6 @@
 {
   "name": "@typai/contenteditable",
-  "version": "0.0.0-dev",
+  "version": "0.0.0-beta.0",
   "description": "Typai contenteditable adapter for local correction and optional completion controllers.",
   "license": "UNLICENSED",
   "private": false,

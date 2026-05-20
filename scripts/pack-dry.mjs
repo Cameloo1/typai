@@ -1,18 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { delimiter, resolve } from "node:path";
+import { releasePackages } from "./release-config.mjs";
 
-const packages = [
-  { name: "@typai/core", directory: "packages/core" },
-  { name: "@typai/contenteditable", directory: "packages/contenteditable" },
-  { name: "@typai/textarea", directory: "packages/textarea" },
-  { name: "@typai/ui", directory: "packages/ui" },
-  { name: "@typai/react", directory: "packages/react" },
-  { name: "@typai/codemirror", directory: "packages/codemirror" },
-  { name: "@typai/completion-remote", directory: "packages/completion-remote" },
-];
-
-for (const pkg of packages) {
+for (const pkg of releasePackages) {
   const cwd = resolve(pkg.directory);
   const npmCommand = resolveCommand("npm", ["pack", "--dry-run", "--json"]);
   const result = spawnSync(npmCommand.command, npmCommand.args, {

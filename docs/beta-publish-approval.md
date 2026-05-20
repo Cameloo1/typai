@@ -17,11 +17,11 @@ Structured approval sidecar: `release/beta-approval.json`.
 - Target version: `0.0.0-beta.0`
 - Target npm dist-tag: `beta`
 - Target Git tag: `v0.0.0-beta.0`
-- Current workspace package version: `0.0.0-dev`
+- Workspace package version at approval: `0.0.0-dev`
+- Approved release package version prepared later: `0.0.0-beta.0`
 - Approval status: **approved**
-- Go/no-go status: **GO for the later approved beta version-bump and guarded
-  publish path; NO-GO for npm publish, Git tag creation, or version bump in
-  this prompt**
+- Go/no-go status: **GO for the approved beta version-bump and later guarded
+  publish path; NO-GO for npm publish or Git tag creation in this prompt**
 
 ## Source-Control Preflight
 

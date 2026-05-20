@@ -8,16 +8,18 @@ language assets are bundled.
 
 ## Target Version And Tag Plan
 
-- Current workspace package version: `0.0.0-dev`.
-- Default dry-run target version: `0.0.0-beta.0`.
-- Proposed npm dist-tag after manual approval: `beta`.
-- Proposed Git tag after manual approval: `v0.0.0-beta.0`.
-- Versioning rule: all release packages move together from `0.0.0-dev` to the
-  approved beta version during the real release step.
+- Approved release package version prepared in source control:
+  `0.0.0-beta.0`.
+- Root/private workspace package version remains `0.0.0-dev`.
+- Approved npm dist-tag for the later guarded publish: `beta`.
+- Approved Git tag for the later post-publish tag step: `v0.0.0-beta.0`.
+- Versioning rule: approved release packages move together at
+  `0.0.0-beta.0`; private packages remain unpublished unless a later approval
+  changes that boundary.
 
 The current release scripts are dry-run only for this checkpoint:
 
-- `pnpm release:version:dry` prints the package version changes it would make.
+- `pnpm release:version:dry` prints the current approved version state.
 - `pnpm release:pack` creates local release tarballs only.
 - `pnpm release:publish:dry` prints publish order and does not execute
   `npm publish`.

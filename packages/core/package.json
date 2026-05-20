@@ -1,6 +1,6 @@
 {
   "name": "@typai/core",
-  "version": "0.0.0-dev",
+  "version": "0.0.0-beta.0",
   "description": "Local deterministic Typai correction engine and storage APIs.",
   "license": "UNLICENSED",
   "private": false,

@@ -4,14 +4,17 @@ Status date: 2026-05-20.
 
 ## Publish State
 
-Publish state: **Publish approval pending; no registry publish occurred.**
+Publish state: **Approved beta version prepared; no registry publish
+occurred.**
 
 Evidence:
 
 - `docs/beta-publish-result.md` is absent.
 - `docs/beta-registry-smoke.md` is absent.
-- `release/beta-approval.json` has `manualApproval.approvalStatus: "pending"`.
-- Release package versions remain `0.0.0-dev`.
+- `release/beta-approval.json` has `manualApproval.approvalStatus:
+  "approved"`.
+- Release package versions are prepared at `0.0.0-beta.0`.
+- Root/private workspace package versions remain `0.0.0-dev`.
 - No local `v0.0.0-beta.0` Git tag exists.
 - Public docs remain in local workspace/tarball mode.
 
@@ -19,16 +22,17 @@ No npm package was published during this checkpoint.
 
 ## Version, Dist-Tag, And Git Tag
 
-- Approved version: not approved.
-- Current package version: `0.0.0-dev`.
+- Approved version: `0.0.0-beta.0`.
+- Current release package version: `0.0.0-beta.0`.
+- Current root/private package version: `0.0.0-dev`.
 - Target version from approval record: `0.0.0-beta.0`.
-- Approved dist-tag: not approved.
+- Approved dist-tag: `beta`.
 - Target dist-tag from approval record: `beta`.
-- Approved Git tag: not approved.
+- Approved Git tag: `v0.0.0-beta.0`.
 - Target Git tag from approval record: `v0.0.0-beta.0`.
 - Git tag status: no local or pushed beta tag.
 
-Because publish approval is pending, no registry dist-tag audit was run.
+Because no npm publish occurred, no registry dist-tag audit was run.
 
 ## Package List
 
@@ -146,7 +150,8 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 - No npm publish has occurred.
 - No registry smoke has run.
 - No Git tag has been created.
-- Package versions remain `0.0.0-dev`.
+- Release package versions are prepared at `0.0.0-beta.0`.
+- Root/private workspace package versions remain `0.0.0-dev`.
 - The production dictionary/frequency asset is not bundled.
 - Spell coverage is not production dictionary coverage.
 - `@typai/ui` is a required support package, not a stable independent design

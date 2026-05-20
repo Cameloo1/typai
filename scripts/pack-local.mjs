@@ -1,23 +1,15 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync } from "node:fs";
 import { delimiter, resolve } from "node:path";
+import { releasePackages } from "./release-config.mjs";
 
 const outputDirectory = resolve(".pack");
-const packages = [
-  "@typai/core",
-  "@typai/contenteditable",
-  "@typai/textarea",
-  "@typai/ui",
-  "@typai/react",
-  "@typai/codemirror",
-  "@typai/completion-remote",
-];
 
 rmSync(outputDirectory, { recursive: true, force: true });
 mkdirSync(outputDirectory, { recursive: true });
 
-for (const packageName of packages) {
-  run("pnpm", ["--filter", packageName, "pack", "--pack-destination", outputDirectory]);
+for (const pkg of releasePackages) {
+  run("pnpm", ["--filter", pkg.name, "pack", "--pack-destination", outputDirectory]);
 }
 
 console.log(`Local package tarballs written to ${outputDirectory}`);

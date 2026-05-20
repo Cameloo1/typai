@@ -1,9 +1,62 @@
 # Changelog
 
-Typai has not been published to npm yet. This changelog is a release-candidate
-draft for the first public beta package line.
+Typai has not been published to npm yet. This changelog records the prepared
+first public beta package line; registry publish remains gated for a later
+prompt.
 
-## Public Beta RC Draft
+## 0.0.0-beta.0 - 2026-05-20
+
+Prepared for the npm `beta` dist-tag. No npm package has been published yet;
+publish is still gated until Prompt 125.
+
+Release package set:
+
+- `@typai/core`
+- `@typai/contenteditable`
+- `@typai/textarea`
+- `@typai/react`
+- `@typai/codemirror`
+- `@typai/completion-remote`
+- `@typai/ui`
+
+Highlights:
+
+- Ships the deterministic local correction core in `@typai/core`, including
+  protected-token handling, personal correction rules, storage APIs, and
+  host-provided Typai Dictionary Blob v1 loading.
+- Ships contenteditable, textarea, React, and CodeMirror adapters for local
+  correction surfaces.
+- Ships optional `@typai/completion-remote` for mock, noop, endpoint, and
+  mocked streaming completion provider paths without adding it to
+  `@typai/core`.
+- Includes provider proxy and public-beta readiness rails for server-owned
+  completion proxy integrations.
+- Includes the Intelligence Quality Foundation: expanded table-driven typo
+  coverage, delete-index suggestions, valid-word safety, protected-token
+  safety, spell-quality corpus checks, and latency gates.
+
+Production language asset status:
+
+- Production language asset remains **blocked / host-provided only**.
+- No production dictionary binary is bundled.
+- No production frequency table is bundled.
+- No raw ESDB/SCOWL, Hunspell, or Google Books Ngram source files are bundled.
+- `dictionary.mode: "production"` remains unavailable while review status is
+  blocked.
+
+Known limitations:
+
+- No npm registry publish has occurred yet.
+- Spell coverage is not production dictionary coverage.
+- No valid-word or real-word/context autocorrection exists.
+- No grammar, style, tone, clarity, local model inference, next-edit logging,
+  browser extension, ProseMirror, Monaco, or real Codex adapter is included.
+- Real provider completion is manual and opt-in through an embedder-controlled
+  server boundary.
+- `@typai/ui` is a required support package and remains unstable as an
+  independent design-system API.
+
+## Public Beta RC Build-Up
 
 ### MVP Foundations
 

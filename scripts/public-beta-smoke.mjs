@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -77,7 +78,7 @@ function copyPackedTarballs() {
   mkdirSync(tarballRoot, { recursive: true });
 
   for (const pkg of releasePackages) {
-    const source = resolve(".pack", getPackedTarballName(pkg.name));
+    const source = resolve(".pack", getPackedTarballName(pkg));
 
     if (!existsSync(source)) {
       throw new Error(`Missing packed tarball for ${pkg.name}: ${source}`);
@@ -121,7 +122,7 @@ function createTempApp(name) {
       "install",
       "--legacy-peer-deps",
       "--ignore-scripts",
-      ...releasePackages.map((pkg) => join(tarballRoot, getPackedTarballName(pkg.name))),
+      ...releasePackages.map((pkg) => join(tarballRoot, getPackedTarballName(pkg))),
       resolve("packages/react/node_modules/react"),
       resolve("packages/react/node_modules/react-dom"),
     ],
@@ -532,8 +533,9 @@ function printSummary() {
   console.log("Provider mode: mock-only; no real provider calls were made.");
 }
 
-function getPackedTarballName(packageName) {
-  return `${packageName.replace("@typai/", "typai-").replace("/", "-")}-0.0.0-dev.tgz`;
+function getPackedTarballName(pkg) {
+  const manifest = JSON.parse(readFileSync(resolve(pkg.directory, "package.json"), "utf8"));
+  return `${pkg.name.replace("@typai/", "typai-").replace("/", "-")}-${manifest.version}.tgz`;
 }
 
 function run(command, args, cwd) {

@@ -1,6 +1,6 @@
 {
   "name": "@typai/textarea",
-  "version": "0.0.0-dev",
+  "version": "0.0.0-beta.0",
   "description": "Typai textarea adapter with overlay correction rendering and optional completion support.",
   "license": "UNLICENSED",
   "private": false,

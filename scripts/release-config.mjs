@@ -2,6 +2,14 @@ export const repositoryUrl = "git+https://github.com/Cameloo1/typai.git";
 
 export const releasePackages = [
   {
+    name: "@typai/ui",
+    directory: "packages/ui",
+    role: "support",
+    requiredFiles: ["dist", "README.md"],
+    requiredPackedFiles: ["dist/index.js", "dist/index.d.ts", "README.md"],
+    peerDependencies: [],
+  },
+  {
     name: "@typai/core",
     directory: "packages/core",
     role: "public",
@@ -17,6 +25,14 @@ export const releasePackages = [
     requiresWasm: true,
   },
   {
+    name: "@typai/completion-remote",
+    directory: "packages/completion-remote",
+    role: "public",
+    requiredFiles: ["dist", "README.md"],
+    requiredPackedFiles: ["dist/index.js", "dist/index.d.ts", "README.md"],
+    peerDependencies: [],
+  },
+  {
     name: "@typai/contenteditable",
     directory: "packages/contenteditable",
     role: "public",
@@ -28,14 +44,6 @@ export const releasePackages = [
     name: "@typai/textarea",
     directory: "packages/textarea",
     role: "public",
-    requiredFiles: ["dist", "README.md"],
-    requiredPackedFiles: ["dist/index.js", "dist/index.d.ts", "README.md"],
-    peerDependencies: [],
-  },
-  {
-    name: "@typai/ui",
-    directory: "packages/ui",
-    role: "support",
     requiredFiles: ["dist", "README.md"],
     requiredPackedFiles: ["dist/index.js", "dist/index.d.ts", "README.md"],
     peerDependencies: [],
@@ -55,14 +63,6 @@ export const releasePackages = [
     requiredFiles: ["dist", "README.md"],
     requiredPackedFiles: ["dist/index.js", "dist/index.d.ts", "README.md"],
     peerDependencies: ["@codemirror/language", "@codemirror/state", "@codemirror/view"],
-  },
-  {
-    name: "@typai/completion-remote",
-    directory: "packages/completion-remote",
-    role: "public",
-    requiredFiles: ["dist", "README.md"],
-    requiredPackedFiles: ["dist/index.js", "dist/index.d.ts", "README.md"],
-    peerDependencies: [],
   },
 ];
 

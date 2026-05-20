@@ -1,7 +1,16 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, delimiter, join, resolve } from "node:path";
+import { releasePackages } from "./release-config.mjs";
 
 const repoRoot = resolve(".");
 const smokeRoot = mkdtempSync(join(tmpdir(), "typai-package-smoke-"));
@@ -11,13 +20,7 @@ const appRoot = join(smokeRoot, "app");
 try {
   run("node", ["scripts/pack-local.mjs"], repoRoot);
 
-  const packedCore = resolve(".pack", "typai-core-0.0.0-dev.tgz");
-  const packedContenteditable = resolve(".pack", "typai-contenteditable-0.0.0-dev.tgz");
-  const packedTextarea = resolve(".pack", "typai-textarea-0.0.0-dev.tgz");
-  const packedUi = resolve(".pack", "typai-ui-0.0.0-dev.tgz");
-  const packedReact = resolve(".pack", "typai-react-0.0.0-dev.tgz");
-  const packedCodeMirror = resolve(".pack", "typai-codemirror-0.0.0-dev.tgz");
-  const packedCompletionRemote = resolve(".pack", "typai-completion-remote-0.0.0-dev.tgz");
+  const packedTarballs = releasePackages.map((pkg) => resolve(".pack", getPackedTarballName(pkg)));
   const localReact = resolve("packages/react/node_modules/react");
   const localReactDom = resolve("packages/react/node_modules/react-dom");
   const localCodeMirrorLanguage = resolve("packages/codemirror/node_modules/@codemirror/language");
@@ -25,13 +28,9 @@ try {
   const localCodeMirrorView = resolve("packages/codemirror/node_modules/@codemirror/view");
 
   mkdirSync(tarballRoot, { recursive: true });
-  copyFileSync(packedCore, join(tarballRoot, basename(packedCore)));
-  copyFileSync(packedContenteditable, join(tarballRoot, basename(packedContenteditable)));
-  copyFileSync(packedTextarea, join(tarballRoot, basename(packedTextarea)));
-  copyFileSync(packedUi, join(tarballRoot, basename(packedUi)));
-  copyFileSync(packedReact, join(tarballRoot, basename(packedReact)));
-  copyFileSync(packedCodeMirror, join(tarballRoot, basename(packedCodeMirror)));
-  copyFileSync(packedCompletionRemote, join(tarballRoot, basename(packedCompletionRemote)));
+  for (const tarball of packedTarballs) {
+    copyFileSync(tarball, join(tarballRoot, basename(tarball)));
+  }
   mkdirSync(appRoot, { recursive: true });
 
   writeFileSync(
@@ -45,13 +44,7 @@ try {
       "install",
       "--legacy-peer-deps",
       "--ignore-scripts",
-      join(tarballRoot, basename(packedCore)),
-      join(tarballRoot, basename(packedContenteditable)),
-      join(tarballRoot, basename(packedTextarea)),
-      join(tarballRoot, basename(packedUi)),
-      join(tarballRoot, basename(packedReact)),
-      join(tarballRoot, basename(packedCodeMirror)),
-      join(tarballRoot, basename(packedCompletionRemote)),
+      ...packedTarballs.map((tarball) => join(tarballRoot, basename(tarball))),
       localReact,
       localReactDom,
     ],
@@ -378,6 +371,11 @@ function resolveCommand(command, args) {
   }
 
   return { command, args };
+}
+
+function getPackedTarballName(pkg) {
+  const manifest = JSON.parse(readFileSync(resolve(pkg.directory, "package.json"), "utf8"));
+  return `${pkg.name.replace("@typai/", "typai-").replace("/", "-")}-${manifest.version}.tgz`;
 }
 
 function linkPackage(appRoot, scope, name, source) {

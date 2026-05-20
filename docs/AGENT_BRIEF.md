@@ -8,13 +8,14 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: beta publish checkpoint complete in a prepublish state. Manual
-beta approval is still pending, so no npm registry publish, beta registry smoke,
-or beta Git tag exists. Production asset resolution may continue in a later
-phase, but publishing remains blocked until a prompt explicitly opens it and the
-manual approval gate is satisfied. V4.2 Provider + Public Beta Readiness,
-Intelligence Quality Foundation, Production Language Asset + Beta RC, and the
-Prompt 121 beta publish checkpoint are complete.
+Current phase: approved beta version prepared in a prepublish state. Manual beta
+approval is complete and approved release packages are at `0.0.0-beta.0`, but
+no npm registry publish, beta registry smoke, or beta Git tag exists. Production
+asset resolution may continue in a later phase, but publishing remains blocked
+until a prompt explicitly opens it and all publish gates are satisfied. V4.2
+Provider + Public Beta Readiness, Intelligence Quality Foundation, Production
+Language Asset + Beta RC, and the Prompt 121 beta publish checkpoint are
+complete.
 
 Package readiness is not the same as product intelligence. The public beta
 package rails, provider proxy boundaries, and cross-surface completion
@@ -68,14 +69,14 @@ No local model inference or next-edit logging is active in this phase.
 Use `docs/beta-release-candidate-plan.md` for the current beta version plan,
 `docs/beta-publish-complete.md` for the latest beta publish checkpoint, and
 `docs/production-asset-gate-recap.md` for the current production asset status.
-The default dry-run beta target is `0.0.0-beta.0`, but real version changes,
-tags, and npm publish require explicit manual approval.
+The approved beta target is `0.0.0-beta.0`. Git tags and npm publish still
+require explicit later gates.
 
 Next-phase decision is still required. If the goal is to finish public beta,
-complete manual approval and guarded publish first. If the goal is product
-quality, choose Production Asset Unblock. If the goal is dogfooding or flagship
-integration, choose Real Codex Adapter. Do not begin a feature phase without an
-explicit selection.
+run the guarded publish prompt first. If the goal is product quality, choose
+Production Asset Unblock. If the goal is dogfooding or flagship integration,
+choose Real Codex Adapter. Do not begin a feature phase without an explicit
+selection.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.

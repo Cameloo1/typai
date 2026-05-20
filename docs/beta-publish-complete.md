@@ -9,7 +9,12 @@ occurred.**
 
 Evidence:
 
-- `docs/beta-publish-result.md` is absent.
+- `docs/beta-publish-result.md` exists and records `published: false`.
+- The latest guarded publish attempt failed before the first package was
+  published.
+- The failed package was `@typai/ui`.
+- npm returned `E403` because two-factor authentication or a granular access
+  token with bypass 2FA enabled is required to publish packages.
 - `docs/beta-registry-smoke.md` is absent.
 - `release/beta-approval.json` has `manualApproval.approvalStatus:
   "approved"`.
@@ -19,11 +24,14 @@ Evidence:
 - Public docs remain in local workspace/tarball mode.
 
 No npm package was published during this checkpoint. The latest guarded publish
-attempt stopped before publish because `TYPAI_ALLOW_NPM_BETA_PUBLISH` was not
-set to `1` in the active release shell. A prior open-gate dry run reached the
-npm authentication gate and `npm whoami` returned `ENEEDAUTH`; the next publish
-attempt must run from an npm-authenticated shell with the manual publish gate
-set.
+attempt ran with `TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, npm authentication succeeded
+as `camelo1`, and exact package/version availability checks confirmed that all
+seven `0.0.0-beta.0` package versions were unpublished. The actual npm publish
+command failed on `@typai/ui` with `E403` before any package was published. The
+next publish attempt must use an npm release authentication path that can satisfy
+the account's publish-time 2FA policy, such as an interactive 2FA-capable publish
+flow or a granular npm access token that is permitted to publish the `@typai`
+packages with the required 2FA bypass policy.
 
 ## Version, Dist-Tag, And Git Tag
 
@@ -37,7 +45,10 @@ set.
 - Target Git tag from approval record: `v0.0.0-beta.0`.
 - Git tag status: no local or pushed beta tag.
 
-Because no npm publish occurred, no registry dist-tag audit was run.
+Because no npm publish occurred, no registry smoke or beta dist-tag audit was
+run. Post-failure exact package/version checks confirmed that all seven
+`0.0.0-beta.0` package versions remained unpublished. No beta or latest
+dist-tags were created or modified.
 
 ## Package List
 
@@ -122,9 +133,9 @@ Prompt 127 no-publish validation passed:
 - `pnpm build`
 - `pnpm lint`
 
-The full publish validation stack had also passed before the latest publish
-gate stop, but registry smoke was intentionally skipped because no publish
-result exists.
+The full publish validation stack passed before the latest publish attempt, but
+registry smoke was intentionally skipped because `docs/beta-publish-result.md`
+records `published: false`.
 
 ## Docs Update Status
 
@@ -142,7 +153,8 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 ## Known Limitations
 
 - Manual beta approval is approved, but npm publish has not completed.
-- No npm publish has occurred.
+- The latest npm publish attempt failed on `@typai/ui` with `E403` before any
+  package was published.
 - No registry smoke has run.
 - No Git tag has been created.
 - Release package versions are prepared at `0.0.0-beta.0`.
@@ -176,7 +188,7 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 - If spell quality complaints persist, prioritize Production Asset Unblock.
 - If dogfooding is the goal, prioritize Real Codex Adapter.
 
-Current immediate decision: authenticate npm in the release shell and rerun the
-guarded publish prompt with `TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, or explicitly
-choose a non-publish next phase. No feature phase should start without that
-selection.
+Current immediate decision: configure npm publish authentication for the
+account's 2FA/token policy and rerun the guarded publish prompt with
+`TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, or explicitly choose a non-publish next phase.
+No feature phase should start without that selection.

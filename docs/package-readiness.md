@@ -13,7 +13,8 @@ release dry-runs, package secret scanning, public beta smoke, and public beta
 readiness CI. Intelligence Quality Foundation readiness adds spell-quality
 benchmark gates, cross-surface spelling parity, source/asset policy evidence,
 and a hardening checkpoint without publishing or bundling production language
-assets.
+assets. Production Language Asset RC hardening adds language-asset load,
+memory, and package-size gates.
 
 Production Language Asset RC readiness currently keeps production language
 assets excluded from package tarballs. Until the production manifest is
@@ -98,6 +99,20 @@ The dry-run validates tarball contents and includes
 For `@typai/core`, the dry-run requires `dist`, generated Wasm `pkg`, package
 metadata, and `README.md`, while rejecting `assets/` and blocked
 dictionary/frequency artifacts in the current blocked state.
+
+Package size report:
+
+```sh
+pnpm package:size-report
+```
+
+The size report dry-runs every release package, prints packed and unpacked
+sizes, checks `@typai/core` against the blocked-state warning/failure budget,
+and fails if raw dictionary/frequency source files, blocked production assets,
+`.env` files, private-key-looking payloads, or provider secret-like values are
+present in packed output. If a future approved manifest includes a production
+asset, the report requires package-visible manifest, license, and attribution
+files before passing.
 
 Release metadata and package-boundary audit:
 
@@ -187,15 +202,30 @@ latency. It fails protected-token writes, valid-word autocorrections,
 autocorrect precision below the committed target, and direct core p95 above the
 hard threshold.
 
+Language asset benchmark:
+
+```sh
+pnpm bench:language-asset
+```
+
+This gate builds `@typai/core`, measures host-provided mock and scaled mock
+Typai Dictionary Blob loading, reports dictionary load and initialization-time
+delete-index p95/p99, core check/suggest p95, delete-index memory estimate,
+asset byte size, manifest word count, and `@typai/core` tarball impact. In the
+current blocked state it also asserts that `dictionary.mode: "production"` is
+unavailable and that no blocked/raw production asset is present in the core
+tarball.
+
 ## CI
 
 CI builds and tests the workspace, explicitly runs
 `@typai/completion-remote` build/test including mocked streaming tests, runs
-package dry-run and smoke install, runs public beta smoke, runs Chromium and
-Firefox Playwright E2E for V4.1 completion surfaces, runs provider proxy
-contract tests, runs package secret scan, runs spell-quality benchmark gates,
-and runs the browser benchmark smoke. WebKit is skipped. CI does not publish to
-npm and does not require real provider credentials.
+package dry-run, package size report, and smoke install, runs public beta
+smoke, runs Chromium and Firefox Playwright E2E for V4.1 completion surfaces,
+runs provider proxy contract tests, runs package secret scan, runs
+spell-quality and language-asset benchmark gates, and runs the browser
+benchmark smoke. WebKit is skipped. CI does not publish to npm and does not
+require real provider credentials.
 
 The V4.1 audit confirms there is no real provider call path in demos, tests,
 E2E, or benchmarks; endpoint provider usage is routed through an

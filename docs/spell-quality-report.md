@@ -5,7 +5,9 @@ Status date: 2026-05-19.
 This is the stable spell-quality report for the Production Language Asset RC
 phase. It describes the committed quality gates and review tables;
 machine-local timings should be read from `pnpm bench:spell-quality` and
-`pnpm bench:browser` output for the run being evaluated.
+`pnpm bench:browser` output for the run being evaluated. Asset load, memory,
+and package-size timings are owned by `pnpm bench:language-asset` and
+`pnpm package:size-report`.
 
 Prompt 107 keeps the full Intelligence Quality Foundation audit in
 `docs/intelligence-quality-foundation-complete.md`. Prompt 112 expands this
@@ -36,6 +38,8 @@ The benchmark uses the committed corpus categories below and prints:
 - p95 direct core latency
 - a pointer to the separate browser correction p95 gate in
   `pnpm bench:browser`
+- a pointer to the separate asset load, delete-index memory, and package-size
+  gates in `pnpm bench:language-asset` and `pnpm package:size-report`
 
 Hard failures:
 
@@ -49,6 +53,7 @@ Hard failures:
 | Production dictionary mode | not blocked while package inclusion is blocked |
 | Host-provided fixture behavior | fixture fails to load or fails known-word/suggestion checks |
 | Direct core p95 | greater than 100 ms |
+| Production asset/package contents | handled by `pnpm bench:language-asset` and `pnpm package:size-report`; blocked/raw assets in tarballs are failures |
 
 Warnings:
 
@@ -57,6 +62,7 @@ Warnings:
 | Suggestion recall | below 90% on the suggestion corpus |
 | Direct core p95 | greater than 20 ms |
 | Browser completion p95 | handled by `pnpm bench:browser`; warning target remains 800 ms |
+| Asset load and memory | handled by `pnpm bench:language-asset` |
 
 ## Corpus Categories
 

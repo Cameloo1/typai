@@ -12,8 +12,12 @@ future public beta packaging.
 - Package metadata audit passes.
 - Package secret scan passes.
 - Package tarball inspection passes.
+- Package size report passes.
+- Language asset benchmark passes.
 - Public beta smoke matrix passes from packed tarballs.
 - Public beta readiness CI is green.
+- Production language assets remain blocked and absent from tarballs unless the
+  production manifest is approved with package-visible license and attribution.
 - V4.2 hardening checkpoint has been reviewed when releasing from the V4.2
   baseline.
 - Intelligence Quality Foundation checkpoint has been reviewed when releasing
@@ -31,8 +35,10 @@ pnpm build
 pnpm lint
 pnpm test:e2e
 pnpm bench:spell-quality
+pnpm bench:language-asset
 pnpm bench:browser
 pnpm pack:dry
+pnpm package:size-report
 pnpm smoke:install
 pnpm smoke:public-beta
 pnpm scan:package-secrets
@@ -69,9 +75,9 @@ changes the package boundary.
 `.github/workflows/public-beta-readiness.yml` is the CI gate for beta
 packaging. It uses frozen installs, builds, lint, unit tests, Chromium and
 Firefox E2E, axe/accessibility specs, deterministic correction benchmarks,
-browser completion benchmarks, package dry-runs, install smoke,
-`pnpm smoke:public-beta`, release dry-runs, package secret scan, and provider
-proxy contract tests.
+language asset benchmarks, browser completion benchmarks, package dry-runs,
+package size reports, install smoke, `pnpm smoke:public-beta`, release
+dry-runs, package secret scan, and provider proxy contract tests.
 
 The workflow intentionally does not run WebKit, does not require provider
 secrets, does not run the manual real-provider smoke, and does not publish.
@@ -90,3 +96,12 @@ The completed intelligence quality audit is recorded in
 from the current branch so dictionary asset status, spell-quality gates,
 surface parity, completion boundaries, and preserved non-goals are still
 accurate.
+
+## Production Language Asset RC Checkpoint
+
+Before public beta packaging, review
+`docs/production-language-asset-rc.md` and
+`docs/dictionary-production-approval.md`. The current release candidate keeps
+production language assets host-provided only while manifest review is blocked;
+packed tarballs must not include raw source files, generated production
+dictionary binaries, frequency tables, or blocked production attribution files.

@@ -108,6 +108,11 @@ test("reports contenteditable browser-path demo latency smoke metrics", async ({
 
   console.log("Typai browser demo latency smoke benchmark");
   console.log(`tokens: ${benchmarkTokens.join(", ")}`);
+  console.log(
+    `p95 warning/fail thresholds: ${formatMs(warningTargetMs)} / ${formatMs(
+      hardFailureThresholdMs,
+    )}`,
+  );
   console.log(`count: ${summary.count}`);
   console.log(`mean: ${formatMs(summary.mean)}`);
   console.log(`p50: ${formatMs(summary.p50)}`);
@@ -158,6 +163,11 @@ test("reports textarea browser-path demo latency smoke metrics", async ({ page }
 
   console.log("Typai textarea browser latency smoke benchmark");
   console.log(`tokens: ${textareaBenchmarkTokens.join(", ")}`);
+  console.log(
+    `p95 warning/fail thresholds: ${formatMs(warningTargetMs)} / ${formatMs(
+      hardFailureThresholdMs,
+    )}`,
+  );
   console.log(`count: ${summary.count}`);
   console.log(`mean: ${formatMs(summary.mean)}`);
   console.log(`p50: ${formatMs(summary.p50)}`);
@@ -210,6 +220,11 @@ test("reports CodeMirror browser-path demo latency smoke metrics", async ({ page
 
   console.log("typai CodeMirror browser latency smoke benchmark");
   console.log(`tokens: ${codeMirrorBenchmarkTokens.join(", ")}`);
+  console.log(
+    `p95 warning/fail thresholds: ${formatMs(warningTargetMs)} / ${formatMs(
+      hardFailureThresholdMs,
+    )}`,
+  );
   console.log(`count: ${summary.count}`);
   console.log(`mean: ${formatMs(summary.mean)}`);
   console.log(`p50: ${formatMs(summary.p50)}`);
@@ -260,6 +275,11 @@ test("reports V4 remote completion mocked ghost latency smoke metrics", async ({
 
   console.log("Typai V4 remote completion mocked ghost latency smoke benchmark");
   console.log(`mock provider latency: ${remoteCompletionMockLatencyMs} ms`);
+  console.log(
+    `p95 warning/fail thresholds: ${formatMs(remoteCompletionWarningTargetMs)} / ${formatMs(
+      remoteCompletionHardFailureThresholdMs,
+    )}`,
+  );
   console.log(`count: ${summary.count}`);
   console.log(`mean: ${formatMs(summary.mean)}`);
   console.log(`p50: ${formatMs(summary.p50)}`);
@@ -529,6 +549,11 @@ function reportRemoteCompletionBenchmark(label: string, samples: number[]): void
 
   console.log(label);
   console.log(`mock provider latency: ${remoteCompletionMockLatencyMs} ms`);
+  console.log(
+    `p95 warning/fail thresholds: ${formatMs(remoteCompletionWarningTargetMs)} / ${formatMs(
+      remoteCompletionHardFailureThresholdMs,
+    )}`,
+  );
   console.log(`count: ${summary.count}`);
   console.log(`mean: ${formatMs(summary.mean)}`);
   console.log(`p50: ${formatMs(summary.p50)}`);

@@ -183,25 +183,65 @@ This phase cannot be called RC-ready until:
 
 ## Package-Size And Performance Targets
 
-Initial package-size targets:
+Package inclusion policy:
 
-- compressed package impact: <= 2 MiB
-- uncompressed generated asset impact: <= 8 MiB
+- Current state: production assets are **host-provided only** and excluded from
+  `@typai/core`.
+- `@typai/core` may include only `dist`, generated Wasm `pkg`, package
+  metadata, and `README.md` while `review.status` is blocked.
+- Production dictionary/frequency binary inclusion requires approved manifest,
+  license, attribution, generated output hash, size evidence, and review
+  signoff.
+- Raw ESDB/SCOWL, Hunspell, Google Ngram, or frequency source files are never
+  allowed in package tarballs unless a future approved manifest explicitly
+  changes that policy.
+
+Package-size targets and thresholds:
+
+- target production generated asset size: <= 2 MiB compressed/package impact
+- generated asset hard failure threshold: > 8 MiB
+- blocked-state `@typai/core` tarball warning threshold: > 256 KiB
+- blocked-state `@typai/core` tarball failure threshold: > 1 MiB
+- general package tarball warning threshold: > 512 KiB
+- general package tarball failure threshold: > 2 MiB
 - raw Google Ngram inputs in Git/package tarballs: 0 bytes
+- raw dictionary source files such as `.dic`, `.aff`, `.gz`, `.tsv`, and `.zip`
+  in package tarballs: 0 bytes
+- `.env` files, provider secrets, and private-key-looking payloads in package
+  tarballs: 0
 
 Initial performance targets:
 
 - direct core token p95 warning threshold: 20 ms
 - direct core token p95 failure threshold: 100 ms
+- language asset load/delete-index p95 warning threshold: 250 ms
+- language asset load/delete-index p95 failure threshold: 1000 ms
+- delete-index memory estimate warning threshold: 8 MiB
+- delete-index memory estimate failure threshold: 32 MiB
 - protected-token writes: 0
 - valid-word autocorrections: 0
 - autocorrect precision: at least 99% on the committed corpus
 - suggestion recall: warn below 90%
-- browser correction and completion smoke thresholds do not regress from the
-  current benchmark gates
+- browser correction p95 warning/failure thresholds: 20 ms / 100 ms
+- mocked browser completion p95 warning/failure thresholds: 800 ms / 2000 ms
 
 Memory evidence must include inspectable dictionary word count, delete-index
-entry count, generated asset byte size, and package dry-run contents.
+entry count, generated asset byte size, package dry-run contents, and packed
+tarball byte sizes.
+
+Current Prompt 113 blocked-state measurements are produced by:
+
+```sh
+pnpm bench:language-asset
+pnpm package:size-report
+```
+
+The language asset benchmark reports host-provided mock and scaled mock asset
+byte size, word count, dictionary load p95, initialization-inclusive
+delete-index build p95, core check p95, core suggest p95, memory estimate, and
+`@typai/core` tarball impact. The package size report fails if blocked
+production assets, raw source files, `.env` files, or secret-like payloads
+appear in packed output.
 
 ## RC Readiness Definition
 

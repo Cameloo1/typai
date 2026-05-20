@@ -27,6 +27,7 @@ The hardening checkpoints are recorded in:
 - `docs/v4-1-completion-surface-expansion-complete.md`
 - `docs/v4-2-provider-public-beta-readiness-complete.md`
 - `docs/intelligence-quality-foundation-complete.md`
+- `docs/production-language-asset-rc-complete.md`
 
 ## Packages
 
@@ -60,6 +61,10 @@ assets. Its package policy is:
 The dry-run gate fails if blocked production assets, raw dictionary files, raw
 frequency files, or generated production dictionary binaries appear in the
 `@typai/core` tarball.
+
+The beta RC version and rollback plan lives in
+`docs/beta-release-candidate-plan.md`. `CHANGELOG.md` is a draft changelog for
+the first beta line; it does not claim a registry publish.
 
 ## Remote Completion Package Surface
 

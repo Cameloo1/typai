@@ -6,15 +6,15 @@ typai is a local deterministic correction layer for browser writing surfaces,
 with optional remote completion kept in a separate package and routed through
 embedder-owned endpoints.
 
-Status: V4.2 public-beta readiness and Intelligence Quality Foundation are
-complete. Production Language Asset + Beta Release Candidate work is active.
+Status: V4.2 public-beta readiness, Intelligence Quality Foundation, and the
+Production Language Asset + Beta Release Candidate checkpoint are complete.
 Packages are local-ready and tested from this workspace, but they have not been
 published to npm.
 
 ## Current Phase
 
-Production Language Asset + Beta Release Candidate follows the completed
-Intelligence Quality Foundation.
+Production Language Asset + Beta Release Candidate is complete in the current
+blocked-production-asset state.
 
 - deterministic correction remains local through `@typai/core`
 - completion is optional through `@typai/completion-remote`
@@ -22,7 +22,7 @@ Intelligence Quality Foundation.
 - automated tests and demos use mock providers
 - the full demo has an optional local proxy completion mode for manual
   real-provider checks
-- no direct browser-to-provider path is supported
+- no direct browser-to-provider credential path is supported
 - no production dictionary asset, Codex adapter, next-edit logging, or local
   model inference is included
 - current local spell coverage now includes delete-index suggestions and an
@@ -30,11 +30,12 @@ Intelligence Quality Foundation.
   dictionary coverage until an approved production asset lands
 - spell-quality benchmark gates and cross-surface E2E now guard the current
   safety baseline
-- production language asset RC work is next, but no production
-  dictionary/frequency asset is bundled until source, license, attribution,
-  manifest, hash, transform, size, quality, and review gates pass
+- production language asset RC gates are complete, but no production
+  dictionary/frequency asset is bundled until the remaining source, hash,
+  generated output, size, quality, and review blockers are closed
 - the deterministic production transform pipeline exists, but package inclusion
   is currently host-provided only while the production manifest is blocked
+- beta release candidate docs and release dry-run scripts are in place
 - npm publish has not happened
 
 ## Packages
@@ -68,8 +69,11 @@ will be added after a real npm publish.
 - [Privacy](./docs/privacy.md)
 - [Troubleshooting](./docs/troubleshooting.md)
 - [Roadmap](./docs/roadmap.md)
+- [Changelog](./CHANGELOG.md)
+- [Beta release candidate plan](./docs/beta-release-candidate-plan.md)
 - [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
 - [Production Language Asset RC](./docs/production-language-asset-rc.md)
+- [Production Language Asset RC checkpoint](./docs/production-language-asset-rc-complete.md)
 - [Production asset gate recap](./docs/production-asset-gate-recap.md)
 - [Intelligence Quality Foundation](./docs/intelligence-quality-foundation.md)
 - [Intelligence Quality Foundation checkpoint](./docs/intelligence-quality-foundation-complete.md)
@@ -87,11 +91,13 @@ pnpm build
 pnpm test
 pnpm lint
 pnpm bench:spell-quality
+pnpm bench:language-asset
 pnpm docs:check
 pnpm pack:dry
 pnpm smoke:install
 pnpm smoke:public-beta
 pnpm scan:package-secrets
+pnpm package:size-report
 pnpm release:check
 ```
 

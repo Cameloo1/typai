@@ -14,6 +14,9 @@ Prompt 107 keeps the full Intelligence Quality Foundation audit in
 report and the committed corpus for production/host-provided asset readiness
 while keeping production asset ingestion blocked.
 
+Prompt 114 records the final public beta RC audit in
+`docs/production-language-asset-rc-complete.md`.
+
 ## Quality Benchmark
 
 Run:

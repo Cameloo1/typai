@@ -7,6 +7,9 @@ future public beta packaging.
 
 - Git status is clean before starting release work.
 - Version dry-run has been reviewed.
+- `docs/beta-release-candidate-plan.md` has been reviewed.
+- `CHANGELOG.md` has been reviewed.
+- `docs/production-language-asset-rc-complete.md` has been reviewed.
 - Changelog or release notes exist for any breaking public API change.
 - Public API stability labels are current.
 - Package metadata audit passes.
@@ -44,6 +47,7 @@ pnpm smoke:public-beta
 pnpm scan:package-secrets
 pnpm release:check
 pnpm release:version:dry
+pnpm release:pack
 pnpm release:publish:dry
 ```
 
@@ -101,6 +105,7 @@ accurate.
 
 Before public beta packaging, review
 `docs/production-language-asset-rc.md` and
+`docs/production-language-asset-rc-complete.md` plus
 `docs/dictionary-production-approval.md`. The current release candidate keeps
 production language assets host-provided only while manifest review is blocked;
 packed tarballs must not include raw source files, generated production

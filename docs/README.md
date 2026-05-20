@@ -13,6 +13,7 @@ provider credentials stay on the embedder's server.
 - [Getting started](./getting-started.md)
 - [Installation](./installation.md)
 - [Examples](./examples.md)
+- [Changelog](../CHANGELOG.md)
 - [Real-provider demo](./real-provider-demo.md)
 - [Troubleshooting](./troubleshooting.md)
 
@@ -40,6 +41,8 @@ provider credentials stay on the embedder's server.
 - [Privacy](./privacy.md)
 - [API stability](./api-stability.md)
 - [Release checklist](./release-checklist.md)
+- [Beta release candidate plan](./beta-release-candidate-plan.md)
+- [Production Language Asset RC checkpoint](./production-language-asset-rc-complete.md)
 - [Roadmap](./roadmap.md)
 - [Provider proxy security contract](./provider-proxy-security-contract.md)
 - [Security threat model](./security-threat-model.md)

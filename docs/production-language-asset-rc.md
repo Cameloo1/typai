@@ -2,8 +2,11 @@
 
 Status date: 2026-05-19.
 
-Completion status: started. This phase prepares Typai for a production language
-asset release candidate and public beta candidate without publishing to npm.
+Completion status: complete in the blocked-production-asset public beta RC
+state. This phase prepared Typai for a production language asset release
+candidate and public beta candidate without publishing to npm.
+
+Final checkpoint: `docs/production-language-asset-rc-complete.md`.
 
 ## Current Foundation State
 

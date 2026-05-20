@@ -8,11 +8,13 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: Production Language Asset + Beta Release Candidate. Production
-asset work is active, but npm publish is still out of scope. V4.2 Provider +
-Public Beta Readiness and Intelligence Quality Foundation are complete, and
-Prompts 99 through 107 have checkpointed the spell intelligence quality gates,
-real completion demo boundary, and hardening audit.
+Current phase: Production Language Asset + Beta Release Candidate is complete
+in the blocked-production-asset beta RC state. Production asset resolution may
+continue in a later phase, but npm publish is still out of scope unless a
+future prompt explicitly opens it. V4.2 Provider + Public Beta Readiness and
+Intelligence Quality Foundation are complete, and Prompts 99 through 107 have
+checkpointed the spell intelligence quality gates, real completion demo
+boundary, and hardening audit.
 
 Package readiness is not the same as product intelligence. The public beta
 package rails, provider proxy boundaries, and cross-surface completion
@@ -61,6 +63,11 @@ frequency data. Asset ingestion is still blocked until manifest, transform,
 hash, attribution, size, quality, and review gates pass.
 
 No local model inference or next-edit logging is active in this phase.
+
+Use `docs/beta-release-candidate-plan.md` for the current beta version plan and
+`docs/production-language-asset-rc-complete.md` for the final Prompt 114
+hardening audit. The default dry-run beta target is `0.0.0-beta.0`, but real
+version changes, tags, and npm publish require explicit manual approval.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -218,6 +225,8 @@ asset-ingestion gates.
 
 Use `docs/production-language-asset-rc.md` as the current phase scope lock and
 `docs/production-asset-gate-recap.md` as the current asset gate summary.
+Use `docs/production-language-asset-rc-complete.md` as the final Production
+Language Asset + Public Beta RC hardening checkpoint.
 
 ## V4 Scope Reference
 

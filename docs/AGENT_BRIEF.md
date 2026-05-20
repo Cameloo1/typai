@@ -8,13 +8,13 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: Production Language Asset + Beta Release Candidate is complete
-in the blocked-production-asset beta RC state. Production asset resolution may
-continue in a later phase, but npm publish is still out of scope unless a
-future prompt explicitly opens it. V4.2 Provider + Public Beta Readiness and
-Intelligence Quality Foundation are complete, and Prompts 99 through 107 have
-checkpointed the spell intelligence quality gates, real completion demo
-boundary, and hardening audit.
+Current phase: beta publish checkpoint complete in a prepublish state. Manual
+beta approval is still pending, so no npm registry publish, beta registry smoke,
+or beta Git tag exists. Production asset resolution may continue in a later
+phase, but publishing remains blocked until a prompt explicitly opens it and the
+manual approval gate is satisfied. V4.2 Provider + Public Beta Readiness,
+Intelligence Quality Foundation, Production Language Asset + Beta RC, and the
+Prompt 121 beta publish checkpoint are complete.
 
 Package readiness is not the same as product intelligence. The public beta
 package rails, provider proxy boundaries, and cross-surface completion
@@ -54,8 +54,9 @@ adapter, grammar/style/tone/clarity work, local model inference, or next-edit
 logging in this phase. Preserve correction/completion boundaries: `@typai/core`
 stays local deterministic correction only, completion stays optional, valid
 words and protected tokens are never autocorrected, delete-index candidates are
-suggestions-only unless explicitly approved in the common typo table, and
-accepted completions are not blue correction marks.
+suggestions-only unless explicitly approved in the common typo table, accepted
+completions are not blue correction marks, and browser package code must not
+contain provider credentials.
 
 Prompt 100 approved the first source path only: ESDB/SCOWL `en-US` size 60 for
 dictionary data and Google Books Ngram American English 2019 unigrams for
@@ -64,10 +65,17 @@ hash, attribution, size, quality, and review gates pass.
 
 No local model inference or next-edit logging is active in this phase.
 
-Use `docs/beta-release-candidate-plan.md` for the current beta version plan and
-`docs/production-language-asset-rc-complete.md` for the final Prompt 114
-hardening audit. The default dry-run beta target is `0.0.0-beta.0`, but real
-version changes, tags, and npm publish require explicit manual approval.
+Use `docs/beta-release-candidate-plan.md` for the current beta version plan,
+`docs/beta-publish-complete.md` for the latest beta publish checkpoint, and
+`docs/production-asset-gate-recap.md` for the current production asset status.
+The default dry-run beta target is `0.0.0-beta.0`, but real version changes,
+tags, and npm publish require explicit manual approval.
+
+Next-phase decision is still required. If the goal is to finish public beta,
+complete manual approval and guarded publish first. If the goal is product
+quality, choose Production Asset Unblock. If the goal is dogfooding or flagship
+integration, choose Real Codex Adapter. Do not begin a feature phase without an
+explicit selection.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -78,7 +86,8 @@ deterministic correction adapters in this phase.
 - `@typai/contenteditable`
 - `@typai/textarea`
 - Internal private `@typai/adapter-testkit`
-- Internal private `@typai/ui`
+- Required support package `@typai/ui`, unstable as an independent
+  design-system API
 - `@typai/react`
 - `@typai/codemirror`
 - `@typai/completion-remote`
@@ -144,7 +153,7 @@ deterministic correction adapters in this phase.
 - No local model inference.
 - No next-edit logging.
 - No grammar, style, tone, or clarity expansion in V4.2.
-- No SymSpell/delete index or production dictionary asset in V4.2.
+- No delete-index-only autocorrect or production dictionary asset in V4.2.
 - No direct browser OpenAI/provider calls.
 - No npm publish in V4.2 unless a later prompt explicitly opens publishing.
 

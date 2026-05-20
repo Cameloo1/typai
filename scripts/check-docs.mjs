@@ -24,6 +24,7 @@ const requiredFiles = [
   "docs/api-stability.md",
   "docs/troubleshooting.md",
   "docs/roadmap.md",
+  "docs/beta-publish-complete.md",
   "docs/beta-known-issues.md",
   "docs/beta-rollback-guidance.md",
   "docs/production-asset-gate-recap.md",

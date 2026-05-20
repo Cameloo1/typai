@@ -29,6 +29,7 @@
     "release:pack": "node scripts/release-pack.mjs",
     "release:publish:dry": "node scripts/release-publish-dry.mjs",
     "beta:approval:check": "node scripts/check-beta-publish-approval.mjs",
+    "trusted-publish:check": "node scripts/check-trusted-publish-workflow.mjs",
     "lint": "biome check .",
     "format": "biome format . --write",
     "dev": "turbo run dev",

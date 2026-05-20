@@ -34,6 +34,10 @@ the account's publish-time 2FA policy, such as a granular npm access token that
 is permitted to publish the `@typai` packages with the required 2FA bypass
 policy.
 
+The prepared next publish path is npm Trusted Publishing through GitHub Actions
+OIDC. The workflow is `.github/workflows/npm-beta-publish.yml`, and the external
+npm setup checklist is recorded in `docs/trusted-publishing-setup.md`.
+
 ## Version, Dist-Tag, And Git Tag
 
 - Approved version: `0.0.0-beta.0`.
@@ -148,8 +152,35 @@ Public docs reflect the current prepublish state:
 - provider proxy model documented as server-owned
 - beta known issues documented in `docs/beta-known-issues.md`
 - rollback guidance documented in `docs/beta-rollback-guidance.md`
+- trusted-publishing setup documented in `docs/trusted-publishing-setup.md`
 
 Rollback guidance: `docs/beta-rollback-guidance.md`.
+
+## Trusted Publishing Readiness
+
+Prepared repo-side items:
+
+- `.github/workflows/npm-beta-publish.yml` exists.
+- Workflow trigger is `workflow_dispatch` only.
+- Workflow permissions include `contents: read` and `id-token: write`.
+- Workflow uses Node 24 and verifies npm `11.5.1+`.
+- Workflow does not reference `NPM_TOKEN` or `NODE_AUTH_TOKEN`.
+- Workflow requires `confirm_version=0.0.0-beta.0`.
+- Workflow requires `confirm_dist_tag=beta`.
+- Workflow publishes only when `publish=true`.
+- Workflow rejects `push_git_tag=true` because the current permissions are
+  intentionally read-only.
+- Workflow checks exact package/version availability before publish.
+- Workflow publishes approved tarballs in approved order with `--tag beta` and
+  `--access public`.
+
+External setup still required before running with `publish=true`:
+
+- Configure npm Trusted Publisher for all seven packages.
+- Configure GitHub environment `npm-beta` and approval rules if desired.
+- Ensure the workflow file exists on the branch used for `workflow_dispatch`.
+- If npm does not allow trusted-publisher setup before first package creation,
+  stop and document the npm UI blocker rather than falling back to token publish.
 
 ## Known Limitations
 
@@ -189,8 +220,7 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 - If spell quality complaints persist, prioritize Production Asset Unblock.
 - If dogfooding is the goal, prioritize Real Codex Adapter.
 
-Current immediate decision: complete npm's publish-time one-time-password/browser
-authentication flow or configure publish authentication for the account's
-2FA/token policy, then rerun the guarded publish prompt with
-`TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, or explicitly choose a non-publish next phase.
-No feature phase should start without that selection.
+Current immediate decision: configure npm Trusted Publisher entries for all
+seven packages and run the manual `npm beta publish` GitHub Actions workflow, or
+explicitly choose a non-publish next phase. No feature phase should start without
+that selection.

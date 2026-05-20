@@ -165,3 +165,42 @@ Allowed approval statuses:
 - `pending`
 - `approved`
 - `rejected`
+
+## Trusted Publishing Checklist
+
+The local npm publish path is blocked by interactive passkey authentication.
+The approved beta release may proceed through npm Trusted Publishing after the
+external npm and GitHub setup below is complete.
+
+Trusted publish workflow:
+
+- `.github/workflows/npm-beta-publish.yml`
+
+Required setup before running the workflow with `publish=true`:
+
+- trusted publisher configured for `@typai/ui`
+- trusted publisher configured for `@typai/core`
+- trusted publisher configured for `@typai/completion-remote`
+- trusted publisher configured for `@typai/contenteditable`
+- trusted publisher configured for `@typai/textarea`
+- trusted publisher configured for `@typai/react`
+- trusted publisher configured for `@typai/codemirror`
+- GitHub environment `npm-beta` configured if environment approval is desired
+- workflow file committed to the intended release branch
+- exact package versions checked as absent from npm immediately before publish
+- production asset limitation acknowledged as blocked / host-provided only
+
+Release operator workflow inputs:
+
+```yaml
+confirm_version: 0.0.0-beta.0
+confirm_dist_tag: beta
+publish: true
+push_git_tag: false
+```
+
+The trusted publishing workflow must not use `latest`, `NPM_TOKEN`, or
+`NODE_AUTH_TOKEN`. The workflow uses OIDC with `id-token: write` and
+`contents: read`.
+
+Detailed setup instructions: `docs/trusted-publishing-setup.md`.

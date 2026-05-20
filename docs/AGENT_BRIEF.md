@@ -14,7 +14,10 @@ no npm registry publish, beta registry smoke, or beta Git tag exists. Production
 asset resolution may continue in a later phase, but publishing remains blocked:
 the latest open-gate Prompt 126 attempt authenticated as `camelo1` and then
 failed on `@typai/ui` with npm `EOTP` because the publish operation requires a
-one-time-password/browser authentication flow. V4.2
+one-time-password/browser authentication flow. The prepared next publish path is
+npm Trusted Publishing through `.github/workflows/npm-beta-publish.yml`; npm
+Trusted Publisher setup on npmjs.com is still required for all seven release
+packages before running it with `publish=true`. V4.2
 Provider + Public Beta Readiness, Intelligence Quality Foundation, Production
 Language Asset + Beta RC, and the Prompt 121 beta publish checkpoint are
 complete.
@@ -75,11 +78,11 @@ The approved beta target is `0.0.0-beta.0`. Git tags and npm publish still
 require explicit later gates.
 
 Next-phase decision is still required. If the goal is to finish public beta,
-complete npm publish-time one-time-password/browser authentication or configure
-publish authentication for the account's 2FA/token policy, then rerun the
-guarded publish prompt first. If the goal is product quality, choose Production
-Asset Unblock. If the goal is dogfooding or flagship integration, choose Real
-Codex Adapter. Do not begin a feature phase without an explicit selection.
+configure npm Trusted Publisher entries for all seven packages and run the
+manual `npm beta publish` GitHub Actions workflow first. If the goal is product
+quality, choose Production Asset Unblock. If the goal is dogfooding or flagship
+integration, choose Real Codex Adapter. Do not begin a feature phase without an
+explicit selection.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.

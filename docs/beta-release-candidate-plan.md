@@ -1,6 +1,6 @@
 # Public Beta Release Candidate Plan
 
-Status date: 2026-05-19.
+Status date: 2026-05-20.
 
 This plan records the current public beta release candidate path for Typai. It
 does not publish packages, create registry tags, or claim that production
@@ -21,6 +21,10 @@ The current release scripts are dry-run only for this checkpoint:
 - `pnpm release:pack` creates local release tarballs only.
 - `pnpm release:publish:dry` prints publish order and does not execute
   `npm publish`.
+
+Post-audit state: no publish result document and no registry-smoke document are
+present, so public docs remain in local-artifact mode. Registry install
+instructions must wait for an actual publish and beta dist-tag smoke.
 
 ## Package List
 
@@ -94,10 +98,10 @@ review gates pass.
 Before any actual beta publish:
 
 1. Confirm `git status --short` is clean.
-2. Review `docs/production-language-asset-rc-complete.md`.
+2. Review `docs/production-asset-gate-recap.md`.
 3. Review `docs/dictionary-production-approval.md` and
    `docs/dictionary-asset-blockers.md`.
-4. Run the full validation stack from `docs/release-checklist.md`.
+4. Run the full validation stack from the `README.md` verification section.
 5. Confirm packed tarballs contain expected files only.
 6. Confirm no blocked production assets, raw source files, `.env` files, or
    secret-like payloads appear in package output.
@@ -149,10 +153,8 @@ The beta candidate contains:
 
 - `README.md`
 - `CHANGELOG.md`
-- `docs/release-checklist.md`
-- `docs/package-readiness.md`
-- `docs/production-language-asset-rc.md`
-- `docs/production-language-asset-rc-complete.md`
+- `docs/production-asset-gate-recap.md`
+- `docs/beta-known-issues.md`
+- `docs/beta-rollback-guidance.md`
 - `docs/dictionary-production-approval.md`
 - `docs/dictionary-asset-blockers.md`
-- `docs/spell-quality-report.md`

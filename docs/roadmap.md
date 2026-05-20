@@ -1,8 +1,9 @@
 # Roadmap
 
-Current phase: V4.2 Provider + Public Beta Readiness.
+Current phase: prepublish public beta documentation and guarded release
+readiness.
 
-In scope for V4.2:
+Completed readiness scope:
 
 - consumer examples
 - public-beta docs
@@ -10,8 +11,18 @@ In scope for V4.2:
 - server-side OpenAI Responses example path, disabled by default
 - release dry-runs and smoke checks
 - security, privacy, and API stability documentation
+- production language asset blocker documentation
+- local tarball audit documentation
 
-Out of scope for V4.2:
+Current release boundary:
+
+- no npm publish has occurred
+- no registry smoke has run
+- public docs must not claim public registry availability
+- guarded publish remains the next step after manual approval and a clean gate
+- production language assets remain blocked and host-provided only
+
+Out of scope for the beta:
 
 - npm publish
 - production dictionary asset

@@ -9,7 +9,6 @@ state from:
 - `docs/dictionary-asset-policy.md`
 - `docs/dictionary-production-approval.md`
 - `docs/dictionary-asset-blockers.md`
-- `docs/intelligence-quality-foundation-complete.md`
 
 ## Current Decision
 

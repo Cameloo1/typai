@@ -7,7 +7,6 @@ const requiredDocs = [
   "docs/dictionary-asset-policy.md",
   "docs/dictionary-production-approval.md",
   "docs/dictionary-asset-blockers.md",
-  "docs/intelligence-quality-foundation-complete.md",
 ];
 
 const requiredRecapPhrases = [
@@ -78,7 +77,7 @@ if (!policyText.includes("compressed package impact: <= 2 MiB")) {
   failures.push("Dictionary asset policy must retain the compressed package impact budget.");
 }
 
-if (!blockersText.includes("Production Manifest Missing")) {
+if (!blockersText.includes("Production Manifest Blocked")) {
   failures.push("Dictionary blockers must record the missing production manifest gate.");
 }
 

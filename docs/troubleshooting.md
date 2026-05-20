@@ -30,3 +30,22 @@ latency. Do not log full context by default.
 
 These examples use workspace packages. Run `pnpm install` and `pnpm build` from
 the repository root before running a consumer example.
+
+## Public Beta Registry Install Is Unavailable
+
+If a package-manager command points at the beta dist-tag today, it is ahead of
+the current repository state. There is no completed publish result or registry
+smoke document yet, so use workspace examples or local package smoke checks.
+
+## Production Dictionary Coverage Is Missing
+
+The production dictionary and frequency table are not bundled. The current local
+correction baseline includes deterministic rules, a common-typo autocorrect
+gate, and mock or host-provided dictionary paths. Full production spell coverage
+requires a later approved production asset.
+
+## Provider Proxy Credentials
+
+Completion providers should run through an embedder-owned server endpoint. The
+browser side should receive only an endpoint URL and completion responses, never
+provider credentials.

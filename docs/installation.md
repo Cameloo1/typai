@@ -3,6 +3,10 @@
 Typai is not published to npm yet. Use workspace packages or local packed
 tarballs during public-beta readiness.
 
+No public registry install command is documented for the current state. The next
+release step is the guarded publish prompt after manual approval, followed by
+registry smoke from the beta dist-tag.
+
 ## Workspace Examples
 
 From this checkout:
@@ -28,6 +32,10 @@ pnpm smoke:install
 
 These checks verify package contents, import surfaces, and local package
 installation without publishing.
+
+The smoke checks install local package artifacts, not registry packages. They
+also keep production language assets blocked and completion providers in mock or
+server-owned paths.
 
 ## After Publish
 

@@ -37,6 +37,8 @@ blocked-production-asset state.
   is currently host-provided only while the production manifest is blocked
 - beta release candidate docs and release dry-run scripts are in place
 - npm publish has not happened
+- registry smoke has not run because there is no completed publish result yet
+- the next release step remains guarded npm beta publish after manual approval
 
 ## Packages
 
@@ -46,6 +48,8 @@ blocked-production-asset state.
 - `@typai/react` - React provider, hooks, and components
 - `@typai/codemirror` - CodeMirror 6 extension
 - `@typai/completion-remote` - optional completion scheduler and providers
+- `@typai/ui` - required support package for public packages; unstable as an
+  independent design-system API
 
 ## Quick Start
 
@@ -56,7 +60,8 @@ pnpm --filter consumer-vanilla-textarea dev
 ```
 
 The consumer examples use workspace packages. Registry install instructions
-will be added after a real npm publish.
+will be added only after a real npm publish and successful registry smoke.
+Until then, use workspace examples or local tarball smoke checks.
 
 ## Docs
 
@@ -71,16 +76,10 @@ will be added after a real npm publish.
 - [Roadmap](./docs/roadmap.md)
 - [Changelog](./CHANGELOG.md)
 - [Beta release candidate plan](./docs/beta-release-candidate-plan.md)
-- [V4.2 completion checkpoint](./docs/v4-2-provider-public-beta-readiness-complete.md)
-- [Production Language Asset RC](./docs/production-language-asset-rc.md)
-- [Production Language Asset RC checkpoint](./docs/production-language-asset-rc-complete.md)
+- [Beta known issues](./docs/beta-known-issues.md)
+- [Beta rollback guidance](./docs/beta-rollback-guidance.md)
 - [Production asset gate recap](./docs/production-asset-gate-recap.md)
-- [Intelligence Quality Foundation](./docs/intelligence-quality-foundation.md)
-- [Intelligence Quality Foundation checkpoint](./docs/intelligence-quality-foundation-complete.md)
-- [Spell quality baseline](./docs/spell-quality-baseline.md)
-- [Spell quality report](./docs/spell-quality-report.md)
 - [Common typo table](./docs/common-typo-table.md)
-- [Spell false-positive review](./docs/spell-false-positive-review.md)
 - [Dictionary source selection](./docs/dictionary-source-selection.md)
 - [Dictionary production approval](./docs/dictionary-production-approval.md)
 

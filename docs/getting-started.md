@@ -3,6 +3,10 @@
 Use the consumer examples when evaluating Typai from this checkout. They are
 small on purpose and avoid the full demo app.
 
+Typai has not been published to the public npm registry yet. These quickstarts
+show package APIs, but current evaluation should use workspace packages or the
+local package-smoke flow from this checkout.
+
 ## Local Checkout
 
 ```sh
@@ -93,3 +97,14 @@ const remote = createRemoteCompletion({
 
 Point the endpoint at a server-side proxy running in mock mode. Do not put
 provider credentials in browser code.
+
+## Current Beta Install Status
+
+Registry install instructions are intentionally absent until
+`docs/beta-publish-result.md` and `docs/beta-registry-smoke.md` exist and show a
+successful publish plus registry smoke. Until then:
+
+- use workspace examples for hands-on evaluation
+- use local packed tarball smoke checks for package-boundary validation
+- do not treat beta dist-tag package-manager commands as available
+- keep completion provider credentials on the server side

@@ -2,6 +2,10 @@
 
 Typai has focused consumer examples and one larger demo app.
 
+These examples run from workspace packages in the current prepublish state.
+Registry-based beta examples will be added only after a real publish and
+registry smoke.
+
 ## Consumer Examples
 
 These are the best starting points for public-beta evaluation:
@@ -69,3 +73,11 @@ pnpm --filter simple-demo-editor dev
 The full demo app uses mock providers for completion by default. Its V4 Remote
 Completion tab can be switched to proxy mode for a local server endpoint; the
 browser UI accepts an endpoint URL only, not provider credentials.
+
+## Beta Example Limits
+
+- examples are not published packages
+- provider proxy examples are not bundled into library tarballs
+- production dictionary and frequency assets are not bundled
+- completion is optional and works through mock or server-owned providers
+- local deterministic correction does not require a server

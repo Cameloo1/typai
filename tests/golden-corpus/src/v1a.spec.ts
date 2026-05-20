@@ -1,13 +1,20 @@
+import { readFileSync } from "node:fs";
 import type { TypaiCore } from "@typai/core";
 import { createTypaiCore } from "@typai/core";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   allowedAutocorrections,
+  falsePositiveReviewCases,
   mustNotAutocorrect,
   unresolvedNonWords,
   unresolvedSuggestionCases,
 } from "./fixtures";
+
+const mockDictionaryUrl = new URL(
+  "../../../packages/core/assets/mock-en-us.dictionary.bin",
+  import.meta.url,
+);
 
 describe("Typai V1A-dev golden corpus", () => {
   let typai: TypaiCore;
@@ -39,6 +46,19 @@ describe("Typai V1A-dev golden corpus", () => {
     expect(decision.action, `${token} (${reason}) must not be autocorrected`).toBe("do_nothing");
   });
 
+  it.each(
+    falsePositiveReviewCases,
+  )("does not auto-correct reviewed false-positive candidate $token ($reason)", ({
+    token,
+    reason,
+  }) => {
+    const decision = typai.checkCompletedToken({ token });
+
+    expect(decision.action, `${token} (${reason}) must not be autocorrected`).not.toBe(
+      "auto_correct",
+    );
+  });
+
   it.each(unresolvedNonWords)("marks $token unresolved ($reason)", ({ token, reason }) => {
     const decision = typai.checkCompletedToken({ token });
 
@@ -66,5 +86,26 @@ describe("Typai V1A-dev golden corpus", () => {
     expect(decision.suggestions, `${token} should include ${suggestion}`).toContain(suggestion);
     expect(decision.mark).toBe("red_spelling_issue");
     expect(decision.reasonCodes).toContain("AUTOCORRECT_GATE_BLOCKED");
+  });
+
+  it("loads the host-provided dictionary fixture without enabling production mode", async () => {
+    const hostProvided = await createTypaiCore({
+      dictionary: {
+        mode: "host-provided",
+        bytes: readFileSync(mockDictionaryUrl),
+      },
+    });
+
+    expect(hostProvided.getLoadedDictionaryWordCount()).toBeGreaterThan(0);
+    expect(hostProvided.checkCompletedToken({ token: "receipt" }).action).toBe("do_nothing");
+    expect(hostProvided.suggestToken({ token: "reciept" }).suggestions).toContain("receipt");
+
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "production",
+        },
+      }),
+    ).rejects.toThrow(/production dictionary asset is unavailable/i);
   });
 });

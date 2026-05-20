@@ -2,13 +2,19 @@
 
 Status date: 2026-05-19
 
-Prompt 100 approves the source path for the first production dictionary and
-frequency pipeline:
+Prompt 109 verifies and pins the source path for the first production
+dictionary and frequency pipeline:
 
-- Dictionary source: English Speller Database / SCOWL v2, official
-  non-Australian `en-US` size 60 output, release `2026.02.25` / `[7e99eda]`.
-- Frequency source: Google Books Ngram Viewer American English 2019 unigrams,
-  persistent corpus identifier `googlebooks-eng-us-20200217`.
+- Dictionary source: English Speller Database / SCOWL v2 generated Hunspell
+  `en_US` size 60 output, release `2026.02.25` / `[7e99eda]`.
+- Dictionary source file:
+  `https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip`.
+- Dictionary source SHA-256:
+  `ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9`.
+- Frequency source: Google Books Ngram Viewer American English 2019 1-grams,
+  version `20200217`, path segment `eng-us`.
+- Frequency source index:
+  `https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/eng-us-1-ngrams_exports.html`.
 
 No production asset is bundled in this checkpoint. The only runtime dictionary
 asset in the repository remains the generated mock fixture:
@@ -21,38 +27,64 @@ fixture.
 
 ## Remaining Blockers
 
-### Production Manifest Missing
+### Production Manifest Blocked
 
 - Source affected: ESDB/SCOWL and Google Books Ngram.
-- Evidence needed: `docs/asset-manifests/*.json` entry with required source,
-  license, transform, count, size, hash, package-inclusion, and review fields.
-- Owner/action: Prompt 101 or later asset-pipeline implementer.
+- Evidence present: blocked template at
+  `packages/core/assets/production/MANIFEST.template.json`.
+- Evidence still needed: approved manifest with complete frequency source
+  hashes, pinned local production input paths, generated output counts,
+  generated output size, output hash, package-inclusion decision, and review
+  signoff.
+- Owner/action: production asset pipeline implementer.
 - Can pipeline proceed with scaled mock or host-provided asset? Yes. Loader and
   manifest validation work can proceed without committing a production asset.
 
-### Deterministic Transform Script Missing
+### Deterministic Transform Script Gated To Fixtures
 
 - Source affected: ESDB/SCOWL and Google Books Ngram.
-- Evidence needed: checked-in script that fetches or reads pinned inputs,
-  normalizes them deterministically, intersects frequency with accepted
-  dictionary words, and emits Typai Dictionary Blob v1 plus manifest.
-- Owner/action: Prompt 101 pipeline work.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes. Prompt 101
-  should harden the loader and host-provided path first.
+- Evidence present: checked-in transform script at
+  `packages/core/scripts/build-production-dictionary.mjs`, fixture inputs under
+  `packages/core/assets/fixtures/production-transform/`, and gated validation
+  via `pnpm --filter @typai/core validate:dictionary:production`.
+- Evidence still needed: approved production manifest, pinned local production
+  source files, complete raw SHA-256 values, generated output hash, generated
+  size evidence, and review signoff before
+  `pnpm --filter @typai/core build:dictionary:production` can run.
+- Owner/action: asset-pipeline PR plus final approval review.
+- Can pipeline proceed with scaled mock or host-provided asset? Yes. The
+  fixture path can validate transform behavior without committing a production
+  asset.
 
-### Raw Source Hashes Not Captured
+### Frequency Raw Source Hashes Not Captured
 
-- Source affected: ESDB/SCOWL release files and Google Ngram 1-gram source
-  files.
-- Evidence needed: SHA-256 for each raw input and generated output.
+- Source affected: Google Ngram `totalcounts-1` and `1-00000-of-00014.gz`
+  through `1-00013-of-00014.gz`.
+- Evidence present: exact frequency source URLs in
+  `packages/core/assets/production/MANIFEST.template.json`.
+- Evidence needed: SHA-256 for each raw frequency input and generated output.
 - Owner/action: asset-pipeline PR.
 - Can pipeline proceed with scaled mock or host-provided asset? Yes.
 
-### Attribution File Not Committed
+### Attribution File Placeholder Only
 
 - Source affected: ESDB/SCOWL and Google Books Ngram.
-- Evidence needed: package-visible attribution text with ESDB notice, source
-  URLs, Google Ngram acknowledgement, and corpus identifier.
+- Evidence present: placeholder attribution at
+  `packages/core/assets/production/ATTRIBUTION.md`.
+- Evidence needed: final package-visible attribution text with full applicable
+  ESDB/SCOWL notice, affix-file notice, source URLs, Google Ngram
+  acknowledgement, CC BY 3.0 reference, and corpus/version identifier.
+- Owner/action: asset-pipeline PR plus review signoff.
+- Can pipeline proceed with scaled mock or host-provided asset? Yes.
+
+### License Files Placeholder Only
+
+- Source affected: ESDB/SCOWL Hunspell `en_US` and Google Books Ngram.
+- Evidence present: placeholder license summary at
+  `packages/core/assets/production/LICENSES/README.md`.
+- Evidence needed: final package-visible full applicable notice text for
+  ESDB/SCOWL, the Hunspell affix-file BSD-style notice, and Google Ngram CC BY
+  3.0 attribution/license reference.
 - Owner/action: asset-pipeline PR plus review signoff.
 - Can pipeline proceed with scaled mock or host-provided asset? Yes.
 
@@ -104,13 +136,13 @@ fixture.
 
 ## Current Safe Path
 
-Prompt 101 should implement or harden:
+Current blocked-phase work may continue on:
 
 - manifest validation
-- deterministic transform scaffolding
+- deterministic transform fixture coverage
 - host-provided dictionary loading
 - scaled mock asset generation for performance and loader tests
 - package scans that exclude raw source files and generated production outputs
 
-Prompt 101 should not commit generated production assets unless the manifest,
+No prompt should commit generated production assets unless the manifest,
 hash, attribution, size, quality, and review gates all pass.

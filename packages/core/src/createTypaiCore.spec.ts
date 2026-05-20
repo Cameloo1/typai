@@ -224,6 +224,7 @@ describe("createTypaiCore", () => {
     const blob = decodeTypaiDictionaryBlob(bytes);
     const core = await createTypaiCore({
       dictionary: {
+        mode: "host-provided",
         bytes,
       },
     });
@@ -247,6 +248,7 @@ describe("createTypaiCore", () => {
     });
     const core = await createTypaiCore({
       dictionary: {
+        mode: "host-provided",
         load: async () => bytes,
       },
     });
@@ -258,9 +260,78 @@ describe("createTypaiCore", () => {
     });
   });
 
+  it("keeps built-in dictionary mode initialization-only and dynamic-asset free", async () => {
+    const core = await createTypaiCore({
+      dictionary: {
+        mode: "built-in",
+      },
+    });
+
+    expect(core.getLoadedDictionaryWordCount()).toBe(0);
+    expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(0);
+    expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
+  });
+
+  it("rejects production dictionary mode while package inclusion is blocked", async () => {
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "production",
+        },
+      }),
+    ).rejects.toThrow(/production dictionary asset is unavailable/i);
+  });
+
+  it("requires host-provided dictionary mode to provide an initialization source", async () => {
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "host-provided",
+        },
+      }),
+    ).rejects.toThrow(/host-provided dictionary source must provide bytes, load, or url/i);
+  });
+
+  it("rejects mixed built-in mode and host-provided source data", async () => {
+    const bytes = encodeTypaiDictionaryBlob({
+      language: "en-US",
+      entries: [{ word: "alphaword", frequency: 123, flags: 0 }],
+    });
+
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "built-in",
+          bytes,
+        },
+      }),
+    ).rejects.toThrow(/mode 'built-in' cannot include bytes, load, or url/i);
+  });
+
+  it("recovers to an empty built-in dictionary state after a failed host-provided load", async () => {
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "host-provided",
+          bytes: new Uint8Array([0, 1, 2, 3]),
+        },
+      }),
+    ).rejects.toThrow(/Typai dictionary load failed/);
+
+    const core = await createTypaiCore({
+      dictionary: {
+        mode: "built-in",
+      },
+    });
+
+    expect(core.getLoadedDictionaryWordCount()).toBe(0);
+    expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
+  });
+
   it("clears the loaded dictionary through the public core API", async () => {
     const core = await createTypaiCore({
       dictionary: {
+        mode: "host-provided",
         bytes: readFileSync(mockDictionaryUrl),
       },
     });

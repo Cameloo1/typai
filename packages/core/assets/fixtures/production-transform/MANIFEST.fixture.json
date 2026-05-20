@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "language": "en-US",
+  "dictionary": {
+    "name": "Typai production transform dictionary fixture",
+    "sourceUrl": "repo-local:packages/core/assets/fixtures/production-transform/dictionary.fixture.txt",
+    "version": "prompt-110-fixture-v1",
+    "sourceFiles": [
+      {
+        "path": "packages/core/assets/fixtures/production-transform/dictionary.fixture.txt",
+        "sha256": "1c25f6ba08fb0a61febb244cd5950a4b6d516974faf4e49572d6a703bbfd704c"
+      }
+    ],
+    "license": "repo-local fixture",
+    "licenseFile": "packages/core/assets/production/LICENSES/README.md",
+    "sha256": "1c25f6ba08fb0a61febb244cd5950a4b6d516974faf4e49572d6a703bbfd704c",
+    "attribution": "No third-party attribution. Repo-local transform fixture only."
+  },
+  "frequency": {
+    "name": "Typai production transform frequency fixture",
+    "sourceUrl": "repo-local:packages/core/assets/fixtures/production-transform/frequency.fixture.tsv",
+    "version": "prompt-110-fixture-v1",
+    "sourceFiles": [
+      {
+        "path": "packages/core/assets/fixtures/production-transform/frequency.fixture.tsv",
+        "sha256": "a64a2fe85f210c9c86146467f75e5472cf010d272785d77631dc68c57e109f83"
+      }
+    ],
+    "license": "repo-local fixture",
+    "licenseFile": "packages/core/assets/production/LICENSES/README.md",
+    "sha256": "a64a2fe85f210c9c86146467f75e5472cf010d272785d77631dc68c57e109f83",
+    "attribution": "No third-party attribution. Repo-local transform fixture only."
+  },
+  "transform": {
+    "script": "packages/core/scripts/build-production-dictionary.mjs",
+    "version": "prompt-110-production-transform-v1",
+    "filters": [
+      "normalize dictionary words to lowercase ASCII alphabetic tokens",
+      "strip Hunspell-style affix flags when present",
+      "exclude protected-looking URL, email, path, identifier, numeric, and hyphenated tokens",
+      "deduplicate dictionary entries deterministically",
+      "aggregate frequency rows deterministically",
+      "emit Typai Dictionary Blob v1"
+    ],
+    "generatedAt": null
+  },
+  "output": {
+    "wordCount": null,
+    "byteSize": null,
+    "packageInclusion": "generated-in-prepack",
+    "assetPath": ""
+  },
+  "review": {
+    "status": "approved",
+    "reviewedAt": "2026-05-19",
+    "reviewNotes": "Repo-local fixture manifest approved only for transform tests. Not a production language asset."
+  }
+}

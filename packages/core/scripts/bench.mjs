@@ -38,22 +38,39 @@ const hardFailureMs = 100;
 
 console.log("Typai core hot-path latency benchmark");
 console.log(`tokens: ${tokens.join(", ")}`);
+console.log(`check/suggest p95 warning threshold: ${formatMs(warningTargetMs)}`);
+console.log(`check/suggest p95 failure threshold: ${formatMs(hardFailureMs)}`);
 
 const builtInSummary = await runScenario("built-in tiny mode", await createTypaiCore());
 const loadedSummary = await runScenario(
-  "loaded mock dictionary mode",
+  "host-provided mock dictionary mode",
   await createTypaiCore({
     dictionary: {
+      mode: "host-provided",
       bytes: readFileSync(mockDictionaryUrl),
     },
   }),
 );
+const productionModeBlocked = await createTypaiCore({
+  dictionary: {
+    mode: "production",
+  },
+}).then(
+  () => false,
+  (error) =>
+    error instanceof Error && /production dictionary asset is unavailable/i.test(error.message),
+);
+
+console.log("");
+console.log(`production dictionary mode blocked: ${productionModeBlocked ? "yes" : "no"}`);
+
 const scaledLoadSummary = await runDictionaryLoadScenario(
   "scaled mock dictionary load",
   scaledMockBytes,
 );
 const scaledCore = await createTypaiCore({
   dictionary: {
+    mode: "host-provided",
     bytes: scaledMockBytes,
   },
 });
@@ -80,7 +97,8 @@ if (
   loadedSummary.p95 > hardFailureMs ||
   scaledLoadSummary.p95 > hardFailureMs ||
   scaledCheckSummary.p95 > hardFailureMs ||
-  scaledSuggestSummary.p95 > hardFailureMs
+  scaledSuggestSummary.p95 > hardFailureMs ||
+  !productionModeBlocked
 ) {
   process.exitCode = 1;
 }
@@ -128,6 +146,7 @@ async function runDictionaryLoadScenario(name, bytes) {
     async () => {
       const core = await createTypaiCore({
         dictionary: {
+          mode: "host-provided",
           bytes,
         },
       });

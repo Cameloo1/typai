@@ -29,6 +29,8 @@ const defaultMaxSuggestions = 4;
 const personalDictionaryNamespace = "personalDictionary";
 const correctionRulesNamespace = "correctionRules";
 const settingsNamespace = "settings";
+const productionDictionaryUnavailableMessage =
+  "Typai production dictionary asset is unavailable: the production asset manifest is blocked and @typai/core does not bundle a production dictionary. Use dictionary.bytes, dictionary.load, or dictionary.url with mode: 'host-provided'.";
 const trailingPunctuation = new Set([".", ",", "!", "?", ";", ":", ")", "]", "}"]);
 const suggestionOnlyOverrides = new Map<string, string[]>([
   ["dont", ["don't"]],
@@ -147,6 +149,11 @@ async function loadDictionarySource(
   dictionary: TypaiDictionaryLoadSource,
 ): Promise<void> {
   const bytes = await resolveDictionaryBytes(dictionary);
+
+  if (bytes === null) {
+    return;
+  }
+
   const result = wasm.loadDictionaryBlob(bytes);
 
   if (!result.success) {
@@ -154,7 +161,25 @@ async function loadDictionarySource(
   }
 }
 
-async function resolveDictionaryBytes(dictionary: TypaiDictionaryLoadSource): Promise<Uint8Array> {
+async function resolveDictionaryBytes(
+  dictionary: TypaiDictionaryLoadSource,
+): Promise<Uint8Array | null> {
+  const mode = dictionary.mode ?? "host-provided";
+  const hasExplicitSource =
+    dictionary.bytes !== undefined || dictionary.load !== undefined || dictionary.url !== undefined;
+
+  if (mode === "built-in") {
+    if (hasExplicitSource) {
+      throw new Error("Typai dictionary mode 'built-in' cannot include bytes, load, or url.");
+    }
+
+    return null;
+  }
+
+  if (mode === "production") {
+    throw new Error(productionDictionaryUnavailableMessage);
+  }
+
   if (dictionary.bytes !== undefined) {
     return dictionary.bytes;
   }
@@ -167,7 +192,7 @@ async function resolveDictionaryBytes(dictionary: TypaiDictionaryLoadSource): Pr
     return loadDictionaryBytesFromUrl(dictionary.url);
   }
 
-  throw new Error("Typai dictionary source must provide bytes, load, or url.");
+  throw new Error("Typai host-provided dictionary source must provide bytes, load, or url.");
 }
 
 async function loadDictionaryBytesFromUrl(url: string): Promise<Uint8Array> {

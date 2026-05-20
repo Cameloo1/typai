@@ -37,24 +37,42 @@ const broadCommonMisspellings = [
 
 const suggestionsOnlyMisspellings = [
   { token: "reciept", suggestions: ["receipt"] },
+  { token: "addres", suggestions: ["address"] },
+  { token: "separat", suggestions: ["separate"] },
+  { token: "tomorow", suggestions: ["tomorrow"] },
+  { token: "becaus", suggestions: ["because"] },
+  { token: "calandar", suggestions: ["calendar"] },
+  { token: "neccesary", suggestions: ["necessary"] },
+  { token: "definately", suggestions: ["definitely"] },
+  { token: "acommodate", suggestions: ["accommodate"] },
   { token: "dont", suggestions: ["don't"] },
   { token: "it;s", suggestions: ["it's"] },
   { token: "adresss", suggestions: ["address", "addresses"] },
 ];
 
-const validWords = ["form", "lead", "to", "its", "there", "their"];
+const validWords = ["form", "lead", "to", "its", "there", "their", "from", "too", "led"];
 
 const protectedTerms = [
   "user@example.com",
   "https://example.com",
   "/etc/passwd",
+  "~/project/src",
   "snake_case_identifier",
   "camelCaseIdentifier",
+  "PascalCaseClass",
   "CVE-2024-1234",
   "nmap",
   "sqlmap",
+  "ffuf",
+  "gobuster",
   "kubectl",
+  "iptables",
+  "XSS",
+  "CSRF",
+  "API",
 ];
+
+const reviewedFalsePositiveCandidates = ["Alice", "Cameloo", "Typai", "OpenAI", "BTC", "ETH"];
 
 describe("spell quality baseline", () => {
   it("records the current mock dictionary fixture size", async () => {
@@ -136,8 +154,20 @@ describe("spell quality baseline", () => {
     const classification = classifyToken(token);
     const decision = core.checkCompletedToken({ token });
 
-    expect(classification.protected, `${token} should be tokenizer-protected`).toBe(true);
+    expect(
+      classification.protected || decision.reasonCodes.includes("PROTECTED_TOKEN_BLOCK"),
+      `${token} should be tokenizer-protected or blocked by the core protected-token gate`,
+    ).toBe(true);
     expect(decision.action, `${token} must not be autocorrected`).toBe("do_nothing");
+  });
+
+  it.each(
+    reviewedFalsePositiveCandidates,
+  )("reviews false-positive candidate $0 without autocorrecting", async (token) => {
+    const core = await createTypaiCore();
+    const decision = core.checkCompletedToken({ token });
+
+    expect(decision.action, `${token} must not be autocorrected`).not.toBe("auto_correct");
   });
 
   it("records kubectl as protected after prompt 103", async () => {
@@ -158,9 +188,10 @@ describe("spell quality baseline", () => {
     expect(report.supportedTypoAutocorrects).toBe(5);
     expect(report.broadMisspellingAutocorrects).toBe(16);
     expect(report.suggestionsOnlyAutocorrects).toBe(0);
-    expect(report.suggestionsOnlySuggestions).toBe(4);
+    expect(report.suggestionsOnlySuggestions).toBe(12);
     expect(report.validWordAutocorrections).toBe(0);
     expect(report.protectedTermAutocorrections).toBe(0);
+    expect(report.reviewedFalsePositiveAutocorrections).toBe(0);
     expect(report.currentProtectedTermGaps).toEqual([]);
 
     console.info("[typai spell-quality-baseline]", JSON.stringify(report));
@@ -175,6 +206,9 @@ function buildBaselineReport(core: TypaiCore) {
     core.checkCompletedToken({ token }),
   );
   const protectedTermDecisions = protectedTerms.map((token) => core.checkCompletedToken({ token }));
+  const reviewedFalsePositiveDecisions = reviewedFalsePositiveCandidates.map((token) =>
+    core.checkCompletedToken({ token }),
+  );
 
   return {
     supportedTypoAutocorrects: supportedTypos.filter(
@@ -195,6 +229,11 @@ function buildBaselineReport(core: TypaiCore) {
     protectedTermAutocorrections: protectedTermDecisions.filter(
       (decision) => decision.action === "auto_correct",
     ).length,
-    currentProtectedTermGaps: ["kubectl"].filter((token) => !classifyToken(token).protected),
+    reviewedFalsePositiveAutocorrections: reviewedFalsePositiveDecisions.filter(
+      (decision) => decision.action === "auto_correct",
+    ).length,
+    currentProtectedTermGaps: ["ffuf", "gobuster", "iptables", "kubectl"].filter(
+      (token) => !classifyToken(token).protected,
+    ),
   };
 }

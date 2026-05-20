@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { createTypaiCore } from "../packages/core/dist/index.js";
 
 const directCoreWarningP95Ms = 20;
@@ -34,11 +36,21 @@ const casingAndPunctuation = [
   { token: "Teh", replacement: "The" },
   { token: "TEH", replacement: "THE" },
   { token: "teh,", replacement: "the," },
+  { token: "Adress", replacement: "Address" },
+  { token: "adress.", replacement: "address." },
+  { token: "definitly!", replacement: "definitely!" },
 ];
 
 const suggestionsOnlyMisspellings = [
   { token: "reciept", suggestion: "receipt", category: "delete-index-only misspelling" },
   { token: "addres", suggestion: "address", category: "delete-index-only misspelling" },
+  { token: "separat", suggestion: "separate", category: "delete-index-only misspelling" },
+  { token: "tomorow", suggestion: "tomorrow", category: "delete-index-only misspelling" },
+  { token: "becaus", suggestion: "because", category: "delete-index-only misspelling" },
+  { token: "calandar", suggestion: "calendar", category: "delete-index-only misspelling" },
+  { token: "neccesary", suggestion: "necessary", category: "delete-index-only misspelling" },
+  { token: "definately", suggestion: "definitely", category: "delete-index-only misspelling" },
+  { token: "acommodate", suggestion: "accommodate", category: "delete-index-only misspelling" },
 ];
 
 const contractions = [
@@ -50,18 +62,23 @@ const pluralAmbiguities = [
   { token: "adresss", suggestion: "address", category: "plural ambiguity" },
 ];
 
-const validWordTraps = ["form", "lead", "to", "its", "there", "their"];
+const validWordTraps = ["form", "lead", "to", "its", "there", "their", "from", "too", "led"];
 
 const protectedTerms = [
   "user@example.com",
   "https://example.com",
   "/etc/passwd",
+  "~/project/src",
   "snake_case_identifier",
   "camelCaseIdentifier",
+  "PascalCaseClass",
   "CVE-2024-1234",
 ];
 
-const technicalTerms = ["nmap", "sqlmap", "kubectl"];
+const technicalTerms = ["nmap", "sqlmap", "ffuf", "gobuster", "kubectl", "iptables"];
+const acronyms = ["XSS", "CSRF", "API", "NASA", "SQL", "HTTP"];
+const properNouns = ["Alice", "Cameloo", "Typai", "OpenAI"];
+const tradingAndDomainTerms = ["BTC", "ETH", "SPY", "NVDA"];
 
 const allowedAutocorrections = [...expandedCommonTypos, ...casingAndPunctuation];
 const suggestionCases = [...suggestionsOnlyMisspellings, ...contractions, ...pluralAmbiguities];
@@ -69,6 +86,9 @@ const noAutocorrectCases = [
   ...validWordTraps.map((token) => ({ token, category: "valid-word trap" })),
   ...protectedTerms.map((token) => ({ token, category: "protected term" })),
   ...technicalTerms.map((token) => ({ token, category: "technical term" })),
+  ...acronyms.map((token) => ({ token, category: "acronym" })),
+  ...properNouns.map((token) => ({ token, category: "proper noun" })),
+  ...tradingAndDomainTerms.map((token) => ({ token, category: "trading/domain term" })),
 ];
 const latencyTokens = uniqueTokens([
   ...allowedAutocorrections.map(({ token }) => token),
@@ -114,6 +134,33 @@ const noAutocorrectResults = noAutocorrectCases.map((testCase) => {
   };
 });
 const latencySummary = measureDirectCoreLatency(core, latencyTokens);
+const productionModeBlocked = await createTypaiCore({
+  dictionary: {
+    mode: "production",
+  },
+}).then(
+  () => false,
+  (error) =>
+    error instanceof Error && /production dictionary asset is unavailable/i.test(error.message),
+);
+const hostProvidedDictionaryBytes = readFileSync(
+  new URL("../packages/core/assets/mock-en-us.dictionary.bin", import.meta.url),
+);
+const hostProvidedCore = await createTypaiCore({
+  dictionary: {
+    mode: "host-provided",
+    bytes: hostProvidedDictionaryBytes,
+  },
+});
+const hostProvidedSummary = {
+  loadedWordCount: hostProvidedCore.getLoadedDictionaryWordCount(),
+  deleteIndexEntryCount: hostProvidedCore.getDeleteIndexEntryCount(),
+  receiptSuggestionRecalled: hostProvidedCore
+    .suggestToken({ token: "reciept", maxSuggestions: 4 })
+    .suggestions.includes("receipt"),
+  validWordUnchanged:
+    hostProvidedCore.checkCompletedToken({ token: "receipt" }).action === "do_nothing",
+};
 
 const allowedAutocorrectCount = autocorrectResults.filter((result) => result.passed).length;
 const falseAutocorrections = [
@@ -130,13 +177,22 @@ const validWordFalseAutocorrectCount = noAutocorrectResults.filter(
 ).length;
 const protectedTokenFalseWriteCount = noAutocorrectResults.filter(
   (result) =>
-    (result.category === "protected term" || result.category === "technical term") &&
+    (result.category === "protected term" ||
+      result.category === "technical term" ||
+      result.category === "acronym" ||
+      result.category === "trading/domain term") &&
     result.falseAutocorrect,
 ).length;
 const protectedTokenNonNoopCount = noAutocorrectResults.filter(
   (result) =>
-    (result.category === "protected term" || result.category === "technical term") &&
+    (result.category === "protected term" ||
+      result.category === "technical term" ||
+      result.category === "acronym" ||
+      result.category === "trading/domain term") &&
     result.decision.action !== "do_nothing",
+).length;
+const reviewedFalsePositiveAutocorrectCount = noAutocorrectResults.filter(
+  (result) => result.category === "proper noun" && result.falseAutocorrect,
 ).length;
 
 const failures = [];
@@ -162,6 +218,24 @@ if (validWordFalseAutocorrectCount > 0) {
 
 if (protectedTokenFalseWriteCount > 0) {
   failures.push(`protected-token false write count ${protectedTokenFalseWriteCount}`);
+}
+
+if (reviewedFalsePositiveAutocorrectCount > 0) {
+  failures.push(
+    `reviewed false-positive autocorrect count ${reviewedFalsePositiveAutocorrectCount}`,
+  );
+}
+
+if (!productionModeBlocked) {
+  failures.push("production dictionary mode was not blocked");
+}
+
+if (hostProvidedSummary.loadedWordCount <= 0) {
+  failures.push("host-provided dictionary fixture did not load");
+}
+
+if (!hostProvidedSummary.receiptSuggestionRecalled || !hostProvidedSummary.validWordUnchanged) {
+  failures.push("host-provided dictionary fixture behavior check failed");
 }
 
 if (latencySummary.p95 > directCoreHardP95Ms) {
@@ -216,7 +290,14 @@ function printReport() {
   console.log(`valid-word false autocorrect count: ${validWordFalseAutocorrectCount}`);
   console.log(`protected-token false write count: ${protectedTokenFalseWriteCount}`);
   console.log(`protected-token non-noop count: ${protectedTokenNonNoopCount}`);
+  console.log(
+    `reviewed false-positive autocorrect count: ${reviewedFalsePositiveAutocorrectCount}`,
+  );
   console.log(`suggestions-only count: ${suggestionsOnlyCount}/${suggestionResults.length}`);
+  console.log(
+    `host-provided dictionary words: ${hostProvidedSummary.loadedWordCount} (${hostProvidedSummary.deleteIndexEntryCount} delete-index entries)`,
+  );
+  console.log(`production dictionary mode blocked: ${productionModeBlocked ? "yes" : "no"}`);
   console.log(`average direct core latency: ${formatMs(latencySummary.mean)}`);
   console.log(`p95 direct core latency: ${formatMs(latencySummary.p95)}`);
   console.log("p95 browser correction latency: measured by pnpm bench:browser");
@@ -231,12 +312,30 @@ function printReport() {
   console.log(`valid-word traps: ${validWordTraps.length}`);
   console.log(`protected terms: ${protectedTerms.length}`);
   console.log(`technical terms: ${technicalTerms.length}`);
+  console.log(`acronyms: ${acronyms.length}`);
+  console.log(`proper nouns reviewed: ${properNouns.length}`);
+  console.log(`trading/domain terms: ${tradingAndDomainTerms.length}`);
 
   console.log("");
   console.log("quality gates");
   console.log(`protected false writes = ${protectedTokenFalseWriteCount === 0 ? "pass" : "fail"}`);
   console.log(
     `valid-word false autocorrections = ${validWordFalseAutocorrectCount === 0 ? "pass" : "fail"}`,
+  );
+  console.log(
+    `reviewed false-positive autocorrections = ${
+      reviewedFalsePositiveAutocorrectCount === 0 ? "pass" : "fail"
+    }`,
+  );
+  console.log(`production mode blocked = ${productionModeBlocked ? "pass" : "fail"}`);
+  console.log(
+    `host-provided fixture behavior = ${
+      hostProvidedSummary.loadedWordCount > 0 &&
+      hostProvidedSummary.receiptSuggestionRecalled &&
+      hostProvidedSummary.validWordUnchanged
+        ? "pass"
+        : "fail"
+    }`,
   );
   console.log(
     `autocorrect precision >= ${formatPercent(autocorrectPrecisionHardTarget)} = ${

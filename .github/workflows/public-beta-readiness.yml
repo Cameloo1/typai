@@ -63,6 +63,9 @@ jobs:
       - name: Deterministic correction benchmark
         run: pnpm --filter @typai/core bench
 
+      - name: Language asset benchmark gates
+        run: pnpm bench:language-asset
+
       - name: Spell quality benchmark gates
         run: pnpm bench:spell-quality
 
@@ -157,6 +160,9 @@ jobs:
       - name: Package dry run
         run: pnpm pack:dry
 
+      - name: Package size report
+        run: pnpm package:size-report
+
       - name: Package install smoke
         run: pnpm smoke:install
 
@@ -235,6 +241,9 @@ jobs:
       - name: Release check
         run: pnpm release:check
 
+      - name: Package size report
+        run: pnpm package:size-report
+
       - name: Release pack dry run
         run: pnpm release:pack
 
@@ -276,6 +285,9 @@ jobs:
 
       - name: Package secret scan
         run: pnpm scan:package-secrets
+
+      - name: Package size report
+        run: pnpm package:size-report
 
       - name: Build provider proxy contract packages
         run: |

@@ -8,8 +8,8 @@ embedder-owned endpoints.
 
 Status: V4.2 public-beta readiness, Intelligence Quality Foundation, and the
 Production Language Asset + Beta Release Candidate checkpoint are complete.
-Packages are local-ready and tested from this workspace, but they have not been
-published to npm.
+The `0.0.0-beta.0` package set is published on npm under the `beta` dist-tag
+and has passed registry smoke from public npm packages.
 
 ## Current Phase
 
@@ -36,9 +36,11 @@ blocked-production-asset state.
 - the deterministic production transform pipeline exists, but package inclusion
   is currently host-provided only while the production manifest is blocked
 - beta release candidate docs and release dry-run scripts are in place
-- npm publish has not happened
-- registry smoke has not run because there is no completed publish result yet
-- the next release step remains guarded npm beta publish after manual approval
+- npm beta publish completed for the seven approved packages
+- registry smoke passed from public npm `@beta` packages
+- the `latest` dist-tag currently also points at `0.0.0-beta.0` because these
+  were first publishes; move it only through an explicit release decision
+- the next release step is selecting the next phase or beta patch/remediation
 
 ## Packages
 
@@ -54,14 +56,22 @@ blocked-production-asset state.
 ## Quick Start
 
 ```sh
-pnpm install
-pnpm build
-pnpm --filter consumer-vanilla-textarea dev
+npm install @typai/core@beta @typai/textarea@beta
 ```
 
-The consumer examples use workspace packages. Registry install instructions
-will be added only after a real npm publish and successful registry smoke.
-Until then, use workspace examples or local tarball smoke checks.
+Use the package pair for your surface:
+
+```sh
+npm install @typai/core@beta @typai/contenteditable@beta
+npm install @typai/core@beta @typai/textarea@beta
+npm install @typai/core@beta @typai/react@beta
+npm install @typai/core@beta @typai/codemirror@beta
+npm install @typai/completion-remote@beta
+```
+
+`@typai/ui` is installed transitively by packages that need it. Install
+`@typai/ui@beta` directly only when intentionally using the support package; it
+is not a stable independent design-system API.
 
 ## Docs
 
@@ -101,7 +111,9 @@ pnpm release:check
 ```
 
 The public beta smoke matrix installs packed local tarballs into temporary
-consumer apps and uses mock provider paths only.
+consumer apps and uses mock provider paths only. The registry smoke documented
+in `docs/beta-registry-smoke.md` installs public npm `@beta` packages without
+workspace symlinks or local tarballs.
 
 ## License
 

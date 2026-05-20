@@ -1,7 +1,7 @@
 # Release Checklist
 
-Typai is not published to npm yet. This checklist is the manual release gate for
-future public beta packaging.
+Typai `0.0.0-beta.0` is published on npm. This checklist remains the manual
+release gate for future beta patch or dist-tag work.
 
 ## Required State
 
@@ -28,7 +28,7 @@ future public beta packaging.
 - Generated artifacts are not tracked.
 - No provider credentials are committed.
 - No real provider calls run in CI.
-- Manual publish approval is recorded before any registry action.
+- Manual publish approval is recorded before any future registry action.
 
 ## Required Commands
 
@@ -72,7 +72,8 @@ changes the package boundary.
 
 ## Deferred Gates
 
-- Real npm publish, only after explicit manual approval.
+- Beta patch publish, dist-tag changes, Git tag creation, or Git tag push only
+  after explicit manual approval.
 
 ## Public Beta Readiness CI
 

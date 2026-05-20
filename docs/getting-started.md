@@ -1,11 +1,21 @@
 # Getting Started
 
-Use the consumer examples when evaluating Typai from this checkout. They are
-small on purpose and avoid the full demo app.
+Use the consumer examples when evaluating Typai from this checkout, or install
+the published beta packages from npm. The beta version is `0.0.0-beta.0` under
+the `beta` dist-tag.
 
-Typai has not been published to the public npm registry yet. These quickstarts
-show package APIs, but current evaluation should use workspace packages or the
-local package-smoke flow from this checkout.
+## npm Beta Install
+
+```sh
+npm install @typai/core@beta @typai/contenteditable@beta
+npm install @typai/core@beta @typai/textarea@beta
+npm install @typai/core@beta @typai/react@beta
+npm install @typai/core@beta @typai/codemirror@beta
+npm install @typai/completion-remote@beta
+```
+
+Install `@typai/ui@beta` directly only when intentionally using the support
+package. It is support-grade and unstable as an independent design-system API.
 
 ## Local Checkout
 
@@ -98,13 +108,10 @@ const remote = createRemoteCompletion({
 Point the endpoint at a server-side proxy running in mock mode. Do not put
 provider credentials in browser code.
 
-## Current Beta Install Status
+## Current Beta Limits
 
-Registry install instructions are intentionally absent until
-`docs/beta-publish-result.md` and `docs/beta-registry-smoke.md` exist and show a
-successful publish plus registry smoke. Until then:
-
-- use workspace examples for hands-on evaluation
-- use local packed tarball smoke checks for package-boundary validation
-- do not treat beta dist-tag package-manager commands as available
-- keep completion provider credentials on the server side
+- production dictionary and frequency assets are not bundled
+- deterministic correction does not require a server
+- completion provider credentials must stay on the server side
+- no real Codex adapter, grammar/style, local inference, or next-edit logging is
+  included

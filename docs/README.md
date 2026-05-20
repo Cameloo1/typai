@@ -41,6 +41,8 @@ provider credentials stay on the embedder's server.
 - [Privacy](./privacy.md)
 - [API stability](./api-stability.md)
 - [Beta release candidate plan](./beta-release-candidate-plan.md)
+- [Beta publish result](./beta-publish-result.md)
+- [Beta registry smoke](./beta-registry-smoke.md)
 - [Beta known issues](./beta-known-issues.md)
 - [Beta rollback guidance](./beta-rollback-guidance.md)
 - [Roadmap](./roadmap.md)

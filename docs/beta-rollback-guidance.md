@@ -2,9 +2,8 @@
 
 Status date: 2026-05-20.
 
-This guidance applies after a future beta publish. In the current repository
-state, no npm package has been published and no public Git tag has been created,
-so there is no registry rollback action to take.
+This guidance applies to the published `0.0.0-beta.0` package set. No public Git
+tag has been created or pushed yet.
 
 ## If A Published Beta Is Bad
 
@@ -13,6 +12,8 @@ so there is no registry rollback action to take.
   need a replacement artifact.
 - Adjust the beta dist-tag only after confirming the replacement package set and
   smoke result.
+- If the `latest` dist-tag should not point at the beta, move or remove it only
+  after an explicit release decision and registry verification.
 - Do not rewrite public Git history.
 - Do not silently move package contents without a changelog or release note.
 

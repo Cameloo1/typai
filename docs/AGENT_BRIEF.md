@@ -8,18 +8,14 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: approved beta version prepared in a prepublish state. Manual beta
-approval is complete and approved release packages are at `0.0.0-beta.0`, but
-no npm registry publish, beta registry smoke, or beta Git tag exists. Production
-asset resolution may continue in a later phase, but publishing remains blocked:
-the latest open-gate Prompt 126 attempt authenticated as `camelo1` and then
-failed on `@typai/ui` with npm `EOTP` because the publish operation requires a
-one-time-password/browser authentication flow. The prepared next publish path is
-npm Trusted Publishing through `.github/workflows/npm-beta-publish.yml`; npm
-Trusted Publisher setup on npmjs.com is still required for all seven release
-packages before running it with `publish=true`. V4.2
-Provider + Public Beta Readiness, Intelligence Quality Foundation, Production
-Language Asset + Beta RC, and the Prompt 121 beta publish checkpoint are
+Current phase: beta `0.0.0-beta.0` is published on npm for the approved package
+set and registry smoke has passed from public npm packages. The actual observed
+publish happened outside the GitHub Actions trusted-publishing workflow; do not
+claim OIDC/trusted publishing was used for that publish. The `latest` dist-tag
+currently points at `0.0.0-beta.0` because these were first publishes; change
+dist-tags only through an explicit release decision. No beta Git tag exists.
+V4.2 Provider + Public Beta Readiness, Intelligence Quality Foundation,
+Production Language Asset + Beta RC, and the beta publish checkpoint are
 complete.
 
 Package readiness is not the same as product intelligence. The public beta
@@ -71,18 +67,18 @@ hash, attribution, size, quality, and review gates pass.
 
 No local model inference or next-edit logging is active in this phase.
 
-Use `docs/beta-release-candidate-plan.md` for the current beta version plan,
-`docs/beta-publish-complete.md` for the latest beta publish checkpoint, and
+Use `docs/beta-release-candidate-plan.md` for the beta version plan,
+`docs/beta-publish-complete.md` for the latest beta publish checkpoint,
+`docs/beta-registry-smoke.md` for registry smoke evidence, and
 `docs/production-asset-gate-recap.md` for the current production asset status.
-The approved beta target is `0.0.0-beta.0`. Git tags and npm publish still
-require explicit later gates.
+The approved beta target is `0.0.0-beta.0`. Git tagging and any dist-tag
+remediation still require explicit later gates.
 
-Next-phase decision is still required. If the goal is to finish public beta,
-configure npm Trusted Publisher entries for all seven packages and run the
-manual `npm beta publish` GitHub Actions workflow first. If the goal is product
-quality, choose Production Asset Unblock. If the goal is dogfooding or flagship
-integration, choose Real Codex Adapter. Do not begin a feature phase without an
-explicit selection.
+Next-phase decision is still required. If the goal is release remediation,
+decide whether to adjust `latest`, create/push the Git tag, or publish a beta
+patch. If the goal is product quality, choose Production Asset Unblock. If the
+goal is dogfooding or flagship integration, choose Real Codex Adapter. Do not
+begin a feature phase without an explicit selection.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.

@@ -1,63 +1,44 @@
 # Beta Publish Checkpoint
 
-Status date: 2026-05-20.
+Status date: 2026-05-20T15:52:50.4588811-05:00.
 
 ## Publish State
 
-Publish state: **Approved beta version prepared; no registry publish
-occurred.**
+Publish state: **published beta complete with registry smoke passed**.
 
 Evidence:
 
-- `docs/beta-publish-result.md` exists and records `published: false`.
-- The latest guarded publish attempt failed before the first package was
-  published.
-- The failed package was `@typai/ui`.
-- npm returned `EOTP` because the publish operation requires a one-time
-  password/browser authentication flow.
-- `docs/beta-registry-smoke.md` is absent.
-- `release/beta-approval.json` has `manualApproval.approvalStatus:
-  "approved"`.
-- Release package versions are prepared at `0.0.0-beta.0`.
+- `docs/beta-publish-result.md` records `published: true`.
+- All seven approved packages resolve from npm through `@beta`.
+- `docs/beta-registry-smoke.md` records registry-only consumer smoke passed.
+- Release package versions are `0.0.0-beta.0`.
 - Root/private workspace package versions remain `0.0.0-dev`.
-- No local `v0.0.0-beta.0` Git tag exists.
-- Public docs remain in local workspace/tarball mode.
+- No local or pushed `v0.0.0-beta.0` Git tag exists.
+- Production language assets remain blocked / host-provided only.
 
-No npm package was published during this checkpoint. The latest guarded publish
-attempt ran with `TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, npm authentication succeeded
-as `camelo1`, and exact package/version availability checks confirmed that all
-seven `0.0.0-beta.0` package versions were unpublished. The actual npm publish
-command failed on `@typai/ui` with `EOTP` before any package was published. The
-next publish attempt must complete npm's publish-time one-time-password/browser
-authentication flow or use an npm release authentication path that can satisfy
-the account's publish-time 2FA policy, such as a granular npm access token that
-is permitted to publish the `@typai` packages with the required 2FA bypass
-policy.
-
-The prepared next publish path is npm Trusted Publishing through GitHub Actions
-OIDC. The workflow is `.github/workflows/npm-beta-publish.yml`, and the external
-npm setup checklist is recorded in `docs/trusted-publishing-setup.md`.
+The actual observed publish was a manual npm tarball publish outside the GitHub
+Actions trusted-publishing workflow. The trusted-publishing workflow remains in
+the repo, but it was not dispatched for this publish. Do not claim OIDC or npm
+Trusted Publishing was used for the published artifacts.
 
 ## Version, Dist-Tag, And Git Tag
 
 - Approved version: `0.0.0-beta.0`.
 - Current release package version: `0.0.0-beta.0`.
 - Current root/private package version: `0.0.0-dev`.
-- Target version from approval record: `0.0.0-beta.0`.
 - Approved dist-tag: `beta`.
-- Target dist-tag from approval record: `beta`.
+- npm `beta` status: all seven packages resolve to `0.0.0-beta.0`.
+- npm `latest` status: all seven packages also resolve to `0.0.0-beta.0`.
 - Approved Git tag: `v0.0.0-beta.0`.
-- Target Git tag from approval record: `v0.0.0-beta.0`.
-- Git tag status: no local or pushed beta tag.
+- Git tag status: none.
 
-Because no npm publish occurred, no registry smoke or beta dist-tag audit was
-run. Post-failure exact package/version checks confirmed that all seven
-`0.0.0-beta.0` package versions remained unpublished. No beta or latest
-dist-tags were created or modified.
+The `latest` tag points at the beta because these were first publishes. No
+dist-tag mutation was attempted in this checkpoint. Any decision to move or
+remove `latest` requires a separate explicit release gate.
 
 ## Package List
 
-Public beta package candidates:
+Published public beta package set:
 
 - `@typai/core`
 - `@typai/contenteditable`
@@ -68,23 +49,37 @@ Public beta package candidates:
 
 Required support package:
 
-- `@typai/ui`, packed because public packages depend on it. It remains
+- `@typai/ui`, published because public packages depend on it. It remains
   support-grade and unstable as an independent design-system API.
 
 Private packages, provider examples, consumer examples, and testkit packages
-remain excluded from the publish set unless a later approval explicitly changes
-that boundary.
+remain excluded from the publish set.
 
 ## Registry Smoke Summary
 
-Registry smoke was **not run** because no publish occurred. This is intentional:
-registry smoke must not be simulated from local tarballs or workspace symlinks.
+Registry smoke passed from public npm packages.
 
-Latest local package smoke results:
+Temp consumer source:
 
-- `pnpm smoke:install`: passed from local tarballs.
-- `pnpm smoke:public-beta`: passed from local tarballs.
-- Provider mode: mock-only; no real provider calls were made.
+- public npm registry
+- `@beta` dist-tag packages
+- no workspace symlinks
+- no local tarballs
+
+Scenarios passed:
+
+- core import and initialization
+- `teh` autocorrects to `the`
+- valid word `form` does not autocorrect
+- contenteditable adapter import
+- textarea adapter import
+- React provider and component imports
+- CodeMirror extension import
+- completion mock provider and controller creation
+- endpoint provider object creation without a real provider call
+- vanilla Vite build
+- React Vite build
+- CodeMirror Vite build
 
 ## Package Contents Audit Summary
 
@@ -105,12 +100,12 @@ The latest tarball and size audits covered seven release artifacts at
 Preserved boundaries:
 
 - `@typai/core` remains local deterministic correction only.
-- `@typai/core` does not import `@typai/completion-remote`.
+- `@typai/core` does not import or depend on `@typai/completion-remote`.
 - `@typai/core` does not import React, CodeMirror, UI, provider packages, or
   server proxy examples.
 - Browser package code has no provider credential path.
-- Tests, demos, E2E, benchmarks, and CI use mock provider behavior unless a
-  later manual real-provider gate explicitly opens a local script.
+- Tests, demos, E2E, benchmarks, and registry smoke use mock provider behavior
+  unless a later manual real-provider gate explicitly opens a local script.
 - Valid-word autocorrect remains forbidden.
 - Protected-token writes remain zero.
 - Next-edit logging remains absent.
@@ -131,66 +126,40 @@ Production language asset status: **blocked / host-provided only**.
 
 ## Validation Summary
 
-Prompt 127 no-publish validation passed:
+Pre-dispatch and post-publish local validation passed:
 
+- `pnpm trusted-publish:check`
+- `pnpm beta:approval:check`
+- `pnpm release:check`
+- `pnpm release:publish:dry`
+- `pnpm scan:package-secrets`
+- `pnpm smoke:install`
+- `pnpm smoke:public-beta`
 - `pnpm docs:check`
-- `pnpm test`
-- `pnpm build`
-- `pnpm lint`
+- `pnpm dictionary:check-production`
 
-The full publish validation stack passed before the latest publish attempt, but
-registry smoke was intentionally skipped because `docs/beta-publish-result.md`
-records `published: false`.
+Registry smoke passed from public npm packages. Full post-doc validation is
+recorded in the final prompt response.
 
 ## Docs Update Status
 
-Public docs reflect the current prepublish state:
+Public docs now include npm beta install guidance and still document:
 
-- no public registry install instructions
-- local workspace and local tarball smoke instructions only
-- production language asset limitations documented
-- provider proxy model documented as server-owned
-- beta known issues documented in `docs/beta-known-issues.md`
-- rollback guidance documented in `docs/beta-rollback-guidance.md`
-- trusted-publishing setup documented in `docs/trusted-publishing-setup.md`
+- beta version `0.0.0-beta.0`
+- dist-tag `beta`
+- production language asset limitations
+- provider proxy model as server-owned
+- no browser API-key path
+- no real Codex adapter
+- no grammar/style features
+- no local inference
+- no next-edit logging
+- `@typai/ui` support-grade/unstable status
 
 Rollback guidance: `docs/beta-rollback-guidance.md`.
 
-## Trusted Publishing Readiness
-
-Prepared repo-side items:
-
-- `.github/workflows/npm-beta-publish.yml` exists.
-- Workflow trigger is `workflow_dispatch` only.
-- Workflow permissions include `contents: read` and `id-token: write`.
-- Workflow uses Node 24 and verifies npm `11.5.1+`.
-- Workflow does not reference `NPM_TOKEN` or `NODE_AUTH_TOKEN`.
-- Workflow requires `confirm_version=0.0.0-beta.0`.
-- Workflow requires `confirm_dist_tag=beta`.
-- Workflow publishes only when `publish=true`.
-- Workflow rejects `push_git_tag=true` because the current permissions are
-  intentionally read-only.
-- Workflow checks exact package/version availability before publish.
-- Workflow publishes approved tarballs in approved order with `--tag beta` and
-  `--access public`.
-
-External setup still required before running with `publish=true`:
-
-- Configure npm Trusted Publisher for all seven packages.
-- Configure GitHub environment `npm-beta` and approval rules if desired.
-- Ensure the workflow file exists on the branch used for `workflow_dispatch`.
-- If npm does not allow trusted-publisher setup before first package creation,
-  stop and document the npm UI blocker rather than falling back to token publish.
-
 ## Known Limitations
 
-- Manual beta approval is approved, but npm publish has not completed.
-- The latest npm publish attempt failed on `@typai/ui` with `EOTP` before any
-  package was published.
-- No registry smoke has run.
-- No Git tag has been created.
-- Release package versions are prepared at `0.0.0-beta.0`.
-- Root/private workspace package versions remain `0.0.0-dev`.
 - The production dictionary/frequency asset is not bundled.
 - Spell coverage is not production dictionary coverage.
 - `@typai/ui` is a required support package, not a stable independent design
@@ -200,27 +169,28 @@ External setup still required before running with `publish=true`:
 - There are no grammar, style, tone, or clarity features.
 - There is no local inference.
 - There is no next-edit logging.
+- The `latest` dist-tag currently points at the beta because these were first
+  publishes.
+- No beta Git tag has been created or pushed.
 
 ## Next-Phase Options
 
-- npm beta patch follow-up if publish issues exist.
-- Production Asset Unblock if spell coverage remains priority.
-- Real Codex Adapter if dogfooding or flagship integration is priority.
-- Apple-style personalization if user-specific correction behavior is priority.
-- Grammar/style async editor if writing assistant breadth is priority.
-- Path B local completion research if local completion intelligence is priority.
-- ProseMirror/Monaco implementation if editor ecosystem coverage is priority.
-- Browser extension if install-anywhere web coverage is priority.
+- beta patch/remediation if publish or smoke issues appear
+- Production Asset Unblock if spell coverage remains priority
+- Real Codex Adapter if dogfooding or flagship integration is priority
+- Apple-style personalization if user-specific correction behavior is priority
+- Grammar/style async editor if writing assistant breadth is priority
+- Path B local completion research if local completion intelligence is priority
+- ProseMirror/Monaco implementation if editor ecosystem coverage is priority
+- Browser extension if install-anywhere web coverage is priority
 
 ## Recommended Decision Rule
 
-- If beta publish succeeds and no urgent user-facing defect appears, choose Real
+- If beta publish succeeded and no urgent user-facing defect appears, choose Real
   Codex Adapter or Production Asset Unblock.
-- If beta publish fails, fix beta patch or remediation first.
+- If beta publish or smoke issues appear, fix beta patch/remediation first.
 - If spell quality complaints persist, prioritize Production Asset Unblock.
 - If dogfooding is the goal, prioritize Real Codex Adapter.
 
-Current immediate decision: configure npm Trusted Publisher entries for all
-seven packages and run the manual `npm beta publish` GitHub Actions workflow, or
-explicitly choose a non-publish next phase. No feature phase should start without
-that selection.
+Current immediate decision: explicitly select the next phase. No feature phase
+should start without that selection.

@@ -2,9 +2,14 @@
 
 Status date: 2026-05-20.
 
-This document describes the Typai npm beta publish path through npm Trusted
-Publishing and GitHub Actions OIDC. It replaces the blocked local publish path
-for this beta release. It does not publish packages by itself.
+This document describes the prepared Typai npm beta publish path through npm
+Trusted Publishing and GitHub Actions OIDC. It does not publish packages by
+itself.
+
+The `0.0.0-beta.0` package set has since been observed on the public npm
+registry through a manual tarball publish path. Do not claim that publish used
+OIDC or Trusted Publishing. Keep this workflow for future beta patch releases
+or later registry actions after explicit approval.
 
 ## Why Trusted Publishing
 
@@ -92,12 +97,13 @@ Self-hosted runners are not supported for this Trusted Publishing path.
 `npm whoami` is not proof that OIDC publishing is configured. OIDC is exchanged
 during `npm publish` inside the trusted workflow.
 
-## Unpublished Package Caveat
+## First-Publish Caveat
 
-The beta package versions are not published yet. If npm does not allow trusted
-publisher setup for an unpublished package through the npm web UI, stop and
-document the observed npm UI blocker. Do not fall back to token publishing or
-local passkey publishing without a separate explicit approval.
+The `0.0.0-beta.0` versions are now published. For future first-publish scopes
+or packages, if npm does not allow trusted publisher setup for an unpublished
+package through the npm web UI, stop and document the observed npm UI blocker.
+Do not fall back to token publishing or local passkey publishing without a
+separate explicit approval.
 
 ## Provenance Choice
 

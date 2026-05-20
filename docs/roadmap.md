@@ -1,7 +1,7 @@
 # Roadmap
 
-Current phase: prepublish public beta documentation and guarded release
-readiness.
+Current phase: public beta published at `0.0.0-beta.0` with registry smoke
+complete.
 
 Completed readiness scope:
 
@@ -13,18 +13,21 @@ Completed readiness scope:
 - security, privacy, and API stability documentation
 - production language asset blocker documentation
 - local tarball audit documentation
+- npm beta package publish
+- registry smoke from public npm packages
 
 Current release boundary:
 
-- no npm publish has occurred
-- no registry smoke has run
-- public docs must not claim public registry availability
-- guarded publish remains the next step after manual approval and a clean gate
+- npm beta packages are available under the `beta` dist-tag
+- the `latest` dist-tag also points at `0.0.0-beta.0` because these were first
+  publishes; do not move tags without an explicit release decision
+- public docs may show beta install guidance
+- post-publish remediation should use beta patch, deprecation, or dist-tag
+  changes rather than rewriting public history
 - production language assets remain blocked and host-provided only
 
 Out of scope for the beta:
 
-- npm publish
 - production dictionary asset
 - Codex adapter
 - local model inference

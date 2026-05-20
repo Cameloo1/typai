@@ -1,11 +1,28 @@
 # Installation
 
-Typai is not published to npm yet. Use workspace packages or local packed
-tarballs during public-beta readiness.
+Typai `0.0.0-beta.0` is available on npm under the `beta` dist-tag. Install the
+core package plus the editor adapter you need.
 
-No public registry install command is documented for the current state. The next
-release step is the guarded publish prompt after manual approval, followed by
-registry smoke from the beta dist-tag.
+## npm Beta Packages
+
+```sh
+npm install @typai/core@beta @typai/contenteditable@beta
+npm install @typai/core@beta @typai/textarea@beta
+npm install @typai/core@beta @typai/react@beta
+npm install @typai/core@beta @typai/codemirror@beta
+npm install @typai/completion-remote@beta
+```
+
+`@typai/ui` is a required support package for packages that depend on it and is
+installed transitively. Install `@typai/ui@beta` directly only if you are
+intentionally using the support package; it is unstable as an independent
+design-system API.
+
+Pin the exact beta version when reproducibility matters:
+
+```sh
+npm install @typai/core@0.0.0-beta.0 @typai/textarea@0.0.0-beta.0
+```
 
 ## Workspace Examples
 
@@ -37,7 +54,12 @@ The smoke checks install local package artifacts, not registry packages. They
 also keep production language assets blocked and completion providers in mock or
 server-owned paths.
 
-## After Publish
+## Registry Smoke
 
-Registry install commands will be documented only after an actual publish. Until
-then, avoid copying hypothetical package-manager commands into consumer docs.
+The post-publish registry smoke installs public npm `@beta` packages into a
+temporary consumer outside the repo. It does not use workspace symlinks or local
+tarballs.
+
+The production dictionary/frequency asset is not bundled. Deterministic
+correction works locally without a server, and optional completion must use a
+server-owned provider proxy. Do not place provider API keys in browser code.

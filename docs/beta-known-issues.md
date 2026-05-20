@@ -2,15 +2,15 @@
 
 Status date: 2026-05-20.
 
-Typai is still in prepublish beta readiness. No package has been published to
-the public npm registry, and registry smoke has not run.
+Typai `0.0.0-beta.0` is published on npm under the `beta` dist-tag, and registry
+smoke has passed from public npm packages.
 
 ## Package Availability
 
-- Public registry install guidance is intentionally absent until a publish
-  result and registry-smoke document exist.
-- Current evaluation should use workspace packages or local packed tarball smoke
-  checks.
+- Public registry packages are beta artifacts and should be pinned when
+  reproducibility matters.
+- The `latest` dist-tag currently points at `0.0.0-beta.0` because these were
+  first publishes; do not treat that as a stable release signal.
 - `@typai/ui` is a required support package for public packages, but it is
   unstable as an independent design-system API.
 

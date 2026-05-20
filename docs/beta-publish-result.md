@@ -1,68 +1,69 @@
 # Beta Publish Result
 
-Status date: 2026-05-20T14:41:39.5099703-05:00
+Status date: 2026-05-20T15:52:50.4588811-05:00.
 
 ## Result
 
-- published: false
-- publishAttemptStatus: failed-before-first-package
-- version: 0.0.0-beta.0
-- distTag: beta
-- npmUsername: camelo1
-- branch: codex/fix
-- commit: dda478f
-- gitTag: v0.0.0-beta.0
-- gitTagStatus: none
+- published: true
+- method: manual npm tarball publish observed on the public registry
+- trustedPublishingWorkflowDispatched: false
+- workflow filename: `.github/workflows/npm-beta-publish.yml`
+- workflow run URL: none
+- version: `0.0.0-beta.0`
+- distTag: `beta`
+- npm username observed locally: `camelo1`
+- GitHub branch: `codex/fix`
+- GitHub commit: `198feab`
+- Git tag status: none
 
-## Packages Attempted
-
-1. @typai/ui
-
-The publish attempt stopped at the first package. No later package publish commands were run.
+The GitHub Actions trusted-publishing workflow was prepared and pushed, but it
+was not dispatched for this publish. The publish result below records the actual
+public npm registry state. Do not claim this publish used OIDC or npm Trusted
+Publishing.
 
 ## Packages Published
 
-None.
+Approved package set:
 
-Post-failure registry availability checks confirmed that these exact package versions remain unpublished:
+1. `@typai/ui@0.0.0-beta.0`
+2. `@typai/core@0.0.0-beta.0`
+3. `@typai/completion-remote@0.0.0-beta.0`
+4. `@typai/contenteditable@0.0.0-beta.0`
+5. `@typai/textarea@0.0.0-beta.0`
+6. `@typai/react@0.0.0-beta.0`
+7. `@typai/codemirror@0.0.0-beta.0`
 
-- @typai/ui@0.0.0-beta.0
-- @typai/core@0.0.0-beta.0
-- @typai/completion-remote@0.0.0-beta.0
-- @typai/contenteditable@0.0.0-beta.0
-- @typai/textarea@0.0.0-beta.0
-- @typai/react@0.0.0-beta.0
-- @typai/codemirror@0.0.0-beta.0
+Observed npm publish times:
 
-## Failure
-
-- failedPackage: @typai/ui
-- failedCommand: npm publish .pack\typai-ui-0.0.0-beta.0.tgz --tag beta --access public
-- npmErrorCode: EOTP
-- npmErrorSummary: This operation requires a one-time password. npm returned a browser authentication URL for the publish operation.
-
-No unpublish or dist-tag mutation was attempted.
+- `@typai/ui`: `2026-05-20T20:42:08.000Z`
+- `@typai/core`: `2026-05-20T20:42:10.549Z`
+- `@typai/completion-remote`: `2026-05-20T20:42:38.278Z`
+- `@typai/contenteditable`: `2026-05-20T20:42:58.624Z`
+- `@typai/textarea`: `2026-05-20T20:43:03.378Z`
+- `@typai/react`: `2026-05-20T20:43:09.720Z`
+- `@typai/codemirror`: `2026-05-20T20:43:33.312Z`
 
 ## Dist-Tag Results
 
-No beta dist-tags were created because no package was published.
+Each package resolves through `beta` to `0.0.0-beta.0`.
 
-No latest dist-tags were created or modified.
+The `latest` dist-tag also points to `0.0.0-beta.0` for every package because
+these were first publishes. No dist-tag mutation was attempted in this prompt.
+If policy requires `latest` not to point at beta, make that a separate explicit
+release decision and document the registry change.
 
 ## Asset And Provider Status
 
 - Production language asset status: blocked / host-provided only.
-- No production dictionary binary was bundled.
-- No production frequency table was bundled.
-- No raw ESDB, SCOWL, Hunspell, or Google Books Ngram source files were bundled.
+- No production dictionary binary is bundled.
+- No production frequency table is bundled.
+- No raw ESDB, SCOWL, Hunspell, or Google Books Ngram source files are bundled.
 - No browser API-key path was added.
-- No real provider calls occurred.
+- No real provider calls occurred in repo validation or registry smoke.
+- No `NPM_TOKEN` or `NODE_AUTH_TOKEN` is referenced by the trusted-publishing
+  workflow.
 
 ## Next Step
 
-Complete the npm publish-time one-time-password/browser authentication flow, or configure one of the approved npm release authentication paths, then rerun the guarded Prompt 126 publish flow:
-
-- use an interactive npm publish flow that can satisfy the account 2FA challenge, or
-- use a granular npm access token that is allowed to publish the `@typai` packages and is configured with the required 2FA bypass policy.
-
-After authentication is corrected, rerun the same gated publish checks before any publish attempt. Do not move to registry smoke until a later `docs/beta-publish-result.md` records `published: true`.
+Run and record public registry smoke, update public docs with npm beta install
+guidance, and decide the next phase explicitly.

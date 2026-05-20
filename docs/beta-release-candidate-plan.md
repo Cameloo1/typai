@@ -11,7 +11,7 @@ language assets are bundled.
 - Approved release package version prepared in source control:
   `0.0.0-beta.0`.
 - Root/private workspace package version remains `0.0.0-dev`.
-- Approved npm dist-tag for the later guarded publish: `beta`.
+- Approved npm dist-tag: `beta`.
 - Approved Git tag for the later post-publish tag step: `v0.0.0-beta.0`.
 - Versioning rule: approved release packages move together at
   `0.0.0-beta.0`; private packages remain unpublished unless a later approval
@@ -24,9 +24,10 @@ The current release scripts are dry-run only for this checkpoint:
 - `pnpm release:publish:dry` prints publish order and does not execute
   `npm publish`.
 
-Post-audit state: no publish result document and no registry-smoke document are
-present, so public docs remain in local-artifact mode. Registry install
-instructions must wait for an actual publish and beta dist-tag smoke.
+Post-publish state: the approved package set is available on npm at
+`0.0.0-beta.0` through the `beta` dist-tag, and registry smoke has passed. The
+`latest` dist-tag currently also points at `0.0.0-beta.0` because these were
+first publishes.
 
 ## Package List
 

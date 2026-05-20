@@ -28,14 +28,20 @@ latency. Do not log full context by default.
 
 ## Package Imports Fail
 
-These examples use workspace packages. Run `pnpm install` and `pnpm build` from
-the repository root before running a consumer example.
+For repo examples, run `pnpm install` and `pnpm build` from the repository root
+before running a consumer example.
 
-## Public Beta Registry Install Is Unavailable
+For external npm consumers, install from the beta dist-tag:
 
-If a package-manager command points at the beta dist-tag today, it is ahead of
-the current repository state. There is no completed publish result or registry
-smoke document yet, so use workspace examples or local package smoke checks.
+```sh
+npm install @typai/core@beta @typai/textarea@beta
+```
+
+If install unexpectedly resolves `latest`, pin the exact beta version:
+
+```sh
+npm install @typai/core@0.0.0-beta.0 @typai/textarea@0.0.0-beta.0
+```
 
 ## Production Dictionary Coverage Is Missing
 

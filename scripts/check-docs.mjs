@@ -25,6 +25,8 @@ const requiredFiles = [
   "docs/troubleshooting.md",
   "docs/roadmap.md",
   "docs/beta-publish-approval.md",
+  "docs/beta-publish-result.md",
+  "docs/beta-registry-smoke.md",
   "docs/beta-publish-complete.md",
   "docs/beta-known-issues.md",
   "docs/beta-rollback-guidance.md",
@@ -36,13 +38,24 @@ const requiredFiles = [
   "docs/common-typo-table.md",
 ];
 
+const registryPublishResult = existsSync("docs/beta-publish-result.md")
+  ? readFileSync("docs/beta-publish-result.md", "utf8")
+  : "";
+const registrySmokeResult = existsSync("docs/beta-registry-smoke.md")
+  ? readFileSync("docs/beta-registry-smoke.md", "utf8")
+  : "";
+const registryBetaInstallAllowed =
+  /published:\s*true/i.test(registryPublishResult) &&
+  /result:\s*passed/i.test(registrySmokeResult) &&
+  /registry source:\s*public npm registry/i.test(registrySmokeResult);
+
 const forbiddenOverclaims = [
   /production dictionary included/i,
   /production dictionary asset exists/i,
   /real Codex integration/i,
   /browser API key/i,
   /@typai\/core uses remote completion/i,
-  /npm install @typai\//i,
+  ...(registryBetaInstallAllowed ? [] : [/npm install @typai\//i]),
   /local model inference exists/i,
 ];
 

@@ -1,10 +1,18 @@
 # Examples
 
-Typai has focused consumer examples and one larger demo app.
+Typai has focused consumer examples and one larger demo app. The repo examples
+run from workspace packages, while external consumers can install the published
+npm beta packages.
 
-These examples run from workspace packages in the current prepublish state.
-Registry-based beta examples will be added only after a real publish and
-registry smoke.
+## npm Beta Examples
+
+```sh
+npm install @typai/core@beta @typai/contenteditable@beta
+npm install @typai/core@beta @typai/textarea@beta
+npm install @typai/core@beta @typai/react@beta
+npm install @typai/core@beta @typai/codemirror@beta
+npm install @typai/completion-remote@beta
+```
 
 ## Consumer Examples
 
@@ -77,6 +85,7 @@ browser UI accepts an endpoint URL only, not provider credentials.
 ## Beta Example Limits
 
 - examples are not published packages
+- registry packages are beta artifacts at `0.0.0-beta.0`
 - provider proxy examples are not bundled into library tarballs
 - production dictionary and frequency assets are not bundled
 - completion is optional and works through mock or server-owned providers

@@ -176,6 +176,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build package artifacts
+        run: pnpm build
+
       - name: Dry-run pack
         run: pnpm pack:dry
 

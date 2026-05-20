@@ -110,6 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm beta:approval:check
+          pnpm build
           pnpm release:check
           pnpm release:publish:dry
           pnpm scan:package-secrets
@@ -118,7 +119,6 @@ jobs:
           pnpm docs:check
           pnpm dictionary:check-production
           pnpm test
-          pnpm build
           pnpm lint
 
       - name: Create approved tarballs

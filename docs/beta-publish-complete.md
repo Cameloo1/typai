@@ -18,7 +18,12 @@ Evidence:
 - No local `v0.0.0-beta.0` Git tag exists.
 - Public docs remain in local workspace/tarball mode.
 
-No npm package was published during this checkpoint.
+No npm package was published during this checkpoint. The latest guarded publish
+attempt stopped before publish because `TYPAI_ALLOW_NPM_BETA_PUBLISH` was not
+set to `1` in the active release shell. A prior open-gate dry run reached the
+npm authentication gate and `npm whoami` returned `ENEEDAUTH`; the next publish
+attempt must run from an npm-authenticated shell with the manual publish gate
+set.
 
 ## Version, Dist-Tag, And Git Tag
 
@@ -68,7 +73,7 @@ Latest local package smoke results:
 ## Package Contents Audit Summary
 
 The latest tarball and size audits covered seven release artifacts at
-`0.0.0-dev`.
+`0.0.0-beta.0`.
 
 - `@typai/core` includes `dist/`, TypeScript declarations, package metadata,
   README, and generated Wasm package output.
@@ -110,26 +115,16 @@ Production language asset status: **blocked / host-provided only**.
 
 ## Validation Summary
 
-Prompt 121 validation passed:
+Prompt 127 no-publish validation passed:
 
-- `pnpm test`
-- `pnpm test:e2e`
-- `pnpm --filter @typai/core bench`
-- `pnpm bench:browser`
-- `pnpm pack:dry`
-- `pnpm smoke:install`
-- `pnpm smoke:public-beta`
-- `pnpm scan:package-secrets`
-- `pnpm package:size-report`
-- `pnpm release:check`
 - `pnpm docs:check`
-- `pnpm dictionary:check-production`
+- `pnpm test`
 - `pnpm build`
 - `pnpm lint`
 
-Some Playwright and pack-style commands required rerun outside the restricted
-sandbox because Vite, npm, and wasm-pack needed local filesystem temp/cache
-access. The reruns passed.
+The full publish validation stack had also passed before the latest publish
+gate stop, but registry smoke was intentionally skipped because no publish
+result exists.
 
 ## Docs Update Status
 
@@ -146,7 +141,7 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 
 ## Known Limitations
 
-- Manual beta approval is pending.
+- Manual beta approval is approved, but npm publish has not completed.
 - No npm publish has occurred.
 - No registry smoke has run.
 - No Git tag has been created.
@@ -181,6 +176,7 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 - If spell quality complaints persist, prioritize Production Asset Unblock.
 - If dogfooding is the goal, prioritize Real Codex Adapter.
 
-Current immediate decision: either complete manual beta approval and guarded
-publish, or explicitly choose a non-publish next phase. No feature phase should
-start without that selection.
+Current immediate decision: authenticate npm in the release shell and rerun the
+guarded publish prompt with `TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, or explicitly
+choose a non-publish next phase. No feature phase should start without that
+selection.

@@ -1,43 +1,34 @@
 {
   "schemaVersion": 1,
   "currentDate": "2026-05-20",
-  "currentCommitHash": "dc9e681ae913f4a9fb473d324dbd5967c902b0f0",
+  "currentCommitHash": "9dd130dbbf345c15c282c1c067c33955e554618a",
+  "remoteFixBaseCommitHash": "50cb71e981ef6c2aba7f42fb7abfc80861a7be1b",
   "targetVersion": "0.0.0-beta.0",
   "targetDistTag": "beta",
   "targetGitTag": "v0.0.0-beta.0",
   "sourceControlPreflight": {
     "branch": "codex/fix",
-    "status": "dirty-explained",
+    "status": "dirty-explained-release-related",
     "releaseBlocker": true,
     "notes": [
-      "Pre-existing dirty files were classified as release-related documentation or release-gate cleanup.",
+      "Prompt 122 source-control preflight found dirty files limited to release approval and docs-gate records.",
       "No unrelated dirty files were identified during the preflight.",
-      "Beta publish must remain blocked until a fresh git status --short is clean after approval-gate commit and pre-existing edits are resolved."
+      "Local branch history remains divergent from origin/fix, so any remote update must use the reviewed squash commit SHA prepared from the current origin/fix base.",
+      "No version bump, npm publish, or Git tag is approved in this prompt.",
+      "Beta publish remains blocked until later publish gates pass and a fresh git status --short is clean."
     ],
     "dirtyFiles": [
       {
-        "path": "README.md",
-        "classification": "release-related public docs link boundary cleanup"
+        "path": "docs/beta-publish-approval.md",
+        "classification": "release-related manual beta approval record"
       },
       {
-        "path": "docs/README.md",
-        "classification": "release-related public docs link boundary cleanup"
-      },
-      {
-        "path": "docs/beta-release-candidate-plan.md",
-        "classification": "release-related beta RC reference cleanup"
-      },
-      {
-        "path": "docs/production-asset-gate-recap.md",
-        "classification": "release-related production asset recap cleanup"
+        "path": "release/beta-approval.json",
+        "classification": "release-related structured beta approval record"
       },
       {
         "path": "scripts/check-docs.mjs",
-        "classification": "release-related docs gate cleanup"
-      },
-      {
-        "path": "scripts/dictionary-gate-status.mjs",
-        "classification": "release-related dictionary gate cleanup"
+        "classification": "release-related docs gate state observed before approval update"
       }
     ]
   },
@@ -51,13 +42,13 @@
     "@typai/ui"
   ],
   "packagePublishOrder": [
+    "@typai/ui",
     "@typai/core",
+    "@typai/completion-remote",
     "@typai/contenteditable",
     "@typai/textarea",
-    "@typai/ui",
     "@typai/react",
-    "@typai/codemirror",
-    "@typai/completion-remote"
+    "@typai/codemirror"
   ],
   "supportPackageStatus": {
     "name": "@typai/ui",
@@ -99,15 +90,31 @@
     "If a production asset inclusion issue is found, remove the asset path and return to host-provided-only behavior before the next beta."
   ],
   "manualApproval": {
-    "approvedBy": "",
-    "approvedAt": "",
-    "approvedVersion": "",
-    "approvedDistTag": "",
-    "approvedGitTag": "",
-    "approvedPackageSet": [],
-    "approvedPublishOrder": [],
-    "approvedAssetStatus": "",
-    "approvedRollbackPlan": "",
-    "approvalStatus": "pending"
+    "approvedBy": "wasif",
+    "approvedAt": "2026-05-20T11:58:34.8823642-05:00",
+    "approvedVersion": "0.0.0-beta.0",
+    "approvedDistTag": "beta",
+    "approvedGitTag": "v0.0.0-beta.0",
+    "approvedPackageSet": [
+      "@typai/core",
+      "@typai/contenteditable",
+      "@typai/textarea",
+      "@typai/react",
+      "@typai/codemirror",
+      "@typai/completion-remote",
+      "@typai/ui"
+    ],
+    "approvedPublishOrder": [
+      "@typai/ui",
+      "@typai/core",
+      "@typai/completion-remote",
+      "@typai/contenteditable",
+      "@typai/textarea",
+      "@typai/react",
+      "@typai/codemirror"
+    ],
+    "approvedAssetStatus": "production language asset blocked / host-provided only",
+    "approvedRollbackPlan": "Use beta dist-tag remediation, deprecate bad beta if needed, publish a corrected beta patch such as 0.0.0-beta.1, never rewrite public release history, and keep production asset blocked until gates pass.",
+    "approvalStatus": "approved"
   }
 }

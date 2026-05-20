@@ -1,11 +1,14 @@
 # Beta Publish Approval Record
 
 Current date: 2026-05-20.
-Current commit hash: `dc9e681ae913f4a9fb473d324dbd5967c902b0f0`.
+Current commit hash: `9dd130dbbf345c15c282c1c067c33955e554618a`.
 
-This record prepares the Typai beta publish approval gate. It does not approve
-publishing, change package versions, create a Git tag, or bundle production
-language assets.
+Remote `fix` base verified before approval update:
+`50cb71e981ef6c2aba7f42fb7abfc80861a7be1b`.
+
+This record approves the Typai beta publish plan for later release prompts. It
+does not publish packages, change package versions, create a Git tag, or bundle
+production language assets.
 
 Structured approval sidecar: `release/beta-approval.json`.
 
@@ -15,8 +18,10 @@ Structured approval sidecar: `release/beta-approval.json`.
 - Target npm dist-tag: `beta`
 - Target Git tag: `v0.0.0-beta.0`
 - Current workspace package version: `0.0.0-dev`
-- Go/no-go status: **NO-GO until manual approval is completed and the worktree
-  is clean**
+- Approval status: **approved**
+- Go/no-go status: **GO for the later approved beta version-bump and guarded
+  publish path; NO-GO for npm publish, Git tag creation, or version bump in
+  this prompt**
 
 ## Source-Control Preflight
 
@@ -28,22 +33,21 @@ Required commands were run at approval-record creation:
 
 Current branch: `codex/fix`.
 
-Pre-existing dirty files were observed before this approval gate was created.
-They are classified as release-related documentation or release-gate cleanup
-from the beta candidate boundary, not unrelated feature work:
+Prompt 122 source-control preflight found dirty files limited to release
+approval and docs-gate records:
 
-- `README.md`: release-related public docs link boundary cleanup
-- `docs/README.md`: release-related public docs link boundary cleanup
-- `docs/beta-release-candidate-plan.md`: release-related beta RC reference
-  cleanup
-- `docs/production-asset-gate-recap.md`: release-related production asset
-  recap cleanup
-- `scripts/check-docs.mjs`: release-related docs gate cleanup
-- `scripts/dictionary-gate-status.mjs`: release-related dictionary gate cleanup
+- `docs/beta-publish-approval.md`: release-related manual beta approval record
+- `release/beta-approval.json`: release-related structured beta approval record
+- `scripts/check-docs.mjs`: release-related docs gate state observed before
+  approval update
 
-No unrelated dirty files were identified during this preflight. The beta publish
-must remain blocked until a fresh `git status --short` is clean after these
-pre-existing edits and this approval-gate commit are resolved.
+No unrelated dirty files were identified during this preflight. The local branch
+history is intentionally not treated as directly pushable because earlier work
+remains unsquashed locally. Any remote update must use the reviewed squash
+commit SHA prepared from the current `origin/fix` base.
+
+The beta publish remains blocked until later publish gates pass and a fresh
+`git status --short` is clean.
 
 ## Package Publish Set
 
@@ -65,13 +69,13 @@ required support package and is unstable as an independent design-system API.
 
 ## Package Publish Order
 
-1. `@typai/core`
-2. `@typai/contenteditable`
-3. `@typai/textarea`
-4. `@typai/ui`
-5. `@typai/react`
-6. `@typai/codemirror`
-7. `@typai/completion-remote`
+1. `@typai/ui`
+2. `@typai/core`
+3. `@typai/completion-remote`
+4. `@typai/contenteditable`
+5. `@typai/textarea`
+6. `@typai/react`
+7. `@typai/codemirror`
 
 ## Private Package Exclusions
 
@@ -126,20 +130,34 @@ If a manually approved beta publish fails after registry release:
 
 ## Manual Approval Checklist
 
-The following fields must be filled manually before any version bump, Git tag,
-or npm publish. Default approval status is pending.
+The following fields have been manually approved for the beta publish path.
+This approval does not run a version bump, create a Git tag, or publish to npm.
 
 ```yaml
-approvedBy:
-approvedAt:
-approvedVersion:
-approvedDistTag:
-approvedGitTag:
+approvedBy: wasif
+approvedAt: 2026-05-20T11:58:34.8823642-05:00
+approvedVersion: 0.0.0-beta.0
+approvedDistTag: beta
+approvedGitTag: v0.0.0-beta.0
 approvedPackageSet:
+  - @typai/core
+  - @typai/contenteditable
+  - @typai/textarea
+  - @typai/react
+  - @typai/codemirror
+  - @typai/completion-remote
+  - @typai/ui
 approvedPublishOrder:
-approvedAssetStatus:
-approvedRollbackPlan:
-approvalStatus: pending
+  - @typai/ui
+  - @typai/core
+  - @typai/completion-remote
+  - @typai/contenteditable
+  - @typai/textarea
+  - @typai/react
+  - @typai/codemirror
+approvedAssetStatus: production language asset blocked / host-provided only
+approvedRollbackPlan: Use beta dist-tag remediation, deprecate bad beta if needed, publish a corrected beta patch such as 0.0.0-beta.1, never rewrite public release history, and keep production asset blocked until gates pass.
+approvalStatus: approved
 ```
 
 Allowed approval statuses:

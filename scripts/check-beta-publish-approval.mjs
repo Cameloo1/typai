@@ -3,6 +3,20 @@ import { existsSync, readFileSync } from "node:fs";
 const approvalPath = "release/beta-approval.json";
 const docsPath = "docs/beta-publish-approval.md";
 const allowedStatuses = new Set(["pending", "approved", "rejected"]);
+const supportPackage = "@typai/ui";
+const packagesDependingOnUi = new Set([
+  "@typai/contenteditable",
+  "@typai/textarea",
+  "@typai/react",
+  "@typai/codemirror",
+]);
+const rollbackPlanRequirements = [
+  ["beta dist-tag remediation", /beta\s+dist-tag/i],
+  ["beta patch publish", /beta\s+patch|0\.0\.0-beta\.1/i],
+  ["bad beta deprecation", /deprecat/i],
+  ["no public history rewrite", /no\s+history\s+rewrite|never\s+rewrite/i],
+  ["production asset remains blocked", /production\s+asset/i],
+];
 const failures = [];
 
 if (!existsSync(docsPath)) {
@@ -60,14 +74,31 @@ if (isBlank(approval.approvedAssetStatus)) {
 
 if (isBlank(approval.approvedRollbackPlan)) {
   failures.push("approvedRollbackPlan is missing.");
+} else {
+  for (const [label, pattern] of rollbackPlanRequirements) {
+    if (!pattern.test(approval.approvedRollbackPlan)) {
+      failures.push(`approvedRollbackPlan must acknowledge ${label}.`);
+    }
+  }
 }
 
 if (!isNonEmptyArray(record.packagePublishSet)) {
   failures.push("packagePublishSet is missing from the approval record.");
+} else {
+  validateNoDuplicates(record.packagePublishSet, "packagePublishSet");
+  validateUiSupport(record.packagePublishSet, "packagePublishSet");
 }
 
 if (!isNonEmptyArray(record.packagePublishOrder)) {
   failures.push("packagePublishOrder is missing from the approval record.");
+} else {
+  validateNoDuplicates(record.packagePublishOrder, "packagePublishOrder");
+  if (
+    isNonEmptyArray(record.packagePublishSet) &&
+    !sameStringSet(record.packagePublishOrder, record.packagePublishSet)
+  ) {
+    failures.push("packagePublishOrder must contain the same packages as packagePublishSet.");
+  }
 }
 
 if (record.productionLanguageAssetStatus?.status !== "blocked") {
@@ -116,6 +147,14 @@ function validateApprovedValues() {
   if (!sameStringArray(approval.approvedPublishOrder, record.packagePublishOrder)) {
     failures.push("approvedPublishOrder must match packagePublishOrder exactly.");
   }
+
+  validateNoDuplicates(approval.approvedPackageSet, "approvedPackageSet");
+  validateNoDuplicates(approval.approvedPublishOrder, "approvedPublishOrder");
+  validateUiSupport(approval.approvedPackageSet, "approvedPackageSet");
+
+  if (!sameStringSet(approval.approvedPublishOrder, approval.approvedPackageSet)) {
+    failures.push("approvedPublishOrder must contain the same packages as approvedPackageSet.");
+  }
 }
 
 function readJson(path) {
@@ -142,6 +181,41 @@ function sameStringArray(left, right) {
     left.length === right.length &&
     left.every((value, index) => value === right[index])
   );
+}
+
+function sameStringSet(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+    return false;
+  }
+
+  const rightSet = new Set(right);
+  return left.every((value) => rightSet.has(value));
+}
+
+function validateNoDuplicates(values, label) {
+  if (!Array.isArray(values)) {
+    return;
+  }
+
+  const seen = new Set();
+  for (const value of values) {
+    if (seen.has(value)) {
+      failures.push(`${label} contains duplicate package ${value}.`);
+    }
+    seen.add(value);
+  }
+}
+
+function validateUiSupport(packageSet, label) {
+  if (!Array.isArray(packageSet)) {
+    return;
+  }
+
+  const packages = new Set(packageSet);
+  const needsUi = [...packagesDependingOnUi].some((packageName) => packages.has(packageName));
+  if (needsUi && !packages.has(supportPackage)) {
+    failures.push(`${label} must include ${supportPackage} because public packages depend on it.`);
+  }
 }
 
 function finish() {

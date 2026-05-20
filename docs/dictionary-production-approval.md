@@ -1,6 +1,6 @@
 # Dictionary Production Approval
 
-Status date: 2026-05-19
+Status date: 2026-05-20.
 
 Source approval status: **APPROVED for the candidate source path**.
 
@@ -240,3 +240,34 @@ blocked because:
 - No final review signoff exists.
 
 Scaled mock and host-provided asset loading remain the fallback paths.
+
+## Operator Summary
+
+For the published beta:
+
+- production dictionary binary: not bundled
+- production frequency table: not bundled
+- raw ESDB/SCOWL files: not bundled
+- raw Hunspell files: not bundled
+- raw Google Books Ngram files: not bundled
+- `dictionary.mode: "production"`: unavailable
+- host-provided Typai Dictionary Blob v1: supported external path
+
+This approval record is source/path approval, not package inclusion approval.
+
+## What Can Proceed Next
+
+Production Asset Unblock may proceed only as a separate explicit phase. That
+phase must:
+
+1. capture every missing Google Ngram raw source hash
+2. pin local input paths outside package output
+3. run the deterministic transform
+4. record generated output hash, counts, and size
+5. run quality, false-positive, protected-token, and latency gates against the
+   generated asset
+6. add final attribution and notice files
+7. record named review signoff
+8. prove package tarballs exclude raw sources
+
+Until then, the beta remains blocked / host-provided only.

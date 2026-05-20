@@ -1,13 +1,21 @@
 # Changelog
 
-Typai has not been published to npm yet. This changelog records the prepared
-first public beta package line; registry publish remains gated for a later
-prompt.
+This changelog records public Typai package history and the verified beta state.
 
 ## 0.0.0-beta.0 - 2026-05-20
 
-Prepared for the npm `beta` dist-tag. No npm package has been published yet;
-publish is still gated until Prompt 125.
+First public npm beta for the Typai package set.
+
+Registry state:
+
+- Published on npm at `0.0.0-beta.0`.
+- Intended install tag: `beta`.
+- `latest` currently also points at `0.0.0-beta.0` because these were first
+  publishes.
+- Registry smoke passed from public npm packages.
+- No public Git tag exists yet.
+- The observed publish was manual npm tarball publish, not GitHub Actions OIDC
+  trusted publishing.
 
 Release package set:
 
@@ -21,19 +29,21 @@ Release package set:
 
 Highlights:
 
-- Ships the deterministic local correction core in `@typai/core`, including
-  protected-token handling, personal correction rules, storage APIs, and
-  host-provided Typai Dictionary Blob v1 loading.
-- Ships contenteditable, textarea, React, and CodeMirror adapters for local
-  correction surfaces.
-- Ships optional `@typai/completion-remote` for mock, noop, endpoint, and
-  mocked streaming completion provider paths without adding it to
-  `@typai/core`.
-- Includes provider proxy and public-beta readiness rails for server-owned
-  completion proxy integrations.
-- Includes the Intelligence Quality Foundation: expanded table-driven typo
-  coverage, delete-index suggestions, valid-word safety, protected-token
-  safety, spell-quality corpus checks, and latency gates.
+- Ships `@typai/core` for local deterministic correction, suggestions, protected
+  token handling, personal dictionary entries, correction rules, storage APIs,
+  and host-provided Typai Dictionary Blob v1 loading.
+- Ships contenteditable, textarea, React, and CodeMirror adapters for browser
+  editor surfaces.
+- Ships optional `@typai/completion-remote` for mock, noop, endpoint, scheduler,
+  metrics, and mocked streaming completion paths.
+- Keeps completion separate from `@typai/core`.
+- Includes mock-first provider proxy examples for Express-style, Next-style, and
+  Worker-style server endpoints.
+- Includes the Intelligence Quality Foundation: conservative typo table,
+  delete-index suggestions, valid-word safety, protected-token safety,
+  spell-quality corpus checks, and latency gates.
+- Includes release hardening: package dry-run, tarball audit, package secret
+  scan, size report, install smoke, public beta smoke, and registry smoke.
 
 Production language asset status:
 
@@ -41,22 +51,22 @@ Production language asset status:
 - No production dictionary binary is bundled.
 - No production frequency table is bundled.
 - No raw ESDB/SCOWL, Hunspell, or Google Books Ngram source files are bundled.
-- `dictionary.mode: "production"` remains unavailable while review status is
+- `dictionary.mode: "production"` remains unavailable while manifest review is
   blocked.
 
 Known limitations:
 
-- No npm registry publish has occurred yet.
 - Spell coverage is not production dictionary coverage.
-- No valid-word or real-word/context autocorrection exists.
-- No grammar, style, tone, clarity, local model inference, next-edit logging,
-  browser extension, ProseMirror, Monaco, or real Codex adapter is included.
-- Real provider completion is manual and opt-in through an embedder-controlled
-  server boundary.
+- Valid-word and real-word/context autocorrection are not implemented.
+- Grammar, style, tone, clarity, local model inference, next-edit logging,
+  browser extension, ProseMirror, Monaco, and real Codex adapter work are not
+  included.
+- Real provider completion is manual and opt-in through an embedder-owned server
+  endpoint.
 - `@typai/ui` is a required support package and remains unstable as an
   independent design-system API.
 
-## Public Beta RC Build-Up
+## Public Beta Build-Up
 
 ### MVP Foundations
 
@@ -66,14 +76,13 @@ Known limitations:
   personal dictionary entries, always-correct rules, and never-correct rules.
 - Added contenteditable correction with red unresolved marks and blue applied
   correction marks.
-- Added the first simple browser demo, golden corpus tests, unit tests,
-  Playwright E2E, and latency benchmark smoke.
+- Added the first browser demo, golden corpus tests, unit tests, Playwright E2E,
+  and latency benchmark smoke.
 
 ### Public Alpha
 
-- Added public-facing README and docs structure.
+- Added public-facing docs structure.
 - Added package dry-run checks, smoke install, and basic release-readiness docs.
-- Kept registry publishing out of scope.
 - Preserved the local-first correction boundary with no server requirement for
   deterministic correction.
 
@@ -102,7 +111,7 @@ Known limitations:
   completion surfaces.
 - Kept completion out of `@typai/core`.
 
-### V4.2 Provider/Public Beta Readiness
+### Provider/Public Beta Readiness
 
 - Added provider proxy examples for Express, Next-style routes, and Cloudflare
   Worker-style handlers.
@@ -134,14 +143,3 @@ Known limitations:
 - Expanded cross-surface spell-quality E2E.
 - Added language asset performance, memory, package-size, package secret, and
   release dry-run gates.
-- Completed the public beta RC hardening audit.
-
-## Known Limitations
-
-- No production dictionary/frequency asset is bundled.
-- No npm package has been published.
-- No valid-word or real-word/context autocorrection exists.
-- No grammar, style, tone, clarity, local model inference, next-edit logging,
-  browser extension, ProseMirror, Monaco, or real Codex adapter is included.
-- Real provider completion is manual and opt-in through an embedder-controlled
-  server boundary.

@@ -1,58 +1,88 @@
 # Common Typo Table
 
-Status: Prompt 103 approved conservative table.
+Status date: 2026-05-20.
 
-Typai's automatic correction table is project-owned and deliberately small. The
-source for the Prompt 103 expansion is the Prompt 99 baseline sample group plus
-the Prompt 103 candidate list, reviewed against these rules:
+This table is the current project-owned autocorrect allowlist. It is deliberately
+small. It is not a production dictionary, not a frequency model, and not a
+general edit-distance autocorrect system.
 
-- the typo must be a non-word in Typai's supported English scope
-- the correction must be unambiguous without document context
+## Policy
+
+A typo may autocorrect only when:
+
+- the typo is a non-word in Typai's supported English scope
+- the correction is unambiguous without document context
+- the entry is explicitly listed in this table
 - valid-word traps are excluded
-- names, proper nouns, and technical terms are excluded
-- delete-index/edit-distance candidates are not promoted unless they are listed
-  here
+- names, proper nouns, technical terms, commands, paths, emails, URLs, and
+  identifiers remain protected
 
-No third-party typo corpus is embedded in this table.
+Delete-index/edit-distance suggestions do not become autocorrections by
+themselves.
 
-| Typo | Correction | Autocorrect | Notes |
-| --- | --- | --- | --- |
-| teh | the | yes | original deterministic table |
-| adn | and | yes | original deterministic table |
-| recieve | receive | yes | original deterministic table |
-| becuase | because | yes | original deterministic table |
-| thier | their | yes | original deterministic table |
-| adress | address | yes | Prompt 99/103 baseline |
-| speling | spelling | yes | Prompt 99/103 baseline |
-| corection | correction | yes | Prompt 99/103 baseline |
-| seperate | separate | yes | Prompt 99/103 baseline |
-| definitly | definitely | yes | Prompt 99/103 baseline |
-| accomodate | accommodate | yes | Prompt 99/103 baseline |
-| occured | occurred | yes | Prompt 99/103 baseline |
-| untill | until | yes | Prompt 99/103 baseline |
-| tommorow | tomorrow | yes | Prompt 99/103 baseline |
-| goverment | government | yes | Prompt 99/103 baseline |
-| enviroment | environment | yes | Prompt 99/103 baseline |
-| arguement | argument | yes | Prompt 99/103 baseline |
-| calender | calendar | yes | Prompt 99/103 baseline |
-| embarass | embarrass | yes | Prompt 99/103 baseline |
-| publically | publicly | yes | Prompt 99/103 baseline |
-| neccessary | necessary | yes | Prompt 99/103 baseline |
+## Current Autocorrect Entries
 
-Suggestions-only cases remain outside the autocorrect table:
+| Typo | Correction | Notes |
+| --- | --- | --- |
+| `teh` | `the` | original deterministic table |
+| `adn` | `and` | original deterministic table |
+| `recieve` | `receive` | original deterministic table |
+| `becuase` | `because` | original deterministic table |
+| `thier` | `their` | original deterministic table |
+| `adress` | `address` | reviewed baseline |
+| `speling` | `spelling` | reviewed baseline |
+| `corection` | `correction` | reviewed baseline |
+| `seperate` | `separate` | reviewed baseline |
+| `definitly` | `definitely` | reviewed baseline |
+| `accomodate` | `accommodate` | reviewed baseline |
+| `occured` | `occurred` | reviewed baseline |
+| `untill` | `until` | reviewed baseline |
+| `tommorow` | `tomorrow` | reviewed baseline |
+| `goverment` | `government` | reviewed baseline |
+| `enviroment` | `environment` | reviewed baseline |
+| `arguement` | `argument` | reviewed baseline |
+| `calender` | `calendar` | reviewed baseline |
+| `embarass` | `embarrass` | reviewed baseline |
+| `publically` | `publicly` | reviewed baseline |
+| `neccessary` | `necessary` | reviewed baseline |
+
+## Suggestions-Only Cases
+
+These may appear as suggestions, but they must not autocorrect automatically.
 
 | Token | Suggestion | Reason |
 | --- | --- | --- |
-| reciept | receipt | delete-index candidate; left suggestion-only |
-| dont | don't | contraction repair; no automatic expansion |
-| it;s | it's | punctuation/contraction repair; no automatic rewrite |
-| adresss | address, addresses | plural ambiguity |
+| `reciept` | `receipt` | delete-index candidate; left suggestion-only |
+| `dont` | `don't` | contraction repair; no automatic expansion |
+| `it;s` | `it's` | punctuation/contraction repair; no automatic rewrite |
+| `adresss` | `address`, `addresses` | plural ambiguity |
 
-Review gate for future additions:
+## Valid-Word And Protected Examples
 
-- Add one row per typo.
-- Add a golden-corpus autocorrect case.
-- Add a false-positive/protected-token test if the entry resembles a valid word,
-  proper noun, product name, identifier, or technical command.
-- Do not use production dictionary frequency, SymSpell rank, or edit distance as
-  an autocorrect gate by itself.
+These are expected no-write cases:
+
+- `form`
+- `lead`
+- `to`
+- `its`
+- `there`
+- URLs
+- emails
+- file paths
+- identifiers
+- code-like spans
+
+## Additions Gate
+
+Future additions require:
+
+1. one table row in this doc
+2. a golden-corpus autocorrect case
+3. false-positive coverage when the token resembles a valid word, name,
+   identifier, command, or technical term
+4. cross-surface E2E coverage when the behavior affects adapters
+5. no reliance on frequency, edit distance, or delete-index rank as the only
+   autocorrect gate
+
+The next broad spelling-quality improvement should come from Production Asset
+Unblock, not by casually growing this table.

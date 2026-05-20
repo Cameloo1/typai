@@ -1,10 +1,20 @@
 # Examples
 
-Typai has focused consumer examples and one larger demo app. The repo examples
-run from workspace packages, while external consumers can install the published
-npm beta packages.
+Typai examples are split between small consumer apps and provider-proxy
+examples. They are useful for evaluating the beta, but they are not themselves
+published packages.
 
-## npm Beta Examples
+Current beta facts:
+
+- registry packages are `0.0.0-beta.0`
+- npm `beta` resolves to that version
+- registry smoke passed from public npm packages
+- production language assets are not bundled
+- completion examples default to mock behavior
+
+## Install From npm
+
+External consumers can install the beta packages directly:
 
 ```sh
 npm install @typai/core@beta @typai/contenteditable@beta
@@ -16,77 +26,76 @@ npm install @typai/completion-remote@beta
 
 ## Consumer Examples
 
-These are the best starting points for public-beta evaluation:
+| Example | What It Shows | Provider Calls |
+| --- | --- | --- |
+| `examples/consumer-vanilla-contenteditable` | local correction on a `contenteditable` element | none |
+| `examples/consumer-vanilla-textarea` | local correction on a native textarea with overlay marks | none |
+| `examples/consumer-react` | `TypaiProvider`, `TypaiTextarea`, and `TypaiContenteditable` | none |
+| `examples/consumer-codemirror` | CodeMirror 6 correction extension | none |
+| `examples/consumer-completion-with-proxy` | optional completion through an embedder endpoint | mock proxy by default |
 
-- `examples/consumer-vanilla-contenteditable` - local correction on a
-  `contenteditable` element
-- `examples/consumer-vanilla-textarea` - local correction on a native textarea
-  with overlay rendering
-- `examples/consumer-react` - `TypaiProvider`, `TypaiTextarea`, and
-  `TypaiContenteditable`
-- `examples/consumer-codemirror` - CodeMirror 6 extension
-- `examples/consumer-completion-with-proxy` - optional completion through an
-  embedder endpoint running in mock mode
-
-Build all consumer examples through the root build:
+Run a consumer example:
 
 ```sh
+pnpm install
 pnpm build
-```
-
-Run one example:
-
-```sh
 pnpm --filter consumer-vanilla-textarea dev
 ```
 
 ## Provider Proxy Examples
 
-These examples show server-side proxy shapes:
+| Example | Runtime Shape | Default Provider Mode |
+| --- | --- | --- |
+| `examples/provider-proxy-express` | Express-style server endpoint | mock |
+| `examples/provider-proxy-next` | Next-style route handler | mock |
+| `examples/provider-proxy-cloudflare-worker` | Worker-style handler | mock |
 
-- `examples/provider-proxy-express`
-- `examples/provider-proxy-next`
-- `examples/provider-proxy-cloudflare-worker`
+The proxy examples demonstrate the boundary: browser code sends a Typai
+completion request to an embedder-owned endpoint, and the endpoint owns any real
+provider integration. Mock mode is the normal local and CI path.
 
-They default to `PROVIDER_MODE=mock`. The server-side OpenAI Responses path is
-disabled unless explicit environment gates are set.
-
-For a local proxy endpoint, run:
+Start the shared local proxy:
 
 ```sh
 pnpm dev:completion-proxy
 ```
 
-The runner defaults to mock mode at
-`http://127.0.0.1:8787/api/typai/completion` and allows the local Vite demo
-origin at `http://127.0.0.1:5173`. OpenAI mode is manual-only and requires
-server-side environment gates. See [Real-provider demo](./real-provider-demo.md).
+Default endpoint:
+
+```text
+http://127.0.0.1:8787/api/typai/completion
+```
+
+OpenAI mode exists only as a manual, server-side demo path. See
+[Real-provider demo](./real-provider-demo.md).
 
 ## Full Demo App
 
-`examples/simple-demo-editor` remains the broad integration demo. It includes
-contenteditable, textarea, React, CodeMirror, chat-input, mocked completion, and
-an optional proxy completion mode. Mock completion remains the default.
+`examples/simple-demo-editor` is the broad integration demo. It includes:
 
-The demo is also the Prompt 104 cross-surface spell-quality harness. Playwright
-checks the same expanded typo autocorrections, suggestions-only behavior,
-valid-word safety, protected-token safety, casing/punctuation preservation,
-personal dictionary flow, and correction-rule flow across contenteditable,
-textarea, React textarea, React contenteditable, and CodeMirror.
+- contenteditable correction
+- textarea correction and overlay marks
+- React textarea/contenteditable surfaces
+- CodeMirror correction
+- mocked ghost completion
+- optional local proxy completion mode
+- settings and debug surfaces used by tests
+
+Run it:
 
 ```sh
 pnpm --filter simple-demo-editor dev
 ```
 
-The full demo app uses mock providers for completion by default. Its V4 Remote
-Completion tab can be switched to proxy mode for a local server endpoint; the
-browser UI accepts an endpoint URL only, not provider credentials.
+The full demo is also used by Playwright coverage for typo correction,
+valid-word safety, protected-token safety, casing/punctuation preservation,
+personal dictionary behavior, correction rules, and completion ghost behavior.
 
-## Beta Example Limits
+## What Examples Do Not Prove
 
-- examples are not published packages
-- registry packages are beta artifacts at `0.0.0-beta.0`
-- provider proxy examples are not bundled into library tarballs
-- production dictionary and frequency assets are not bundled
-- completion is optional and works through mock or server-owned providers
-- local deterministic correction does not require a server
+- They do not prove production dictionary coverage.
+- They do not use a bundled production language asset.
+- They do not make real provider calls in automated test paths.
+- They do not ship provider proxy code inside library tarballs.
+- They do not add a real Codex adapter.
+- They do not add grammar/style, local inference, or next-edit logging.

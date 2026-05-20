@@ -2,41 +2,61 @@
 
 Status date: 2026-05-20.
 
-Typai `0.0.0-beta.0` is published on npm under the `beta` dist-tag, and registry
-smoke has passed from public npm packages.
+Typai `0.0.0-beta.0` is published on npm and registry smoke passed. This page
+lists limitations users should know before adopting the beta.
 
-## Package Availability
+## Package And Release State
 
-- Public registry packages are beta artifacts and should be pinned when
-  reproducibility matters.
-- The `latest` dist-tag currently points at `0.0.0-beta.0` because these were
-  first publishes; do not treat that as a stable release signal.
-- `@typai/ui` is a required support package for public packages, but it is
-  unstable as an independent design-system API.
+- Install with `@beta` or exact `0.0.0-beta.0`.
+- npm `latest` currently points at `0.0.0-beta.0` because these were first
+  publishes. Treat that as registry mechanics, not a stable-release promise.
+- No public Git tag exists for the beta.
+- The observed publish was manual npm tarball publish, not trusted
+  publishing/OIDC.
+- `@typai/ui` is published because public packages depend on it; it is not a
+  stable independent design system.
 
-## Language Assets
+## Language Quality
 
-- The production language asset is not bundled.
-- No production dictionary binary is packed.
-- No production frequency table is packed.
-- No raw ESDB/SCOWL, Hunspell, or Google Books Ngram source files are packed.
-- Production spell coverage depends on a later approved production asset or
-  host-provided Typai Dictionary Blob v1 bytes.
-- The current local correction baseline is useful for deterministic correction
-  and common typo coverage, but it is not production dictionary coverage.
+- Production dictionary/frequency assets are not bundled.
+- Spell coverage is intentionally conservative.
+- The common typo table autocorrects only reviewed non-word typos.
+- Delete-index candidates are suggestions unless explicitly promoted.
+- Valid-word and real-word/context autocorrection are not implemented.
+- English scope is currently the supported correction path.
 
-## Completion And Providers
+Concrete examples:
 
-- Real provider paths are manual and server-side only.
-- Provider credentials must stay on the embedder-owned server path.
-- Package tests and demos default to mock provider behavior.
-- There is no direct browser-to-provider credential path.
+- `teh` can autocorrect to `the`.
+- `form` must not autocorrect.
+- URLs, emails, paths, identifiers, and code-like spans should be protected.
 
-## Editor And Product Scope
+## Provider And Completion Limits
 
-- WebKit browser coverage remains outside the current readiness claim when the
-  local E2E matrix skips it.
+- Completion is optional and separate from `@typai/core`.
+- Real provider calls are manual and server-side only.
+- Browser packages accept endpoint configuration, not provider credentials.
+- Tests, demos, CI, public-beta smoke, and registry smoke use mock provider
+  paths unless a manual real-provider gate is explicitly opened.
+- Provider proxy examples are examples, not hosted infrastructure.
+
+## Editor/Product Limits
+
+- Textarea marks use an overlay because native textareas cannot render inline
+  spans.
+- CodeMirror protection behavior is conservative around code and Markdown.
+- WebKit is not part of the current readiness claim when local E2E skips it.
 - There is no real Codex adapter.
-- There are no grammar, style, tone, or clarity features.
-- There is no local inference.
+- There is no grammar/style/tone/clarity layer.
+- There is no local model inference.
 - There is no next-edit logging.
+- There is no browser extension.
+- There are no ProseMirror or Monaco adapters.
+
+## What To Do If This Blocks Adoption
+
+- Need better spelling coverage: prioritize Production Asset Unblock.
+- Need dogfooding or flagship integration: prioritize Real Codex Adapter.
+- Need writing-assistant breadth: prioritize a separate grammar/style phase.
+- Need install-anywhere coverage: prioritize browser extension after privacy
+  and provider boundaries are hardened.

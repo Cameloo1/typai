@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 const requiredFiles = [
   "README.md",
+  "CHANGELOG.md",
   "docs/README.md",
   "docs/getting-started.md",
   "docs/installation.md",
@@ -19,6 +20,7 @@ const requiredFiles = [
   "docs/packages/codemirror.md",
   "docs/packages/completion-remote.md",
   "docs/examples.md",
+  "docs/real-provider-demo.md",
   "docs/security.md",
   "docs/privacy.md",
   "docs/api-stability.md",
@@ -55,6 +57,9 @@ const forbiddenOverclaims = [
   /real Codex integration/i,
   /browser API key/i,
   /@typai\/core uses remote completion/i,
+  /Typai has not been published to npm yet/i,
+  /No npm package has been published/i,
+  /No npm registry publish has occurred/i,
   ...(registryBetaInstallAllowed ? [] : [/npm install @typai\//i]),
   /local model inference exists/i,
 ];

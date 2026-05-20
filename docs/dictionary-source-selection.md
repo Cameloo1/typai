@@ -1,10 +1,29 @@
 # Dictionary And Frequency Source Selection
 
-Research date: 2026-05-19
+Research date: 2026-05-19.
+Status reviewed for beta docs on 2026-05-20.
 
 This document records the Prompt 100 source review for Typai's future
 production English dictionary and frequency assets. It is not legal advice. No
 production dictionary or frequency asset is bundled by this review.
+
+## Current Beta Summary
+
+Typai `0.0.0-beta.0` is published without production language assets. The
+source decision below chooses a future production-asset direction; it does not
+approve a bundled dictionary, bundled frequency table, or package-visible
+language blob.
+
+Use this document to answer:
+
+- which dictionary source Typai intends to transform first
+- which frequency source Typai intends to transform first
+- which candidate sources were rejected or deferred
+- what attribution/licensing evidence must be preserved
+
+Do not use this document to claim production dictionary coverage. The live beta
+still uses built-in deterministic correction plus optional host-provided Typai
+Dictionary Blob v1 bytes.
 
 ## Decision
 
@@ -18,10 +37,35 @@ Asset ingestion status: **blocked until the asset PR includes the required
 manifest, deterministic transform script, exact source hashes, attribution, size
 evidence, and review signoff**.
 
-This means Prompt 101 may implement the approved source pipeline and host-
-provided or scaled mock loading path, but it must not commit, pack, publish, or
-ship generated production assets unless every gate in
-`docs/dictionary-asset-policy.md` passes.
+This means future work may continue the approved source pipeline and
+host-provided or scaled mock loading path, but it must not commit, pack,
+publish, or ship generated production assets unless every gate in
+`docs/dictionary-asset-policy.md` and
+`docs/dictionary-production-approval.md` passes.
+
+## Candidate Summary
+
+| Candidate | Current Decision | Reason |
+| --- | --- | --- |
+| ESDB/SCOWL v2 | accepted for dictionary source | permissive source path, maintained, suitable for transform |
+| ESDB-generated Hunspell | fallback/maybe | useful source format, but flags/affixes need explicit handling |
+| LibreOffice English dictionaries | rejected for first asset | downstream license/provenance complexity |
+| OpenOffice/Mozilla variants | rejected for first asset | heavier downstream packaging and license obligations |
+| Google Books Ngram | accepted for frequency source | usable corpus identifier and transformable unigram data |
+| wordfreq | blocked pending legal review | multi-source and ShareAlike complexity |
+| wordfreq-en-25000 | rejected | derivative convenience dump with inherited concerns |
+| 12dicts | rejected for first asset | older supplemental source; ESDB is better upstream |
+| Wordnik wordlist | rejected for first asset | word-game scope and no frequency data |
+| Open English WordNet | rejected for first asset | lexical network, not a spelling/frequency source |
+
+## Future Unblock Path
+
+The next production-asset phase should produce an asset PR with exact raw source
+hashes, deterministic transform evidence, generated output metadata, attribution
+files, package-size proof, quality evidence, and named review signoff. Until
+then, production package inclusion remains blocked.
+
+## Research Record
 
 ## Candidate Evaluation
 
@@ -388,8 +432,9 @@ Use **ESDB/SCOWL v2** as the production dictionary source and **Google Books
 Ngram Viewer American English 2019 unigrams** as the first production frequency
 source.
 
-Do not bundle generated assets yet. Prompt 101 should implement the manifest-
-gated pipeline and host-provided or scaled mock loading path first. The first
-asset ingestion PR must prove source pins, hashes, attribution, deterministic
-transforms, size budget, and quality gates before any production binary or
-frequency table enters the package.
+Do not bundle generated assets yet. The first asset ingestion PR must prove
+source pins, hashes, attribution, deterministic transforms, size budget, and
+quality gates before any production binary or frequency table enters the
+package.
+
+Current beta state remains blocked / host-provided only.

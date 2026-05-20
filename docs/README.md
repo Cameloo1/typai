@@ -1,54 +1,78 @@
 # Typai Docs
 
-Typai has two deliberately separate layers:
+Typai is currently a public beta package set for local deterministic writing
+correction and optional endpoint-backed completion. The published beta is
+`0.0.0-beta.0` on npm under the `beta` dist-tag. Registry smoke passed from
+public npm packages.
 
-- local deterministic correction in `@typai/core` and editor adapters
-- optional remote completion in `@typai/completion-remote`
+Current boundaries:
 
-Correction does not need a server. Completion can call an endpoint, but private
-provider credentials stay on the embedder's server.
+- correction runs locally through `@typai/core` and editor adapters
+- optional completion lives in `@typai/completion-remote`
+- completion credentials belong on an embedder-owned server endpoint
+- production language assets are blocked / host-provided only
+- no real Codex adapter, grammar/style layer, local inference, or next-edit
+  logging is included
+
+Release caveat: because these were first publishes, npm `latest` currently also
+points at `0.0.0-beta.0`. Treat `beta` or the exact version as the intended
+install target until a later release decision changes dist-tags.
 
 ## Start Here
 
-- [Getting started](./getting-started.md)
-- [Installation](./installation.md)
-- [Examples](./examples.md)
-- [Changelog](../CHANGELOG.md)
-- [Real-provider demo](./real-provider-demo.md)
-- [Troubleshooting](./troubleshooting.md)
+| Goal | Doc |
+| --- | --- |
+| Install from npm beta | [Installation](./installation.md) |
+| Try the smallest working examples | [Getting started](./getting-started.md) |
+| Pick a repo example | [Examples](./examples.md) |
+| Run the optional provider proxy path | [Real-provider demo](./real-provider-demo.md) |
+| Debug install/runtime issues | [Troubleshooting](./troubleshooting.md) |
+| See what changed in the beta | [Changelog](../CHANGELOG.md) |
 
-## Concepts
+## Product Concepts
 
-- [Deterministic correction](./concepts/deterministic-correction.md)
-- [Protected spans](./concepts/protected-spans.md)
-- [Red and blue marks](./concepts/red-blue-marks.md)
-- [Completion](./concepts/completion.md)
-- [Storage and memory](./concepts/storage-memory.md)
-- [Provider proxy](./concepts/provider-proxy.md)
+| Topic | Doc |
+| --- | --- |
+| Local correction model | [Deterministic correction](./concepts/deterministic-correction.md) |
+| URL/email/path/code protection | [Protected spans](./concepts/protected-spans.md) |
+| Red unresolved marks and blue correction marks | [Red and blue marks](./concepts/red-blue-marks.md) |
+| Optional ghost completion | [Completion](./concepts/completion.md) |
+| Personal dictionary and rules | [Storage and memory](./concepts/storage-memory.md) |
+| Server-owned completion boundary | [Provider proxy](./concepts/provider-proxy.md) |
 
-## Packages
+## Package Docs
 
-- [Core](./packages/core.md)
-- [Contenteditable](./packages/contenteditable.md)
-- [Textarea](./packages/textarea.md)
-- [React](./packages/react.md)
-- [CodeMirror](./packages/codemirror.md)
-- [Completion remote](./packages/completion-remote.md)
+| Package | Purpose |
+| --- | --- |
+| [Core](./packages/core.md) | deterministic correction, suggestions, memory, dictionary loading |
+| [Contenteditable](./packages/contenteditable.md) | DOM `contenteditable` adapter |
+| [Textarea](./packages/textarea.md) | native textarea adapter with overlay marks |
+| [React](./packages/react.md) | provider, hooks, textarea/contenteditable components |
+| [CodeMirror](./packages/codemirror.md) | CodeMirror 6 extension |
+| [Completion remote](./packages/completion-remote.md) | mock/noop/endpoint completion helpers |
 
-## Safety And Readiness
+## Release And Safety State
 
-- [Security](./security.md)
-- [Privacy](./privacy.md)
-- [API stability](./api-stability.md)
-- [Beta release candidate plan](./beta-release-candidate-plan.md)
-- [Beta publish result](./beta-publish-result.md)
-- [Beta registry smoke](./beta-registry-smoke.md)
-- [Beta known issues](./beta-known-issues.md)
-- [Beta rollback guidance](./beta-rollback-guidance.md)
-- [Roadmap](./roadmap.md)
-- [Production asset gate recap](./production-asset-gate-recap.md)
-- [Common typo table](./common-typo-table.md)
-- [Dictionary source selection](./dictionary-source-selection.md)
-- [Dictionary asset policy](./dictionary-asset-policy.md)
-- [Dictionary production approval](./dictionary-production-approval.md)
-- [Dictionary asset blockers](./dictionary-asset-blockers.md)
+| Topic | Doc |
+| --- | --- |
+| Current beta checkpoint | [Beta publish complete](./beta-publish-complete.md) |
+| Registry publish evidence | [Beta publish result](./beta-publish-result.md) |
+| Public npm install smoke | [Beta registry smoke](./beta-registry-smoke.md) |
+| Release candidate history | [Beta release candidate plan](./beta-release-candidate-plan.md) |
+| Known beta limitations | [Beta known issues](./beta-known-issues.md) |
+| Rollback/remediation playbook | [Beta rollback guidance](./beta-rollback-guidance.md) |
+| Security boundary | [Security](./security.md) |
+| Privacy boundary | [Privacy](./privacy.md) |
+| API maturity | [API stability](./api-stability.md) |
+| Roadmap | [Roadmap](./roadmap.md) |
+
+## Language Assets
+
+| Topic | Doc |
+| --- | --- |
+| Current production-asset gate | [Production asset gate recap](./production-asset-gate-recap.md) |
+| Autocorrect table | [Common typo table](./common-typo-table.md) |
+| Approved source direction | [Dictionary source selection](./dictionary-source-selection.md) |
+| Production approval checklist | [Dictionary production approval](./dictionary-production-approval.md) |
+| Package asset policy | [Dictionary asset policy](./dictionary-asset-policy.md) |
+| Remaining asset blockers | [Dictionary asset blockers](./dictionary-asset-blockers.md) |

@@ -1,134 +1,110 @@
 # Production Asset Gate Recap
 
-Status date: 2026-05-19.
+Status date: 2026-05-20.
 
-This recap summarizes the current production dictionary and frequency asset
-state from:
-
-- `docs/dictionary-source-selection.md`
-- `docs/dictionary-asset-policy.md`
-- `docs/dictionary-production-approval.md`
-- `docs/dictionary-asset-blockers.md`
+Typai beta is published, but production language assets are still blocked. This
+is intentional. The npm packages do not include a production dictionary,
+frequency table, raw corpus, or generated production language blob.
 
 ## Current Decision
 
-Source approval status: **APPROVED** for the first source path.
+| Area | State |
+| --- | --- |
+| Dictionary source direction | approved candidate source path |
+| Frequency source direction | approved candidate source path |
+| Generated production asset | blocked |
+| Package inclusion | none |
+| Runtime production mode | unavailable |
+| Supported external path | host-provided Typai Dictionary Blob v1 |
 
-Asset ingestion status: **BLOCKED until frequency source hashes, pinned local
-production inputs, generated output hash, attribution, size, quality, and
-review gates pass**.
+Source approval is not package inclusion approval.
 
-No production dictionary, frequency table, raw corpus, or generated production
-language asset is bundled in this repository state.
+## Approved Source Direction
 
-## Approved Source Path
+Dictionary candidate:
 
-The currently approved source path is:
+- English Speller Database / SCOWL v2.
+- Official non-Australian `en-US` size 60 output first.
+- Release `2026.02.25`, commit marker `[7e99eda]`.
 
-- Dictionary: English Speller Database / SCOWL v2, official non-Australian
-  `en-US` size 60 output, release `2026.02.25` / `[7e99eda]`.
-- Frequency: Google Books Ngram Viewer American English 2019 unigrams,
-  persistent corpus identifier `googlebooks-eng-us-20200217`.
+Frequency candidate:
 
-This approval selects sources only. It does not approve a generated binary,
-frequency table, package asset, or npm release.
+- Google Books Ngram Viewer American English 2019 unigrams.
+- Corpus identifier `googlebooks-eng-us-20200217`.
 
-## Unresolved Blockers
+These sources are selected for a future asset pipeline. They are not bundled in
+the beta.
 
-Production bundling remains blocked because the repository does not yet have:
+## Why Bundling Is Blocked
 
-- approved production asset manifest under `packages/core/assets/production/`
-- pinned local production input file paths
-- raw Google Ngram input SHA-256 values
+The repository still lacks:
+
+- Google Ngram raw source SHA-256 values
+- pinned local production input paths
 - generated output SHA-256
-- final package-visible attribution and full applicable notices
-- compressed and uncompressed production output size evidence
-- quality gate results against the generated production asset
+- generated word/frequency counts
+- compressed and uncompressed size evidence
+- final package-visible attribution and notices
+- quality gate results against the generated asset
 - package dry-run proof that raw inputs are excluded
-- named review signoff with review date
+- named reviewer and review date
 
-## What Cannot Be Bundled Yet
+If any item is missing, package inclusion remains blocked.
 
-The following must not be committed, packed, published, or claimed as shipped:
+## What Must Not Ship Yet
+
+Do not commit, pack, publish, or claim:
 
 - generated ESDB/SCOWL production dictionary output
 - generated Google Ngram-derived frequency table
 - combined production dictionary/frequency blob
-- raw Google Ngram input partitions
-- raw or transformed unclear-license downstream dictionary assets
-- any asset with missing attribution, source hash, transform, size, or review
-  evidence
+- raw Google Ngram partitions
+- raw Hunspell files
+- raw or unclear-license downstream dictionary assets
+- any asset without source hashes, transform evidence, size evidence,
+  attribution, and review signoff
 
-Package inclusion remains `none` until these gates pass.
+## Current Runtime Behavior
 
-## Prompt 109 Manifest Status
+`createTypaiCore()` supports:
 
-The blocked production manifest template is:
+- built-in deterministic correction
+- host-provided dictionary bytes, loader, or URL
 
-- `packages/core/assets/production/MANIFEST.template.json`
+`dictionary.mode: "production"` throws a clear unavailable error while the
+manifest review status is blocked.
 
-It records the approved ESDB/SCOWL `en_US` source ZIP hash and the exact Google
-Ngram American English 2019 1-gram source URLs. It intentionally keeps Google
-Ngram raw source hashes as `null`, generated output counts and byte size as
-`null`, `output.packageInclusion` as `blocked`, and `review.status` as
-`blocked`.
+Host-provided assets still need provenance controlled by the host app. They must
+not weaken protected-token, valid-word, personal dictionary, or autocorrect
+gates.
 
-Prompt 110 adds the deterministic transform script and command:
+## Mock And Fixture Status
 
-- `packages/core/scripts/build-production-dictionary.mjs`
-- `pnpm --filter @typai/core build:dictionary:production`
-- `pnpm --filter @typai/core validate:dictionary:production`
+Scaled mock and fixture assets exist for loader, transform, performance, and
+quality tests. They are labeled mock/fixture only and are not production
+coverage.
 
-The production build command fails while `review.status` is `blocked`. The
-validation command runs the same transform path against repo-local fixtures and
-writes ignored output under `packages/core/assets/generated/`.
+Generated fixture output belongs under ignored generated paths and must not be
+promoted into package output as production data.
 
-The placeholder license and attribution files are:
+## Exact Gates Before Unblock
 
-- `packages/core/assets/production/LICENSES/README.md`
-- `packages/core/assets/production/ATTRIBUTION.md`
-
-## Scaled Mock Status
-
-The scaled mock path is active only as a deterministic loader, bounds,
-frequency-ranking, and performance stress fixture.
-
-- Generated path: `packages/core/assets/generated/`
-- Git status: generated binary and metadata files are ignored
-- Required labels: `mockOnly: true` and `production: false`
-- Production status: not a production dictionary or frequency asset
-- Package status: must not be bundled as a production language asset
-
-The checked-in mock fixture under `packages/core/assets/` is also mock-only.
-
-## Host-Provided Asset Path Status
-
-The host-provided asset path exists through `createTypaiCore({ dictionary })`.
-It can load validated Typai Dictionary Blob v1 bytes through the existing
-C++/Rust/Wasm boundary.
-
-Host-provided assets still need provenance and manifest validation before they
-are trusted. This path must not weaken protected-token, valid-word, personal
-dictionary, or autocorrect gates.
-
-## Exact Gates Required Before Production Bundling
-
-Before any production asset can move from `none` to `optional` or `bundled`,
-the asset PR must provide:
+Before production package inclusion can move from `none` to `optional` or
+`bundled`, the asset PR must provide:
 
 1. Official source URL for every input.
-2. Exact source version, corpus identifier, release tag, commit, or durable
-   pin.
+2. Exact source version, corpus identifier, release tag, commit, or durable pin.
 3. Retrieval date and SHA-256 for every raw source file.
-4. Full license or durable official notice link.
+4. Full license text or durable official notice link.
 5. Explicit redistribution, commercial-use, and modification evidence.
-6. Package-ready attribution text and required notice files.
-7. Deterministic transform script and command.
-8. Generated output format, count metadata, byte sizes, and SHA-256.
+6. Package-ready attribution text and notice files.
+7. Deterministic transform command and script.
+8. Generated output format, counts, byte sizes, and SHA-256.
 9. Package inclusion decision: `none`, `optional`, or `bundled`.
 10. Package dry-run proof that raw source files are excluded.
 11. Spell quality, protected-token, valid-word, latency, and false-positive
     evidence against the generated asset.
 12. Named review signoff and review date.
 
-If any gate is missing or unclear, production bundling remains blocked.
+Future work should prioritize this path only if production spell coverage is
+more important than integration/dogfooding work.

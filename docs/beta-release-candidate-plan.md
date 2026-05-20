@@ -2,36 +2,26 @@
 
 Status date: 2026-05-20.
 
-This plan records the current public beta release candidate path for Typai. It
-does not publish packages, create registry tags, or claim that production
-language assets are bundled.
+This document is now a historical release-candidate record plus the current
+post-publish state. It should not be read as a pending publish plan.
 
-## Target Version And Tag Plan
+## Current State
 
-- Approved release package version prepared in source control:
-  `0.0.0-beta.0`.
-- Root/private workspace package version remains `0.0.0-dev`.
+- Approved version: `0.0.0-beta.0`.
 - Approved npm dist-tag: `beta`.
-- Approved Git tag for the later post-publish tag step: `v0.0.0-beta.0`.
-- Versioning rule: approved release packages move together at
-  `0.0.0-beta.0`; private packages remain unpublished unless a later approval
-  changes that boundary.
+- Approved Git tag: `v0.0.0-beta.0`.
+- npm publish state: published.
+- Registry smoke: passed from public npm packages.
+- Git tag state: no local or pushed beta tag exists.
+- Production language asset state: blocked / host-provided only.
 
-The current release scripts are dry-run only for this checkpoint:
+The observed publish was a manual npm tarball publish, not GitHub Actions OIDC
+trusted publishing. The trusted-publishing workflow exists for future release
+operations but was not used for this beta.
 
-- `pnpm release:version:dry` prints the current approved version state.
-- `pnpm release:pack` creates local release tarballs only.
-- `pnpm release:publish:dry` prints publish order and does not execute
-  `npm publish`.
+## Published Package Set
 
-Post-publish state: the approved package set is available on npm at
-`0.0.0-beta.0` through the `beta` dist-tag, and registry smoke has passed. The
-`latest` dist-tag currently also points at `0.0.0-beta.0` because these were
-first publishes.
-
-## Package List
-
-Public beta package candidates:
+Public beta packages:
 
 - `@typai/core`
 - `@typai/contenteditable`
@@ -42,122 +32,86 @@ Public beta package candidates:
 
 Required support package:
 
-- `@typai/ui`, packed because React and CodeMirror packages depend on it. It is
-  support-grade, not a stable public design-system promise.
+- `@typai/ui`
 
-Private workspace packages and examples remain unpublished unless a later
-release prompt changes the boundary.
+Private workspace packages, provider examples, consumer examples, and testkit
+packages remain unpublished.
 
-## Package Stability Status
+## Approved Publish Order
 
-- `@typai/core`: beta candidate for local deterministic correction, memory
-  APIs, host-provided dictionary loading, and Typai Dictionary Blob v1 loading.
-- `@typai/contenteditable`: beta candidate for contenteditable correction and
-  optional structural completion controller integration.
-- `@typai/textarea`: beta candidate for textarea correction, overlay marks, and
-  optional ghost completion integration.
-- `@typai/react`: beta candidate wrappers for textarea and contenteditable
-  surfaces.
-- `@typai/codemirror`: beta candidate CodeMirror 6 extension with correction
-  and optional completion controller support.
-- `@typai/completion-remote`: beta candidate optional completion scheduler and
-  providers. It remains separate from `@typai/core`.
-- `@typai/ui`: support package required by public packages; unstable as an
-  independent consumer API.
+1. `@typai/ui`
+2. `@typai/core`
+3. `@typai/completion-remote`
+4. `@typai/contenteditable`
+5. `@typai/textarea`
+6. `@typai/react`
+7. `@typai/codemirror`
+
+The package order matters because support and dependency packages should exist
+before dependent adapters are published.
+
+## Dist-Tag State
+
+- `beta` points to `0.0.0-beta.0`.
+- `latest` also points to `0.0.0-beta.0`.
+
+The `latest` tag points at the beta because these were first publishes. Do not
+move or remove dist-tags without an explicit release decision and a registry
+verification pass.
+
+## Package Stability
+
+| Package | Beta Status |
+| --- | --- |
+| `@typai/core` | beta for local deterministic correction, storage, rules, suggestions, and host-provided dictionary loading |
+| `@typai/contenteditable` | beta for `contenteditable` correction and optional completion-controller integration |
+| `@typai/textarea` | beta for textarea correction, overlay marks, and optional ghost completion |
+| `@typai/react` | beta wrappers, hooks, provider, and debug/settings surfaces |
+| `@typai/codemirror` | beta CodeMirror 6 extension |
+| `@typai/completion-remote` | beta optional completion helpers; separate from core |
+| `@typai/ui` | required support package; unstable as an independent design-system API |
 
 ## Asset Inclusion Status
 
-Production language asset status: **blocked and host-provided only**.
+Production language assets remain blocked:
 
-- No production dictionary binary is committed or packed.
-- No production frequency table is committed or packed.
-- No raw ESDB/SCOWL, Hunspell, or Google Books Ngram source files are committed
-  or packed.
-- `dictionary.mode: "production"` is reserved and unavailable while the
-  manifest review status is blocked.
-- Host-provided Typai Dictionary Blob v1 bytes may be loaded during
-  `createTypaiCore()` initialization.
-- The scaled mock asset is a generated loader/performance fixture only.
-
-Production asset inclusion may be revisited only after manifest, license,
-attribution, source hash, transform, generated output hash, size, quality, and
-review gates pass.
+- no production dictionary binary is bundled
+- no production frequency table is bundled
+- no raw ESDB/SCOWL, Hunspell, or Google Books Ngram source files are bundled
+- `dictionary.mode: "production"` is unavailable while manifest review is
+  blocked
+- host-provided Typai Dictionary Blob v1 bytes remain the supported external
+  asset path
 
 ## Known Limitations
 
-- The production dictionary/frequency asset is not bundled.
-- Spell coverage is safer than earlier foundations but is not product-grade
-  dictionary coverage.
-- Delete-index candidates remain suggestions unless a token is explicitly in
-  the approved common typo table.
-- Valid-word and real-word/context autocorrection are out of scope.
-- Grammar, style, tone, clarity, local model inference, next-edit logging,
-  browser extension work, and real Codex adapter work are out of scope.
-- Real provider completion remains manual and server-side through an
-  embedder-owned proxy path.
+- Spell coverage is not production dictionary coverage.
+- Delete-index candidates remain suggestions unless explicitly promoted into
+  the common typo table.
+- Valid-word and real-word/context autocorrection are not implemented.
+- Real provider completion is manual and server-side only.
+- No real Codex adapter, grammar/style layer, local inference, next-edit
+  logging, browser extension, ProseMirror adapter, or Monaco adapter is included.
 
-## Release Checklist
+## Release Evidence
 
-Before any actual beta publish:
+Use these docs for current proof:
 
-1. Confirm `git status --short` is clean.
-2. Review `docs/production-asset-gate-recap.md`.
-3. Review `docs/dictionary-production-approval.md` and
-   `docs/dictionary-asset-blockers.md`.
-4. Run the full validation stack from the `README.md` verification section.
-5. Confirm packed tarballs contain expected files only.
-6. Confirm no blocked production assets, raw source files, `.env` files, or
-   secret-like payloads appear in package output.
-7. Confirm real-provider smoke remains manual and opt-in.
-8. Choose the final beta version and npm dist-tag.
-9. Record explicit manual approval for npm publish.
+- [Beta publish result](./beta-publish-result.md)
+- [Beta registry smoke](./beta-registry-smoke.md)
+- [Beta publish complete](./beta-publish-complete.md)
+- [Beta tarball audit](./beta-tarball-audit.md)
+- [Production asset gate recap](./production-asset-gate-recap.md)
 
-## Manual Approval Requirements
+## Future Release Rules
 
-Manual approval is required before:
+For a beta patch or next release:
 
-- changing package versions in source control
-- creating a public Git tag
-- publishing to npm
-- switching from dry-run package artifacts to registry artifacts
-- adding bundled production language assets
-
-The release operator must explicitly approve the package version, dist-tag,
-publish order, package contents, source/license state, and rollback plan.
-
-## Rollback Plan
-
-If beta packaging or a post-publish smoke fails after manual approval:
-
-- Deprecate or unpublish only when npm policy and elapsed time allow it.
-- Publish a corrected beta patch such as `0.0.0-beta.1` when deprecation is not
-  enough.
-- Keep previous Git tag and commit evidence intact; do not rewrite public
-  release history.
-- Re-run package smoke, public beta smoke, package secret scan, package size
-  report, and release dry-runs before the replacement publish.
-- If an asset inclusion issue is found, remove the asset path and return to
-  host-provided-only behavior before the next beta.
-
-## Changelog Summary
-
-The beta candidate contains:
-
-- MVP local deterministic correction foundations.
-- Public alpha package and demo readiness.
-- Textarea adapter and overlay.
-- Rich editor adapters for React and CodeMirror.
-- Optional remote completion in a separate package.
-- V4.2 provider proxy and public beta readiness rails.
-- Intelligence Quality Foundation spell-quality gates.
-- Production Language Asset RC gates with production assets still blocked.
-
-## Docs Links
-
-- `README.md`
-- `CHANGELOG.md`
-- `docs/production-asset-gate-recap.md`
-- `docs/beta-known-issues.md`
-- `docs/beta-rollback-guidance.md`
-- `docs/dictionary-production-approval.md`
-- `docs/dictionary-asset-blockers.md`
+1. Keep public history intact.
+2. Bump to a new prerelease version such as `0.0.0-beta.1`.
+3. Re-run package contents, secret, size, install-smoke, public-beta-smoke, and
+   registry-smoke checks.
+4. Move `beta` only after replacement registry smoke passes.
+5. Move or remove `latest` only through an explicit release gate.
+6. Do not bundle production language assets until every asset approval gate
+   passes.

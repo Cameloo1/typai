@@ -1,32 +1,66 @@
 # Installation
 
-Typai `0.0.0-beta.0` is available on npm under the `beta` dist-tag. Install the
-core package plus the editor adapter you need.
+Typai `0.0.0-beta.0` is published on npm under the `beta` dist-tag. The public
+registry smoke passed by installing from npm, importing every beta package, and
+building vanilla, React, and CodeMirror consumers.
 
-## npm Beta Packages
+Because this was the first publish for the package names, npm `latest` also
+currently points at `0.0.0-beta.0`. Use `@beta` or the exact version in docs,
+examples, and reproducible checks until a later release explicitly changes
+dist-tags.
+
+## Package Matrix
+
+| Package | Install directly when | Notes |
+| --- | --- | --- |
+| `@typai/core` | always | local deterministic correction engine |
+| `@typai/contenteditable` | using a DOM `contenteditable` surface | depends on core |
+| `@typai/textarea` | using native textareas | depends on core |
+| `@typai/react` | using React wrappers/hooks | depends on core, contenteditable, textarea, and `@typai/ui` |
+| `@typai/codemirror` | using CodeMirror 6 | depends on core and `@typai/ui`; requires CodeMirror peer packages |
+| `@typai/completion-remote` | using optional endpoint-backed completion | does not belong to `@typai/core` |
+| `@typai/ui` | building against the support UI package directly | support-grade; not stable as an independent design system |
+
+## npm Beta Installs
+
+Pick one adapter:
 
 ```sh
 npm install @typai/core@beta @typai/contenteditable@beta
 npm install @typai/core@beta @typai/textarea@beta
 npm install @typai/core@beta @typai/react@beta
 npm install @typai/core@beta @typai/codemirror@beta
+```
+
+Optional completion package:
+
+```sh
 npm install @typai/completion-remote@beta
 ```
 
-`@typai/ui` is a required support package for packages that depend on it and is
-installed transitively. Install `@typai/ui@beta` directly only if you are
-intentionally using the support package; it is unstable as an independent
-design-system API.
-
-Pin the exact beta version when reproducibility matters:
+Exact version pin:
 
 ```sh
 npm install @typai/core@0.0.0-beta.0 @typai/textarea@0.0.0-beta.0
 ```
 
-## Workspace Examples
+## Peer Dependencies
 
-From this checkout:
+React consumers provide React and React DOM:
+
+```sh
+npm install react react-dom
+```
+
+CodeMirror consumers provide the CodeMirror 6 peer packages used by their app:
+
+```sh
+npm install @codemirror/state @codemirror/view @codemirror/language
+```
+
+## Local Checkout
+
+Repository examples use workspace dependencies. From the repository root:
 
 ```sh
 pnpm install
@@ -34,32 +68,34 @@ pnpm build
 pnpm --filter consumer-react dev
 ```
 
-Each consumer example declares `workspace:*` dependencies on the Typai packages
-it uses.
+If plain `pnpm` is unavailable in a Windows shell, use the repo package manager
+through Corepack:
 
-## Local Package Smoke
+```sh
+corepack pnpm build
+```
 
-Use the release-readiness smoke checks before treating the packages as
-installable artifacts:
+## Package Smoke Paths
+
+Local artifact smoke:
 
 ```sh
 pnpm pack:dry
 pnpm smoke:install
+pnpm smoke:public-beta
 ```
 
-These checks verify package contents, import surfaces, and local package
-installation without publishing.
-
-The smoke checks install local package artifacts, not registry packages. They
-also keep production language assets blocked and completion providers in mock or
-server-owned paths.
-
-## Registry Smoke
-
-The post-publish registry smoke installs public npm `@beta` packages into a
-temporary consumer outside the repo. It does not use workspace symlinks or local
+Public registry smoke is recorded in [Beta registry smoke](./beta-registry-smoke.md).
+It installed npm `@beta` packages only, with no workspace symlinks or local
 tarballs.
 
-The production dictionary/frequency asset is not bundled. Deterministic
-correction works locally without a server, and optional completion must use a
-server-owned provider proxy. Do not place provider API keys in browser code.
+## Important Boundaries
+
+- Production dictionary/frequency assets are not bundled.
+- `dictionary.mode: "production"` is unavailable while the asset gate is
+  blocked.
+- Host-provided Typai Dictionary Blob v1 bytes are the supported external asset
+  path.
+- Deterministic correction does not require a server.
+- Completion is optional and must use mock providers or a server-owned endpoint.
+- Browser code must not receive provider credentials.

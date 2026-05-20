@@ -6,11 +6,13 @@ export interface AllowedAutocorrectionCase {
 export interface TokenCase {
   token: string;
   reason: string;
+  category?: string;
 }
 
 export interface SuggestionCase {
   token: string;
   suggestion: string;
+  category: string;
 }
 
 export const allowedAutocorrections: AllowedAutocorrectionCase[] = [
@@ -18,6 +20,9 @@ export const allowedAutocorrections: AllowedAutocorrectionCase[] = [
   { token: "Teh", replacement: "The" },
   { token: "TEH", replacement: "THE" },
   { token: "teh,", replacement: "the," },
+  { token: "Adress", replacement: "Address" },
+  { token: "adress.", replacement: "address." },
+  { token: "definitly!", replacement: "definitely!" },
   { token: "adn", replacement: "and" },
   { token: "recieve", replacement: "receive" },
   { token: "becuase", replacement: "because" },
@@ -41,22 +46,58 @@ export const allowedAutocorrections: AllowedAutocorrectionCase[] = [
 ];
 
 export const mustNotAutocorrect: TokenCase[] = [
-  { token: "form", reason: "known valid word" },
-  { token: "their", reason: "known valid word" },
-  { token: "its", reason: "known valid word" },
-  { token: "lead", reason: "known valid word" },
-  { token: "to", reason: "known valid word" },
-  { token: "nmap", reason: "technical term" },
-  { token: "sqlmap", reason: "technical term" },
-  { token: "kubectl", reason: "technical term" },
-  { token: "CVE-2024-1234", reason: "security identifier" },
-  { token: "/etc/passwd", reason: "filesystem path" },
-  { token: "camelCaseIdentifier", reason: "camelCase identifier" },
-  { token: "snake_case_identifier", reason: "snake_case identifier" },
-  { token: "PascalCaseClass", reason: "PascalCase identifier" },
-  { token: "NASA", reason: "uppercase acronym-shaped token" },
-  { token: "https://example.com", reason: "URL" },
-  { token: "user@example.com", reason: "email address" },
+  { token: "form", reason: "known valid word", category: "valid-word trap" },
+  { token: "lead", reason: "known valid word", category: "valid-word trap" },
+  { token: "to", reason: "known valid word", category: "valid-word trap" },
+  { token: "its", reason: "known valid word", category: "valid-word trap" },
+  { token: "there", reason: "known valid word", category: "valid-word trap" },
+  { token: "their", reason: "known valid word", category: "valid-word trap" },
+  { token: "from", reason: "known valid word", category: "valid-word trap" },
+  { token: "too", reason: "known valid word", category: "valid-word trap" },
+  { token: "led", reason: "known valid word", category: "valid-word trap" },
+  { token: "user@example.com", reason: "email address", category: "protected structured token" },
+  { token: "https://example.com", reason: "URL", category: "protected structured token" },
+  { token: "/etc/passwd", reason: "filesystem path", category: "protected structured token" },
+  { token: "~/project/src", reason: "home-relative path", category: "protected structured token" },
+  {
+    token: "snake_case_identifier",
+    reason: "snake_case identifier",
+    category: "protected structured token",
+  },
+  {
+    token: "camelCaseIdentifier",
+    reason: "camelCase identifier",
+    category: "protected structured token",
+  },
+  {
+    token: "PascalCaseClass",
+    reason: "PascalCase identifier",
+    category: "protected structured token",
+  },
+  { token: "CVE-2024-1234", reason: "security identifier", category: "protected structured token" },
+  { token: "nmap", reason: "technical term", category: "technical/security term" },
+  { token: "sqlmap", reason: "technical term", category: "technical/security term" },
+  { token: "ffuf", reason: "technical term", category: "technical/security term" },
+  { token: "gobuster", reason: "technical term", category: "technical/security term" },
+  { token: "kubectl", reason: "technical term", category: "technical/security term" },
+  { token: "iptables", reason: "technical term", category: "technical/security term" },
+  { token: "XSS", reason: "uppercase acronym-shaped token", category: "acronym" },
+  { token: "CSRF", reason: "uppercase acronym-shaped token", category: "acronym" },
+  { token: "API", reason: "uppercase acronym-shaped token", category: "acronym" },
+  { token: "NASA", reason: "uppercase acronym-shaped token", category: "acronym" },
+  { token: "SQL", reason: "uppercase acronym-shaped token", category: "acronym" },
+  { token: "HTTP", reason: "uppercase acronym-shaped token", category: "acronym" },
+  { token: "BTC", reason: "trading ticker", category: "trading/domain term" },
+  { token: "ETH", reason: "trading ticker", category: "trading/domain term" },
+  { token: "SPY", reason: "trading ticker", category: "trading/domain term" },
+  { token: "NVDA", reason: "trading ticker", category: "trading/domain term" },
+];
+
+export const falsePositiveReviewCases: TokenCase[] = [
+  { token: "Alice", reason: "proper noun", category: "proper noun" },
+  { token: "Cameloo", reason: "proper noun", category: "proper noun" },
+  { token: "Typai", reason: "proper noun/product name", category: "proper noun" },
+  { token: "OpenAI", reason: "mixed-case product name", category: "proper noun" },
 ];
 
 export const unresolvedNonWords: TokenCase[] = [
@@ -64,11 +105,18 @@ export const unresolvedNonWords: TokenCase[] = [
 ];
 
 export const unresolvedSuggestionCases: SuggestionCase[] = [
-  { token: "reciept", suggestion: "receipt" },
-  { token: "addres", suggestion: "address" },
-  { token: "dont", suggestion: "don't" },
-  { token: "it;s", suggestion: "it's" },
-  { token: "adresss", suggestion: "address" },
+  { token: "reciept", suggestion: "receipt", category: "delete-index misspelling" },
+  { token: "addres", suggestion: "address", category: "delete-index misspelling" },
+  { token: "separat", suggestion: "separate", category: "delete-index misspelling" },
+  { token: "tomorow", suggestion: "tomorrow", category: "delete-index misspelling" },
+  { token: "becaus", suggestion: "because", category: "delete-index misspelling" },
+  { token: "calandar", suggestion: "calendar", category: "delete-index misspelling" },
+  { token: "neccesary", suggestion: "necessary", category: "delete-index misspelling" },
+  { token: "definately", suggestion: "definitely", category: "delete-index misspelling" },
+  { token: "acommodate", suggestion: "accommodate", category: "delete-index misspelling" },
+  { token: "dont", suggestion: "don't", category: "contraction" },
+  { token: "it;s", suggestion: "it's", category: "contraction punctuation" },
+  { token: "adresss", suggestion: "address", category: "plural ambiguity" },
 ];
 
 export const surfaceParityAutocorrections: AllowedAutocorrectionCase[] = [
@@ -79,16 +127,40 @@ export const surfaceParityAutocorrections: AllowedAutocorrectionCase[] = [
   { token: "definitly", replacement: "definitely" },
 ];
 
-export const surfaceParityValidWords = ["form", "lead", "to", "its", "there", "their"];
+export const surfaceParitySuggestionCases: SuggestionCase[] = [
+  { token: "reciept", suggestion: "receipt", category: "delete-index misspelling" },
+  { token: "separat", suggestion: "separate", category: "delete-index misspelling" },
+  { token: "adresss", suggestion: "address", category: "plural ambiguity" },
+];
+
+export const surfaceParityValidWords = [
+  "form",
+  "lead",
+  "to",
+  "its",
+  "there",
+  "their",
+  "from",
+  "too",
+  "led",
+];
 
 export const surfaceParityProtectedTerms = [
   "user@example.com",
   "https://example.com",
   "/etc/passwd",
+  "~/project/src",
   "snake_case_identifier",
   "camelCaseIdentifier",
+  "PascalCaseClass",
   "CVE-2024-1234",
   "nmap",
   "sqlmap",
+  "ffuf",
+  "gobuster",
   "kubectl",
+  "iptables",
+  "XSS",
+  "CSRF",
+  "API",
 ];

@@ -47,6 +47,7 @@ type CompletionSurface = {
 type CompletionHarness = {
   root: Locator;
   ghost(): Locator;
+  blueMark(): Locator;
   reset(): Promise<void>;
   typeText(text: string): Promise<void>;
   getSourceText(): Promise<string>;
@@ -142,6 +143,7 @@ for (const surface of surfaces) {
       await expect
         .poll(() => harness.getSourceText())
         .toBe(`${surface.prefix}${surface.expectedCompletion}`);
+      await expect(harness.blueMark()).toHaveCount(0);
       await expectMetricAtLeast(harness, "acceptedCount", 1);
 
       if (harness.getCompletionTransactionCount !== undefined) {
@@ -269,6 +271,7 @@ async function openContenteditableCompletionDemo(
   return {
     root,
     ghost: () => page.locator("[data-testid='remote-completion-editor'] [data-typai-ghost='true']"),
+    blueMark: () => page.getByTestId("blue-mark"),
     async reset() {
       await page.getByTestId("remote-reset").click();
       await expect
@@ -326,6 +329,7 @@ async function openTextareaCompletionDemo(
   return {
     root,
     ghost: () => page.getByTestId("textarea-ghost-text"),
+    blueMark: () => page.getByTestId("textarea-blue-mark"),
     async reset() {
       await page.getByTestId("textarea-reset").click();
       await expect(textarea).toHaveValue("");
@@ -394,6 +398,8 @@ async function openReactCompletionDemo(
       isTextarea
         ? root.getByTestId("textarea-ghost-text")
         : editor.locator("[data-typai-ghost='true']"),
+    blueMark: () =>
+      isTextarea ? root.getByTestId("textarea-blue-mark") : root.getByTestId("blue-mark"),
     async reset() {
       await root.getByTestId("react-reset").click();
       if (isTextarea) {
@@ -476,6 +482,7 @@ async function openCodeMirrorCompletionDemo(
   return {
     root,
     ghost: () => root.locator(".typai-cm-ghost-text"),
+    blueMark: () => root.locator(".typai-cm-blue-corrected"),
     async reset() {
       await page.evaluate(() => window.__typaiCodeMirrorDemo?.reset());
       await expect.poll(() => getCodeMirrorText(page)).toBe("");

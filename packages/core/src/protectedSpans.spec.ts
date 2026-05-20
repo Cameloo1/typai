@@ -20,6 +20,11 @@ describe("protected token classification", () => {
     ["nmap", "code"],
     ["const x = 1", "code"],
     ["```ts\nconst x = 1\n```", "code"],
+    ["ffuf", "code"],
+    ["gobuster", "code"],
+    ["iptables", "code"],
+    ["kubectl", "code"],
+    ["sqlmap", "code"],
     ["/etc/passwd", "path"],
     ["~/project/src", "path"],
     ["./src/index.ts", "path"],
@@ -103,6 +108,8 @@ describe("tokenization", () => {
     ["user@example.com ", "user@example.com", "email"],
     ["snake_case_identifier ", "snake_case_identifier", "identifier"],
     ["nmap ", "nmap", "code"],
+    ["ffuf ", "ffuf", "code"],
+    ["iptables ", "iptables", "code"],
   ] satisfies Array<
     [string, string, TokenType]
   >)("extracts protected token from %s", (text, tokenText, tokenType) => {

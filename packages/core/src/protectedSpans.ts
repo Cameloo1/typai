@@ -1,6 +1,6 @@
 import type { Token, TokenType } from "./types";
 
-const codeLikeTokens = new Set(["kubectl", "nmap", "sqlmap"]);
+const codeLikeTokens = new Set(["ffuf", "gobuster", "iptables", "kubectl", "nmap", "sqlmap"]);
 
 export function classifyToken(text: string): Pick<Token, "tokenType" | "protected"> {
   const token = text.trim();

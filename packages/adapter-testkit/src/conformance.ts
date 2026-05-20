@@ -79,6 +79,21 @@ export function runAdapterConformanceSuite(
       });
     });
 
+    it.each([
+      ["capitalized", "Teh ", "The"],
+      ["uppercase", "TEH ", "THE"],
+      ["punctuated", "teh, ", "the"],
+    ])("preserves %s common-typo correction shape", async (_label, input, markedText) => {
+      await withDriver(driverFactory, async (driver) => {
+        await driver.typeText(input);
+
+        const mark = expectBlueMark(driver.getMarks());
+
+        expect(driver.getText()).not.toContain("teh");
+        expect(driver.getText().slice(mark.range.start, mark.range.end)).toBe(markedText);
+      });
+    });
+
     it.skipIf(!capabilities.blueRevert)(
       "reverts a blue mark to the exact original text",
       async () => {
@@ -122,9 +137,22 @@ export function runAdapterConformanceSuite(
 
     it.each([
       ["email", "user@example.com "],
+      ["URL", "https://example.com "],
       ["path", "/etc/passwd "],
+      ["home path", "~/project/src "],
       ["identifier", "snake_case_identifier "],
+      ["camelCase identifier", "camelCaseIdentifier "],
+      ["PascalCase identifier", "PascalCaseClass "],
       ["CVE", "CVE-2024-1234 "],
+      ["nmap", "nmap "],
+      ["sqlmap", "sqlmap "],
+      ["ffuf", "ffuf "],
+      ["gobuster", "gobuster "],
+      ["kubectl", "kubectl "],
+      ["iptables", "iptables "],
+      ["XSS", "XSS "],
+      ["CSRF", "CSRF "],
+      ["API", "API "],
     ])("does not correct protected %s tokens", async (_label, text) => {
       await withDriver(driverFactory, async (driver) => {
         await driver.typeText(text);

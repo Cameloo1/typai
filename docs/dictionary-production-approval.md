@@ -18,6 +18,9 @@ Prompt 111 wires the runtime/package policy for the blocked state: packaged
 production assets remain unavailable, `dictionary.mode: "production"` throws a
 clear initialization error, and host-provided assets remain the supported
 external asset path.
+Prompt 112 expands the production-RC spell-quality corpus and confirms the
+blocked production mode plus host-provided fixture behavior in
+`pnpm bench:spell-quality`.
 
 ## Approved Dictionary Source
 
@@ -161,6 +164,17 @@ Runtime dictionary modes:
 - `host-provided`: `bytes`, `load`, or `url` is resolved during
   initialization, then token checking and suggestions stay synchronous.
 - `production`: reserved for a future approved asset and currently unavailable.
+
+Current Prompt 112 quality coverage:
+
+- Approved autocorrection corpus: 27/27 expected corrections.
+- Suggestions-only recall corpus: 12/12 expected suggestions.
+- Valid-word false autocorrect count: 0.
+- Protected-token false write count: 0.
+- Reviewed false-positive autocorrect count: 0.
+- Host-provided fixture path: loads during initialization and keeps the hot
+  path synchronous after initialization.
+- Production dictionary mode: still blocked while package inclusion is blocked.
 
 ## Transform Pipeline Status
 

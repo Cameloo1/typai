@@ -178,11 +178,13 @@ export function conformanceDecisionForToken(
     };
   }
 
-  if (token === "teh") {
+  if (token.toLowerCase() === "teh") {
+    const replacement = preserveTehReplacementShape(token);
+
     return {
       action: "auto_correct",
-      original: "teh",
-      replacement: "the",
+      original: token,
+      replacement,
       confidence: 0.99,
       mark: "blue_applied_correction",
       reasonCodes: ["COMMON_TYPO_MATCH"],
@@ -213,4 +215,16 @@ export function conformanceDecisionForToken(
     action: "do_nothing",
     reasonCodes: ["KNOWN_VALID_WORD"],
   };
+}
+
+function preserveTehReplacementShape(token: string): string {
+  if (token === token.toUpperCase()) {
+    return "THE";
+  }
+
+  if (token[0] === token[0]?.toUpperCase()) {
+    return "The";
+  }
+
+  return "the";
 }

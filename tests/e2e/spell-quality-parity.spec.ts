@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, type TestInfo, test } from "@playwrigh
 import {
   surfaceParityAutocorrections,
   surfaceParityProtectedTerms,
+  surfaceParitySuggestionCases,
   surfaceParityValidWords,
 } from "../golden-corpus/src/fixtures";
 
@@ -66,14 +67,16 @@ for (const surface of surfaces) {
       await harness.expectNoMarks();
     }
 
-    await typeFresh(harness, "reciept ");
-    await harness.expectText("reciept ");
-    await expect(harness.redMark()).toHaveText("reciept");
-    await harness.openRedPopover();
-    await expect(harness.suggestion("receipt")).toBeVisible();
-    await harness.applySuggestion("receipt");
-    await harness.expectText("receipt ");
-    await expect(harness.blueMark()).toHaveText("receipt");
+    for (const { token, suggestion } of surfaceParitySuggestionCases) {
+      await typeFresh(harness, `${token} `);
+      await harness.expectText(`${token} `);
+      await expect(harness.redMark()).toHaveText(token);
+      await harness.openRedPopover();
+      await expect(harness.suggestion(suggestion)).toBeVisible();
+      await harness.applySuggestion(suggestion);
+      await harness.expectText(`${suggestion} `);
+      await expect(harness.blueMark()).toHaveText(suggestion);
+    }
 
     for (const token of surfaceParityValidWords) {
       await typeFresh(harness, `${token} `);
@@ -136,8 +139,16 @@ test("CodeMirror markdown protects code contexts while prose keeps improved spel
   await harness.expectText("`adress` ");
   await harness.expectNoMarks();
 
+  await typeFresh(harness, "`CVE-2024-1234` ");
+  await harness.expectText("`CVE-2024-1234` ");
+  await harness.expectNoMarks();
+
   await typeFresh(harness, "```ts\nadress ");
   await harness.expectText("```ts\nadress ");
+  await harness.expectNoMarks();
+
+  await typeFresh(harness, "```bash\nffuf https://example.com ");
+  await harness.expectText("```bash\nffuf https://example.com ");
   await harness.expectNoMarks();
 
   await typeFresh(harness, "Please adress ");
@@ -152,9 +163,11 @@ test("spell quality surface parity matrix is enumerated", () => {
     suggestionsOnly: "pass",
     validWords: "pass",
     protectedTerms: "pass",
+    hostProvidedPath: "covered by core/golden fixture",
     casingAndPunctuation: "pass",
     personalDictionary: "pass",
     correctionRules: "pass",
+    completionCoexistence: "covered by V4.1 completion E2E",
   }));
 
   console.log("Typai spell quality surface parity matrix");
@@ -217,9 +230,13 @@ async function openContenteditableSurface(
       await page.getByTestId("red-mark").click();
       await expect(page.getByTestId("red-popover")).toBeVisible();
     },
-    suggestion: (suggestion) => page.getByTestId("suggestion-item").filter({ hasText: suggestion }),
+    suggestion: (suggestion) =>
+      page.getByTestId("suggestion-item").filter({ hasText: exactText(suggestion) }),
     async applySuggestion(suggestion) {
-      await page.getByTestId("suggestion-item").filter({ hasText: suggestion }).click();
+      await page
+        .getByTestId("suggestion-item")
+        .filter({ hasText: exactText(suggestion) })
+        .click();
     },
     async addRedToDictionary() {
       await page.getByTestId("add-dictionary-action").click();
@@ -278,9 +295,12 @@ async function openTextareaSurface(page: Page, testInfo: TestInfo): Promise<Spel
       await expect(page.getByTestId("textarea-red-popover")).toBeVisible();
     },
     suggestion: (suggestion) =>
-      page.getByTestId("textarea-suggestion-item").filter({ hasText: suggestion }),
+      page.getByTestId("textarea-suggestion-item").filter({ hasText: exactText(suggestion) }),
     async applySuggestion(suggestion) {
-      await page.getByTestId("textarea-suggestion-item").filter({ hasText: suggestion }).click();
+      await page
+        .getByTestId("textarea-suggestion-item")
+        .filter({ hasText: exactText(suggestion) })
+        .click();
     },
     async addRedToDictionary() {
       await page.getByTestId("textarea-add-dictionary-action").click();
@@ -351,9 +371,12 @@ async function openReactSurface(
         await expect(root.getByTestId("textarea-red-popover")).toBeVisible();
       },
       suggestion: (suggestion) =>
-        root.getByTestId("textarea-suggestion-item").filter({ hasText: suggestion }),
+        root.getByTestId("textarea-suggestion-item").filter({ hasText: exactText(suggestion) }),
       async applySuggestion(suggestion) {
-        await root.getByTestId("textarea-suggestion-item").filter({ hasText: suggestion }).click();
+        await root
+          .getByTestId("textarea-suggestion-item")
+          .filter({ hasText: exactText(suggestion) })
+          .click();
       },
       async addRedToDictionary() {
         await root.getByTestId("textarea-add-dictionary-action").click();
@@ -402,11 +425,13 @@ async function openReactSurface(
       await expect(root.getByTestId("react-contenteditable-red-popover")).toBeVisible();
     },
     suggestion: (suggestion) =>
-      root.getByTestId("react-contenteditable-suggestion-item").filter({ hasText: suggestion }),
+      root
+        .getByTestId("react-contenteditable-suggestion-item")
+        .filter({ hasText: exactText(suggestion) }),
     async applySuggestion(suggestion) {
       await root
         .getByTestId("react-contenteditable-suggestion-item")
-        .filter({ hasText: suggestion })
+        .filter({ hasText: exactText(suggestion) })
         .click();
     },
     async addRedToDictionary() {
@@ -464,11 +489,11 @@ async function openCodeMirrorSurface(page: Page, testInfo: TestInfo): Promise<Sp
     suggestion: (suggestion) =>
       page
         .locator("[data-typai-popover-action='choose-suggestion']")
-        .filter({ hasText: suggestion }),
+        .filter({ hasText: exactText(suggestion) }),
     async applySuggestion(suggestion) {
       await page
         .locator("[data-typai-popover-action='choose-suggestion']")
-        .filter({ hasText: suggestion })
+        .filter({ hasText: exactText(suggestion) })
         .click();
     },
     async addRedToDictionary() {
@@ -509,6 +534,14 @@ function uniqueDbName(testInfo: TestInfo, suffix: string): string {
   return `typai-spell-quality-${suffix}-${testInfo.project.name}-${testInfo.workerIndex}-${
     testInfo.parallelIndex
   }-${testInfo.retry}-${Date.now()}-${testInfo.title.replaceAll(/[^a-z0-9]+/gi, "-")}`;
+}
+
+function exactText(text: string): RegExp {
+  return new RegExp(`^${escapeRegExp(text)}$`);
+}
+
+function escapeRegExp(text: string): string {
+  return text.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 declare global {

@@ -18,6 +18,12 @@ The Intelligence Quality Foundation is complete. Typai currently has:
 - quality benchmark gates for protected-token writes, valid-word safety,
   autocorrect precision, suggestion recall, and direct core latency
 - scaled mock and host-provided asset loading paths
+- expanded Prompt 112 spell-quality corpus for common typos,
+  suggestions-only misspellings, valid-word traps, protected technical tokens,
+  acronyms, proper nouns, domain terms, and completion coexistence
+- cross-surface E2E parity across contenteditable, textarea, React textarea,
+  React contenteditable, and CodeMirror for the production/host-provided asset
+  path boundaries
 - a deterministic production dictionary transform entrypoint that currently
   runs only against repo-local fixtures while production approval is blocked
 - manual/env-gated real-provider demo support through a secure proxy
@@ -147,7 +153,9 @@ If any gate is missing, unclear, or contradictory, package inclusion remains
 7. Decide package inclusion using measured compressed and uncompressed size.
    Current blocked-state decision is `none`: do not include assets in
    `@typai/core`; use host-provided assets only.
-8. Expand spell quality and false-positive corpora against the generated asset.
+8. Keep the Prompt 112 spell-quality and false-positive corpora passing. When
+   a generated production asset exists, re-run the same corpus against that
+   asset before any package inclusion change.
 9. Run package dry-run, smoke install, public beta smoke, docs, lint, test, and
    build gates.
 10. Record the version plan and public beta RC docs without publishing.

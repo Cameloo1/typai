@@ -13,8 +13,8 @@ approval is complete and approved release packages are at `0.0.0-beta.0`, but
 no npm registry publish, beta registry smoke, or beta Git tag exists. Production
 asset resolution may continue in a later phase, but publishing remains blocked:
 the latest open-gate Prompt 126 attempt authenticated as `camelo1` and then
-failed on `@typai/ui` with npm `E403` because the account requires publish-time
-2FA or a granular token with the required 2FA bypass policy. V4.2
+failed on `@typai/ui` with npm `EOTP` because the publish operation requires a
+one-time-password/browser authentication flow. V4.2
 Provider + Public Beta Readiness, Intelligence Quality Foundation, Production
 Language Asset + Beta RC, and the Prompt 121 beta publish checkpoint are
 complete.
@@ -75,7 +75,8 @@ The approved beta target is `0.0.0-beta.0`. Git tags and npm publish still
 require explicit later gates.
 
 Next-phase decision is still required. If the goal is to finish public beta,
-fix npm publish authentication for the account's 2FA/token policy and rerun the
+complete npm publish-time one-time-password/browser authentication or configure
+publish authentication for the account's 2FA/token policy, then rerun the
 guarded publish prompt first. If the goal is product quality, choose Production
 Asset Unblock. If the goal is dogfooding or flagship integration, choose Real
 Codex Adapter. Do not begin a feature phase without an explicit selection.

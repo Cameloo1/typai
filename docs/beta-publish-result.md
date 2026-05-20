@@ -1,6 +1,6 @@
 # Beta Publish Result
 
-Status date: 2026-05-20T14:17:20.4940464-05:00
+Status date: 2026-05-20T14:41:39.5099703-05:00
 
 ## Result
 
@@ -10,7 +10,7 @@ Status date: 2026-05-20T14:17:20.4940464-05:00
 - distTag: beta
 - npmUsername: camelo1
 - branch: codex/fix
-- commit: 60df679
+- commit: dda478f
 - gitTag: v0.0.0-beta.0
 - gitTagStatus: none
 
@@ -38,8 +38,8 @@ Post-failure registry availability checks confirmed that these exact package ver
 
 - failedPackage: @typai/ui
 - failedCommand: npm publish .pack\typai-ui-0.0.0-beta.0.tgz --tag beta --access public
-- npmErrorCode: E403
-- npmErrorSummary: Two-factor authentication or a granular access token with bypass 2FA enabled is required to publish packages.
+- npmErrorCode: EOTP
+- npmErrorSummary: This operation requires a one-time password. npm returned a browser authentication URL for the publish operation.
 
 No unpublish or dist-tag mutation was attempted.
 
@@ -60,7 +60,7 @@ No latest dist-tags were created or modified.
 
 ## Next Step
 
-Configure npm publishing with one of the approved npm release authentication paths, then rerun the guarded Prompt 126 publish flow:
+Complete the npm publish-time one-time-password/browser authentication flow, or configure one of the approved npm release authentication paths, then rerun the guarded Prompt 126 publish flow:
 
 - use an interactive npm publish flow that can satisfy the account 2FA challenge, or
 - use a granular npm access token that is allowed to publish the `@typai` packages and is configured with the required 2FA bypass policy.

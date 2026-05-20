@@ -13,8 +13,8 @@ Evidence:
 - The latest guarded publish attempt failed before the first package was
   published.
 - The failed package was `@typai/ui`.
-- npm returned `E403` because two-factor authentication or a granular access
-  token with bypass 2FA enabled is required to publish packages.
+- npm returned `EOTP` because the publish operation requires a one-time
+  password/browser authentication flow.
 - `docs/beta-registry-smoke.md` is absent.
 - `release/beta-approval.json` has `manualApproval.approvalStatus:
   "approved"`.
@@ -27,11 +27,12 @@ No npm package was published during this checkpoint. The latest guarded publish
 attempt ran with `TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, npm authentication succeeded
 as `camelo1`, and exact package/version availability checks confirmed that all
 seven `0.0.0-beta.0` package versions were unpublished. The actual npm publish
-command failed on `@typai/ui` with `E403` before any package was published. The
-next publish attempt must use an npm release authentication path that can satisfy
-the account's publish-time 2FA policy, such as an interactive 2FA-capable publish
-flow or a granular npm access token that is permitted to publish the `@typai`
-packages with the required 2FA bypass policy.
+command failed on `@typai/ui` with `EOTP` before any package was published. The
+next publish attempt must complete npm's publish-time one-time-password/browser
+authentication flow or use an npm release authentication path that can satisfy
+the account's publish-time 2FA policy, such as a granular npm access token that
+is permitted to publish the `@typai` packages with the required 2FA bypass
+policy.
 
 ## Version, Dist-Tag, And Git Tag
 
@@ -153,7 +154,7 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 ## Known Limitations
 
 - Manual beta approval is approved, but npm publish has not completed.
-- The latest npm publish attempt failed on `@typai/ui` with `E403` before any
+- The latest npm publish attempt failed on `@typai/ui` with `EOTP` before any
   package was published.
 - No registry smoke has run.
 - No Git tag has been created.
@@ -188,7 +189,8 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 - If spell quality complaints persist, prioritize Production Asset Unblock.
 - If dogfooding is the goal, prioritize Real Codex Adapter.
 
-Current immediate decision: configure npm publish authentication for the
-account's 2FA/token policy and rerun the guarded publish prompt with
+Current immediate decision: complete npm's publish-time one-time-password/browser
+authentication flow or configure publish authentication for the account's
+2FA/token policy, then rerun the guarded publish prompt with
 `TYPAI_ALLOW_NPM_BETA_PUBLISH=1`, or explicitly choose a non-publish next phase.
 No feature phase should start without that selection.

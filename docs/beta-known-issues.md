@@ -1,6 +1,6 @@
 # Beta Known Issues
 
-Status date: 2026-05-20.
+Status date: 2026-05-21.
 
 Typai `0.0.0-beta.0` is published on npm and registry smoke passed. This page
 lists limitations users should know before adopting the beta.
@@ -19,6 +19,15 @@ lists limitations users should know before adopting the beta.
 ## Language Quality
 
 - Production dictionary/frequency assets are not bundled.
+- Host apps can provide Typai Dictionary Blob v1 bytes at initialization; those
+  bytes are embedder-owned and not part of the package.
+- `dictionary.mode: "production"` returns a clear unavailable error while the
+  production manifest is blocked.
+- Performance, memory, package-size, and browser benchmark gates now enforce
+  the blocked/host-provided asset path and fail if blocked production assets or
+  raw source files appear in package tarballs.
+- The final Production Asset Unblock audit is complete for this blocked state;
+  it did not generate or bundle a production dictionary/frequency asset.
 - Spell coverage is intentionally conservative.
 - The common typo table autocorrects only reviewed non-word typos.
 - Delete-index candidates are suggestions unless explicitly promoted.

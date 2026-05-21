@@ -8,15 +8,15 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase: beta `0.0.0-beta.0` is published on npm for the approved package
-set and registry smoke has passed from public npm packages. The actual observed
-publish happened outside the GitHub Actions trusted-publishing workflow; do not
-claim OIDC/trusted publishing was used for that publish. The `latest` dist-tag
-currently points at `0.0.0-beta.0` because these were first publishes; change
-dist-tags only through an explicit release decision. No beta Git tag exists.
-V4.2 Provider + Public Beta Readiness, Intelligence Quality Foundation,
-Production Language Asset + Beta RC, and the beta publish checkpoint are
-complete.
+Current phase checkpoint: Production Asset Unblock final hardening audit,
+Prompt 139, complete for the blocked-host-provided branch.
+Do not generate or bundle production assets unless
+`packages/core/assets/production/MANIFEST.json` has
+`review.status: "approved"`. Do not bypass source, license, attribution, hash,
+size, quality, package, or review gates. V4.2 Provider + Public Beta Readiness,
+Intelligence Quality Foundation, and Production Language Asset + Beta RC are
+complete; beta publish workflow state is separate from this production asset
+gate.
 
 Package readiness is not the same as product intelligence. The public beta
 package rails, provider proxy boundaries, and cross-surface completion
@@ -47,10 +47,11 @@ boundaries, package secret scanning, public-beta smoke gates, and the
 public-beta readiness CI workflow. Provider examples must keep private keys
 server-side.
 
-Production dictionary assets remain gated by license/source approval. Do not
-commit, pack, publish, or claim production dictionary/frequency assets until an
-approved asset PR includes source URLs, retrieval dates, notices, attribution,
-manifest counts, hashes, and deterministic transform commands.
+Production dictionary assets remain gated by source, license, attribution,
+hash, size, quality, package, and review approval. Do not commit, pack, publish,
+or claim production dictionary/frequency assets until an approved asset PR
+includes source URLs, retrieval dates, notices, attribution, manifest counts,
+hashes, deterministic transform commands, package proof, and review signoff.
 Do not bundle unclear-license assets. Do not publish. Do not start a real Codex
 adapter, grammar/style/tone/clarity work, local model inference, or next-edit
 logging in this phase. Preserve correction/completion boundaries: `@typai/core`
@@ -60,25 +61,95 @@ suggestions-only unless explicitly approved in the common typo table, accepted
 completions are not blue correction marks, and browser package code must not
 contain provider credentials.
 
-Prompt 100 approved the first source path only: ESDB/SCOWL `en-US` size 60 for
-dictionary data and Google Books Ngram American English 2019 unigrams for
-frequency data. Asset ingestion is still blocked until manifest, transform,
-hash, attribution, size, quality, and review gates pass.
+Prompt 128 keeps the production asset gate blocked: ESDB/SCOWL `en_US` size 60
+has a pinned source hash, Google Books Ngram `totalcounts-1` has a pinned hash,
+but the 14 Google Ngram partition hashes, generated output metadata, final
+notices, quality evidence, package proof, and review signoff are still missing.
+Asset ingestion is still blocked until manifest, transform, hash, attribution,
+size, quality, package, and review gates pass.
 
-No local model inference or next-edit logging is active in this phase.
+Prompt 131 adds the deterministic production transform pipeline. Fixture mode is
+allowed and writes ignored output under `packages/core/assets/generated/`.
+Production mode still fails closed while the manifest is blocked and requires
+pinned local source paths, matching source hashes, approved redistribution,
+license/attribution files, and non-blocked package inclusion before processing.
 
-Use `docs/beta-release-candidate-plan.md` for the beta version plan,
-`docs/beta-publish-complete.md` for the latest beta publish checkpoint,
-`docs/beta-registry-smoke.md` for registry smoke evidence, and
-`docs/production-asset-gate-recap.md` for the current production asset status.
-The approved beta target is `0.0.0-beta.0`. Git tagging and any dist-tag
-remediation still require explicit later gates.
+Prompt 132 executed the blocked-host-provided branch. No production asset was
+generated. Host-provided Typai Dictionary Blob v1 bytes remain the mechanical
+fallback path, loaded only during `createTypaiCore()` initialization. Scaled
+mock output remains mock-only and must not be described as production coverage.
 
-Next-phase decision is still required. If the goal is release remediation,
-decide whether to adjust `latest`, create/push the Git tag, or publish a beta
-patch. If the goal is product quality, choose Production Asset Unblock. If the
-goal is dogfooding or flagship integration, choose Real Codex Adapter. Do not
-begin a feature phase without an explicit selection.
+Prompt 133 keeps the branch blocked-host-provided and hardens the runtime load
+path through TypeScript -> Rust/Wasm -> C++. Host-provided, fixture, and
+scaled-mock Blob v1 bytes load only at initialization. Blocked production mode
+and malformed host-provided loads must fail clearly without replacing a
+previously loaded valid dictionary/delete-index state. `pnpm ffi:audit` must
+continue to pass and must reject `std::string` in the extern C surface, C++
+heap ownership transfer across FFI, Embind/Emscripten bindings, exported C++
+classes, and full-document text pass-through patterns.
+
+Prompt 134 selects host-provided-only language asset delivery for packages
+while the manifest remains blocked. `@typai/core` tarballs must include only
+`dist`, generated Wasm `pkg`, package metadata, and `README.md`; they must not
+include `assets/`, raw language sources, generated production dictionary
+binaries, frequency tables, tests, reports, debug dumps, provider examples,
+`.env` files, or secrets. `pnpm pack:dry`, `pnpm package:size-report`,
+`pnpm scan:package-secrets`, `pnpm smoke:install`, and
+`pnpm smoke:public-beta` enforce the package decision.
+
+Prompt 135 adds a structured production spell-quality corpus under
+`tests/spell-quality/corpus`, a scalable direct-core evaluator, quality gates,
+and generated review reports under `reports/spell-quality/`. The harness uses
+an in-memory host-provided quality fixture to measure valid words, protected
+tokens, domain terms, and suggestion recall without generating or packing a
+production asset. `reports/spell-quality/latest.json` is generated/ignored;
+`reports/spell-quality/latest.md` is the concise committed report.
+
+Prompt 136 adds corpus-backed Playwright parity coverage for contenteditable,
+textarea, React textarea, React contenteditable, and CodeMirror. The stable
+matrix lives in `reports/spell-quality/surface-parity.md`. Contenteditable
+marks now survive punctuation-triggered corrections followed by a space, and
+`https:` is treated as an in-progress protected URL prefix to prevent stale red
+marks while a URL is being typed.
+
+Prompt 137 hardens release gates. `pnpm bench:language-asset` reads the
+authoritative production `MANIFEST.json`, measures built-in, host-provided,
+scaled mock, and approved production asset mode when available, and emits
+`language-asset-benchmark-json`. `pnpm --filter @typai/core bench` emits
+`core-benchmark-json`. `pnpm bench:browser` covers deterministic correction for
+contenteditable, textarea, React textarea, and CodeMirror, separates mocked
+completion thresholds, and emits `browser-benchmark-json`. `pnpm release:pack`
+runs release check, language asset benchmark, package size report, spell-quality
+benchmark, package secret scan, install smoke, public beta smoke, and local
+tarball packing before reporting success.
+
+Prompt 138 closed the remediation loop for the blocked-host-provided branch. It
+fixed a Firefox contenteditable completion E2E harness race by waiting for the
+remote completion state to return to `idle`, then reran the full gate stack.
+
+Prompt 139 records the final Production Asset Unblock hardening audit in
+`docs/production-asset-unblock-complete.md`. The final asset state remains
+blocked / host-provided only. All hard validation gates passed for that state;
+warning-level mocked completion p95 rows and demo/consumer Vite chunk-size
+warnings remain documented.
+
+Preserve no valid-word autocorrect, no protected-token writes, no local
+inference, no next-edit logging, and no browser key path. No local model
+inference or next-edit logging is active in this phase.
+
+Use `docs/beta-release-candidate-plan.md`, `docs/beta-publish-complete.md`,
+and `docs/beta-registry-smoke.md` only when explicitly working release
+workflow history or remediation. Use `docs/production-asset-unblock.md`,
+`docs/production-asset-gate-recap.md`,
+`docs/dictionary-production-approval.md`, and
+`packages/core/assets/production/MANIFEST.json` for the current production
+asset status.
+
+Next asset step: capture the missing Google Ngram partition SHA-256 values in
+an external disposable workspace, then re-review the manifest. If the goal is
+dogfooding or flagship integration instead, choose Real Codex Adapter as a
+separate phase. Do not begin another feature phase without an explicit
+selection.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.
@@ -141,7 +212,8 @@ deterministic correction adapters in this phase.
   contenteditable, textarea, React textarea, and CodeMirror.
 - `pnpm bench:spell-quality` covers the committed spell-quality corpus,
   autocorrect precision, suggestion recall, valid-word safety, protected-token
-  safety, and direct core p95.
+  safety, arbitrary delete-index autocorrect safety, direct core p95,
+  suggestion p95, asset mode, and dictionary/delete-index stats.
 - Package smoke verifies `@typai/completion-remote` imports, structural
   completion options, and `@typai/core` no-remote behavior.
 - Public beta smoke verifies packed tarball imports, minimal correction, mock
@@ -226,9 +298,9 @@ It is a baseline report, not evidence that Typai has product-grade spell
 coverage.
 
 Use `docs/spell-quality-report.md` as the Prompt 106 stable quality report.
-It documents the live safety gates, false-positive review summary, and
-cross-surface quality report. It is not telemetry and does not imply
-production dictionary coverage.
+It now documents the Prompt 135 structured corpus harness, live safety gates,
+false-positive review summary, and report outputs. It is not telemetry and
+does not imply production dictionary coverage.
 
 Use `docs/dictionary-source-selection.md`,
 `docs/dictionary-asset-policy.md`, `docs/dictionary-production-approval.md`,
@@ -238,7 +310,9 @@ asset-ingestion gates.
 Use `docs/production-language-asset-rc.md` as the current phase scope lock and
 `docs/production-asset-gate-recap.md` as the current asset gate summary.
 Use `docs/production-language-asset-rc-complete.md` as the final Production
-Language Asset + Public Beta RC hardening checkpoint.
+Language Asset + Public Beta RC hardening checkpoint. Use
+`docs/production-asset-unblock-complete.md` as the final Production Asset
+Unblock hardening audit for the blocked-host-provided branch.
 
 ## V4 Scope Reference
 

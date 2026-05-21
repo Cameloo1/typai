@@ -90,6 +90,10 @@ pnpm --filter simple-demo-editor dev
 The full demo is also used by Playwright coverage for typo correction,
 valid-word safety, protected-token safety, casing/punctuation preservation,
 personal dictionary behavior, correction rules, and completion ghost behavior.
+Prompt 136 extends that coverage with a corpus-backed surface parity subset
+across contenteditable, textarea, React textarea, React contenteditable, and
+CodeMirror. The committed matrix is
+`reports/spell-quality/surface-parity.md`.
 
 ## What Examples Do Not Prove
 

@@ -1,12 +1,41 @@
 import { expect, type Locator, type Page, type TestInfo, test } from "@playwright/test";
-import {
-  surfaceParityAutocorrections,
-  surfaceParityProtectedTerms,
-  surfaceParitySuggestionCases,
-  surfaceParityValidWords,
-} from "../golden-corpus/src/fixtures";
+import { loadSpellQualityCorpus } from "../spell-quality/src/loadCorpus.mjs";
 
 type DemoGlobal = "__typaiCodeMirrorDemo";
+
+type SpellQualityExpectedAction =
+  | "auto_correct"
+  | "mark_unresolved"
+  | "do_nothing"
+  | "suggestions_only";
+
+type SpellQualitySurface = "core" | "contenteditable" | "textarea" | "react" | "codemirror";
+
+type SpellQualityCorpusRow = {
+  id: string;
+  category: string;
+  input: string;
+  expectedAction: SpellQualityExpectedAction;
+  expectedReplacement?: string;
+  expectedSuggestions?: string[];
+  surfaceApplicability: SpellQualitySurface[];
+};
+
+type CorpusAutocorrectCase = {
+  id: string;
+  token: string;
+  replacement: string;
+};
+
+type CorpusSuggestionCase = {
+  id: string;
+  token: string;
+  suggestion: string;
+};
+
+type CasingPunctuationCase = CorpusAutocorrectCase & {
+  expectedMark: string;
+};
 
 type SpellSurfaceHarness = {
   name: string;
@@ -25,6 +54,60 @@ type SpellSurfaceHarness = {
   applySuggestion(suggestion: string): Promise<void>;
   addRedToDictionary(): Promise<void>;
 };
+
+const corpusRows = loadSpellQualityCorpus() as SpellQualityCorpusRow[];
+const corpusRowById = new Map(corpusRows.map((row) => [row.id, row]));
+const surfaceApplicability = ["contenteditable", "textarea", "react", "codemirror"] as const;
+
+const surfaceParityAutocorrections = [
+  "allowed-adress-001",
+  "allowed-speling-001",
+  "allowed-corection-001",
+  "allowed-seperate-001",
+  "allowed-definitly-001",
+].map(requireAutocorrectCase);
+
+const surfaceParitySuggestionCases = [
+  "suggest-reciept-001",
+  "suggest-separat-001",
+  "plural-adresss-001",
+].map(requireSuggestionCase);
+
+const surfaceParityValidWords = [
+  "valid-form-001",
+  "valid-from-001",
+  "valid-lead-001",
+  "valid-led-001",
+  "valid-to-001",
+  "valid-too-001",
+  "valid-its-001",
+  "valid-its-contraction-001",
+  "valid-there-001",
+  "valid-their-001",
+].map(requireNoWriteCase);
+
+const surfaceParityProtectedTerms = [
+  "protected-email-001",
+  "protected-url-001",
+  "protected-unix-path-001",
+  "protected-windows-path-001",
+  "protected-snake-case-001",
+  "protected-camel-case-001",
+  "protected-pascal-case-001",
+  "protected-cve-001",
+  "protected-package-name-001",
+  "protected-env-var-001",
+  "cyber-nmap-001",
+  "cyber-sqlmap-001",
+  "cyber-kubectl-001",
+].map(requireNoWriteCase);
+
+const casingAndPunctuationCases: CasingPunctuationCase[] = [
+  { ...requireAutocorrectCase("case-trailing-comma-001"), expectedMark: "the" },
+  { ...requireAutocorrectCase("case-trailing-teh-period-001"), expectedMark: "the" },
+  { ...requireAutocorrectCase("case-capitalized-teh-001"), expectedMark: "The" },
+  { ...requireAutocorrectCase("case-upper-teh-001"), expectedMark: "THE" },
+];
 
 const surfaces: Array<{
   name: string;
@@ -56,7 +139,8 @@ for (const surface of surfaces) {
   test(`${surface.name} matches spell quality parity gates`, async ({ page }, testInfo) => {
     const harness = await surface.open(page, testInfo);
 
-    for (const { token, replacement } of surfaceParityAutocorrections) {
+    for (const { id, token, replacement } of surfaceParityAutocorrections) {
+      expect(id).toBeTruthy();
       await typeFresh(harness, `${token} `);
       await harness.expectText(`${replacement} `);
       await expect(harness.blueMark()).toHaveText(replacement);
@@ -67,7 +151,8 @@ for (const surface of surfaces) {
       await harness.expectNoMarks();
     }
 
-    for (const { token, suggestion } of surfaceParitySuggestionCases) {
+    for (const { id, token, suggestion } of surfaceParitySuggestionCases) {
+      expect(id).toBeTruthy();
       await typeFresh(harness, `${token} `);
       await harness.expectText(`${token} `);
       await expect(harness.redMark()).toHaveText(token);
@@ -90,15 +175,17 @@ for (const surface of surfaces) {
       await harness.expectNoMarks();
     }
 
-    for (const { input, expectedText, expectedMark } of [
-      { input: "teh,", expectedText: "the,", expectedMark: "the" },
-      { input: "Teh ", expectedText: "The ", expectedMark: "The" },
-      { input: "TEH ", expectedText: "THE ", expectedMark: "THE" },
-    ]) {
-      await typeFresh(harness, input);
-      await harness.expectText(expectedText);
+    for (const { token, replacement, expectedMark } of casingAndPunctuationCases) {
+      await typeFresh(harness, `${token} `);
+      await harness.expectText(`${replacement} `);
       await expect(harness.blueMark()).toHaveText(expectedMark);
     }
+
+    const quotedTeh = requireNoWriteCase("case-leading-quote-001");
+
+    await typeFresh(harness, `${quotedTeh} `);
+    await harness.expectText(`${quotedTeh} `);
+    await harness.expectNoMarks();
 
     await typeFresh(harness, "zzzzword ");
     await expect(harness.redMark()).toHaveText("zzzzword");
@@ -151,6 +238,10 @@ test("CodeMirror markdown protects code contexts while prose keeps improved spel
   await harness.expectText("```bash\nffuf https://example.com ");
   await harness.expectNoMarks();
 
+  await typeFresh(harness, "- adress ");
+  await harness.expectText("- address ");
+  await expect(harness.blueMark()).toHaveText("address");
+
   await typeFresh(harness, "Please adress ");
   await harness.expectText("Please address ");
   await expect(harness.blueMark()).toHaveText("address");
@@ -165,8 +256,11 @@ test("spell quality surface parity matrix is enumerated", () => {
     protectedTerms: "pass",
     hostProvidedPath: "covered by core/golden fixture",
     casingAndPunctuation: "pass",
+    quotedTokenPolicy: "conservative no-write",
     personalDictionary: "pass",
     correctionRules: "pass",
+    markdownCodeContexts: surface.name === "CodeMirror" ? "pass" : "n/a",
+    staleRaceIme: "covered by adapter/completion E2E",
     completionCoexistence: "covered by V4.1 completion E2E",
   }));
 
@@ -538,6 +632,64 @@ function uniqueDbName(testInfo: TestInfo, suffix: string): string {
 
 function exactText(text: string): RegExp {
   return new RegExp(`^${escapeRegExp(text)}$`);
+}
+
+function requireCorpusRow(
+  id: string,
+  requiredSurfaces: readonly SpellQualitySurface[] = surfaceApplicability,
+): SpellQualityCorpusRow {
+  const row = corpusRowById.get(id);
+
+  if (row === undefined) {
+    throw new Error(`Missing spell-quality corpus row ${id}.`);
+  }
+
+  for (const surface of requiredSurfaces) {
+    if (!row.surfaceApplicability.includes(surface)) {
+      throw new Error(`Spell-quality corpus row ${id} does not apply to ${surface}.`);
+    }
+  }
+
+  return row;
+}
+
+function requireAutocorrectCase(id: string): CorpusAutocorrectCase {
+  const row = requireCorpusRow(id);
+
+  if (row.expectedAction !== "auto_correct" || row.expectedReplacement === undefined) {
+    throw new Error(`Spell-quality corpus row ${id} is not an autocorrect case.`);
+  }
+
+  return {
+    id,
+    token: row.input,
+    replacement: row.expectedReplacement,
+  };
+}
+
+function requireSuggestionCase(id: string): CorpusSuggestionCase {
+  const row = requireCorpusRow(id);
+  const suggestion = row.expectedSuggestions?.[0];
+
+  if (row.expectedAction !== "suggestions_only" || suggestion === undefined) {
+    throw new Error(`Spell-quality corpus row ${id} is not a suggestions-only case.`);
+  }
+
+  return {
+    id,
+    token: row.input,
+    suggestion,
+  };
+}
+
+function requireNoWriteCase(id: string): string {
+  const row = requireCorpusRow(id);
+
+  if (row.expectedAction !== "do_nothing") {
+    throw new Error(`Spell-quality corpus row ${id} is not a no-write case.`);
+  }
+
+  return row.input;
 }
 
 function escapeRegExp(text: string): string {

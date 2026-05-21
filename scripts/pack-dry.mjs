@@ -105,9 +105,17 @@ function validateCorePackedFiles(pkg, cwd, files) {
     }
   }
 
-  const productionStatus = readProductionManifestStatus(cwd);
+  const productionManifest = readProductionManifest(cwd);
+  const productionStatus = productionManifest.review?.status ?? "unknown";
+  const packageInclusion = productionManifest.output?.packageInclusion ?? "unknown";
 
   if (productionStatus === "blocked") {
+    if (packageInclusion !== "blocked") {
+      throw new Error(
+        `${pkg.name} blocked production manifest must keep output.packageInclusion blocked, got ${packageInclusion}.`,
+      );
+    }
+
     for (const file of files) {
       if (
         file.startsWith("assets/") ||
@@ -118,6 +126,39 @@ function validateCorePackedFiles(pkg, cwd, files) {
           `${pkg.name} dry-run includes blocked production or raw asset file: ${file}`,
         );
       }
+    }
+
+    return;
+  }
+
+  if (productionStatus !== "approved") {
+    throw new Error(
+      `${pkg.name} production manifest review.status must be approved or blocked, got ${productionStatus}.`,
+    );
+  }
+
+  if (
+    packageInclusion === "committed-generated-binary" ||
+    packageInclusion === "generated-during-prepack"
+  ) {
+    for (const requiredFile of [
+      "assets/production/MANIFEST.json",
+      "assets/production/ATTRIBUTION.md",
+      "assets/production/LICENSES/README.md",
+    ]) {
+      if (!files.includes(requiredFile)) {
+        throw new Error(`${pkg.name} approved production inclusion is missing ${requiredFile}.`);
+      }
+    }
+
+    if (!files.some((file) => /(?:^|\/)production-en-us\.dictionary\.bin$/i.test(file))) {
+      throw new Error(`${pkg.name} approved production inclusion is missing the generated binary.`);
+    }
+  }
+
+  for (const file of files) {
+    if (isRawDictionarySourceFile(file)) {
+      throw new Error(`${pkg.name} dry-run includes raw dictionary/frequency source file: ${file}`);
     }
   }
 }
@@ -160,21 +201,27 @@ function validatePackedSecrets(pkg, cwd, files) {
   }
 }
 
-function readProductionManifestStatus(cwd) {
+function readProductionManifest(cwd) {
   for (const manifestFile of [
     "assets/production/MANIFEST.json",
     "assets/production/MANIFEST.template.json",
   ]) {
     try {
-      const manifest = JSON.parse(readFileSync(resolve(cwd, manifestFile), "utf8"));
-
-      return manifest.review?.status ?? "unknown";
+      return JSON.parse(readFileSync(resolve(cwd, manifestFile), "utf8"));
     } catch {
       // Try the fallback manifest path.
     }
   }
 
-  return "unknown";
+  return { review: { status: "unknown" }, output: { packageInclusion: "unknown" } };
+}
+
+function isRawDictionarySourceFile(file) {
+  return (
+    /\.(?:aff|dic|gz|tsv|zip)$/i.test(file) ||
+    /(?:^|\/)totalcounts-\d+$/i.test(file) ||
+    /(?:^|\/)books-ngram/i.test(file)
+  );
 }
 
 function resolveCommand(command, args) {

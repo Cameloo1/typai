@@ -45,7 +45,10 @@ Package label: `stable-beta` for deterministic correction APIs.
   - `suggestToken`
   - memory import/export/reset APIs
   - personal dictionary APIs
-  - dictionary loading APIs
+  - dictionary loading APIs and primitive dictionary/delete-index stats,
+    including `getLoadedDictionaryWordCount()`,
+    `getLoadedDictionaryByteSize()`, `getDeleteIndexEntryCount()`, and
+    `getDeleteIndexMemoryEstimateBytes()`
 - Storage APIs:
   - `TypaiStorage`
   - `createMemoryStorage`
@@ -71,6 +74,10 @@ Behavior note for Prompt 103:
   spelling issues still use red marks.
 - Delete-index and edit-distance candidates remain suggestions-only unless the
   token is explicitly present in the audited common-typo table.
+- `TypaiDictionaryMode` currently includes `built-in`, `host-provided`,
+  `production`, `fixture`, and `scaled-mock`. `production` remains unavailable
+  while the production asset manifest is blocked; fixture and scaled-mock modes
+  are diagnostic/test asset modes, not production coverage.
 
 `private`:
 

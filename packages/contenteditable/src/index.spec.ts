@@ -104,6 +104,41 @@ describe("attachContenteditable", () => {
     expect(textChanges).toContainEqual({ text: "the ", caretOffset: 4 });
   });
 
+  it("keeps a punctuation-triggered blue mark after the following space", () => {
+    const element = new TestEditable();
+    const marks: VisualMark[] = [];
+
+    attachContenteditable({
+      element: element as unknown as HTMLElement,
+      typai: createStubTypai(),
+      onMark: (mark) => marks.push(mark),
+      onMarkRemoved: (removedMark) => {
+        const index = marks.findIndex((mark) => mark.id === removedMark.id);
+
+        if (index >= 0) {
+          marks.splice(index, 1);
+        }
+      },
+    });
+
+    element.textContent = "teh.";
+    element.dispatchEvent(inputEvent("."));
+
+    expect(element.textContent).toBe("the.");
+    expect(marks).toHaveLength(1);
+    expect(marks[0]).toMatchObject({
+      range: { start: 0, end: 3 },
+      kind: "blue_applied_correction",
+    });
+
+    element.textContent = `${element.textContent} `;
+    element.dispatchEvent(inputEvent(" "));
+
+    expect(element.textContent).toBe("the. ");
+    expect(marks).toHaveLength(1);
+    expect(element.textContent?.slice(marks[0]?.range.start, marks[0]?.range.end)).toBe("the");
+  });
+
   it("does not write when a reentrant input changes the document version before apply", () => {
     const element = new TestEditable();
     const corrections: CorrectionTransaction[] = [];
@@ -253,6 +288,35 @@ describe("attachContenteditable", () => {
     expect(corrections).toHaveLength(0);
     expect(marks).toHaveLength(0);
     expect(protectedSkips).toEqual([token]);
+  });
+
+  it("does not mark an in-progress URL scheme before the full URL is typed", () => {
+    const element = new TestEditable();
+    const typai = createStubTypai();
+    const marks: VisualMark[] = [];
+    const protectedSkips: string[] = [];
+
+    attachContenteditable({
+      element: element as unknown as HTMLElement,
+      typai,
+      onMark: (mark) => marks.push(mark),
+      onProtectedSkip: (skippedToken) => protectedSkips.push(skippedToken.text),
+    });
+
+    element.textContent = "https:";
+    element.dispatchEvent(inputEvent(":"));
+
+    expect(typai.calls).toEqual([]);
+    expect(marks).toHaveLength(0);
+    expect(protectedSkips).toEqual(["https"]);
+
+    element.textContent = "https://example.com ";
+    element.dispatchEvent(inputEvent(" "));
+
+    expect(element.textContent).toBe("https://example.com ");
+    expect(typai.calls).toEqual([]);
+    expect(marks).toHaveLength(0);
+    expect(protectedSkips.at(-1)).toBe("https://example.com");
   });
 
   it("emits an unresolved mark without mutating text", () => {
@@ -1259,6 +1323,9 @@ function createStubTypai(options: StubTypaiOptions = {}): StubTypai {
       };
     },
     getLoadedDictionaryWordCount() {
+      return 0;
+    },
+    getLoadedDictionaryByteSize() {
       return 0;
     },
     getDeleteIndexEntryCount() {

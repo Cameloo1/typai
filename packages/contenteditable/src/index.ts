@@ -597,7 +597,11 @@ function processCompletedToken(
     return;
   }
 
-  if (token.protected || isProtectedTokenText(token.text)) {
+  if (
+    token.protected ||
+    isProtectedTokenText(token.text) ||
+    isProtectedTokenPrefix(token, delimiter)
+  ) {
     options.onProtectedSkip?.(token);
     return;
   }
@@ -867,7 +871,7 @@ async function applyRedSuggestion(
     return { applied: false, reason: "missing_mark" };
   }
 
-  if (!validateStoredMark(options, state, mark)) {
+  if (!validateStoredMark(options, mark)) {
     return { applied: false, reason: "stale_range" };
   }
 
@@ -939,7 +943,7 @@ function revertBlueCorrection(
 
   const transaction = findTransaction(state, mark);
 
-  if (transaction === null || !validateStoredMark(options, state, mark)) {
+  if (transaction === null || !validateStoredMark(options, mark)) {
     return Promise.resolve({ applied: false, reason: "stale_range" });
   }
 
@@ -1004,7 +1008,7 @@ function getCurrentStoredMark(
     return null;
   }
 
-  if (!validateStoredMark(options, state, mark)) {
+  if (!validateStoredMark(options, mark)) {
     removeStoredMark(options, state, mark.id);
     return null;
   }
@@ -1014,16 +1018,18 @@ function getCurrentStoredMark(
 
 function validateStoredMark(
   options: AttachContenteditableOptions,
-  state: AdapterState,
   mark: StoredVisualMark,
 ): boolean {
-  return rangeStillMatches({
-    documentVersion: mark.documentVersion,
-    currentDocumentVersion: state.documentVersion,
-    text: readElementText(options.element),
-    range: mark.range,
-    expectedText: mark.text,
-  });
+  const text = readElementText(options.element);
+
+  return (
+    mark.range.start >= 0 &&
+    mark.range.end <= text.length &&
+    mark.range.start < mark.range.end &&
+    text.slice(mark.range.start, mark.range.end) === mark.text &&
+    !isWordContinuation(text[mark.range.start - 1]) &&
+    !isWordContinuation(text[mark.range.end])
+  );
 }
 
 function getPastePlainText(event: Event): string | null {
@@ -1054,7 +1060,7 @@ function normalizePastedText(text: string): string {
 
 function pruneAdapterMarks(options: AttachContenteditableOptions, state: AdapterState): void {
   for (const mark of state.marks.values()) {
-    if (!validateStoredMark(options, state, mark)) {
+    if (!validateStoredMark(options, mark)) {
       removeStoredMark(options, state, mark.id);
     }
   }
@@ -1284,6 +1290,10 @@ function triggerFromDelimiter(delimiter: string): CorrectionTrigger {
   }
 
   return "punctuation";
+}
+
+function isProtectedTokenPrefix(token: Token, delimiter: string): boolean {
+  return delimiter === ":" && /^https?$/i.test(token.text);
 }
 
 function getCaretOffset(element: HTMLElement, fallbackText: string): number {

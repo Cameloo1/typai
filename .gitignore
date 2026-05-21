@@ -8,6 +8,7 @@ dist/
 coverage/
 test-results/
 playwright-report/
+reports/spell-quality/latest.json
 *.tsbuildinfo
 .DS_Store
 .env

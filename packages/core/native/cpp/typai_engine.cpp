@@ -65,6 +65,7 @@ struct LoadedDictionary {
   unsigned int string_table_len;
   unsigned int entry_count;
   unsigned int trie_count;
+  unsigned int blob_byte_size;
 };
 
 struct DeleteKey {
@@ -187,6 +188,7 @@ void clear_loaded_dictionary_state(LoadedDictionary& dictionary) {
   dictionary.string_table_len = 0;
   dictionary.entry_count = 0;
   dictionary.trie_count = 0;
+  dictionary.blob_byte_size = 0;
 }
 
 void clear_delete_index_state(DeleteIndex& index) {
@@ -1220,6 +1222,7 @@ int load_dictionary_blob(
 
   clear_loaded_dictionary_state(g_staging_dictionary);
   g_staging_dictionary.string_table_len = string_table_len;
+  g_staging_dictionary.blob_byte_size = data_len;
 
   for (unsigned int index = 0; index < string_table_len; ++index) {
     g_staging_dictionary.string_table[index] =
@@ -1448,6 +1451,10 @@ extern "C" void typai_clear_loaded_dictionary() {
 
 extern "C" unsigned int typai_loaded_dictionary_word_count() {
   return typai::g_loaded_dictionary.entry_count;
+}
+
+extern "C" unsigned int typai_loaded_dictionary_byte_size() {
+  return typai::g_loaded_dictionary.blob_byte_size;
 }
 
 extern "C" unsigned int typai_delete_index_entry_count() {

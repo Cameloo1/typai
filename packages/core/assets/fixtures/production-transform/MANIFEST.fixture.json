@@ -4,55 +4,61 @@
   "dictionary": {
     "name": "Typai production transform dictionary fixture",
     "sourceUrl": "repo-local:packages/core/assets/fixtures/production-transform/dictionary.fixture.txt",
-    "version": "prompt-110-fixture-v1",
+    "version": "prompt-131-fixture-v1",
     "sourceFiles": [
       {
         "path": "packages/core/assets/fixtures/production-transform/dictionary.fixture.txt",
-        "sha256": "1c25f6ba08fb0a61febb244cd5950a4b6d516974faf4e49572d6a703bbfd704c"
+        "sha256": "04575ae7996a4cf9aa197c828b2ae5090f656dd6bd116180ad0d5ab90ea48bb0"
       }
     ],
     "license": "repo-local fixture",
     "licenseFile": "packages/core/assets/production/LICENSES/README.md",
-    "sha256": "1c25f6ba08fb0a61febb244cd5950a4b6d516974faf4e49572d6a703bbfd704c",
-    "attribution": "No third-party attribution. Repo-local transform fixture only."
+    "sha256": "04575ae7996a4cf9aa197c828b2ae5090f656dd6bd116180ad0d5ab90ea48bb0",
+    "attribution": "No third-party attribution. Repo-local transform fixture only.",
+    "redistribution": "approved"
   },
   "frequency": {
     "name": "Typai production transform frequency fixture",
     "sourceUrl": "repo-local:packages/core/assets/fixtures/production-transform/frequency.fixture.tsv",
-    "version": "prompt-110-fixture-v1",
+    "version": "prompt-131-fixture-v1",
     "sourceFiles": [
       {
         "path": "packages/core/assets/fixtures/production-transform/frequency.fixture.tsv",
-        "sha256": "a64a2fe85f210c9c86146467f75e5472cf010d272785d77631dc68c57e109f83"
+        "sha256": "0d02b09a0b48c9bae9250554bb35e1930926ecd1bf82ea7b01d47e11db79ff70"
       }
     ],
     "license": "repo-local fixture",
     "licenseFile": "packages/core/assets/production/LICENSES/README.md",
-    "sha256": "a64a2fe85f210c9c86146467f75e5472cf010d272785d77631dc68c57e109f83",
-    "attribution": "No third-party attribution. Repo-local transform fixture only."
+    "sha256": "0d02b09a0b48c9bae9250554bb35e1930926ecd1bf82ea7b01d47e11db79ff70",
+    "attribution": "No third-party attribution. Repo-local transform fixture only.",
+    "redistribution": "approved"
   },
   "transform": {
     "script": "packages/core/scripts/build-production-dictionary.mjs",
-    "version": "prompt-110-production-transform-v1",
+    "version": "prompt-131-production-transform-v1",
     "filters": [
       "normalize dictionary words to lowercase ASCII alphabetic tokens",
       "strip Hunspell-style affix flags when present",
       "exclude protected-looking URL, email, path, identifier, numeric, and hyphenated tokens",
+      "exclude apostrophe, trailing-punctuation, and non-ASCII tokens",
       "deduplicate dictionary entries deterministically",
       "aggregate frequency rows deterministically",
       "emit Typai Dictionary Blob v1"
     ],
+    "networkFetchAllowed": false,
     "generatedAt": null
   },
   "output": {
     "wordCount": null,
     "byteSize": null,
-    "packageInclusion": "generated-in-prepack",
+    "sha256": "",
+    "packageInclusion": "host-provided-only",
     "assetPath": ""
   },
   "review": {
     "status": "approved",
-    "reviewedAt": "2026-05-19",
+    "reviewedAt": "2026-05-20",
+    "reviewer": "manual-release-operator",
     "reviewNotes": "Repo-local fixture manifest approved only for transform tests. Not a production language asset."
   }
 }

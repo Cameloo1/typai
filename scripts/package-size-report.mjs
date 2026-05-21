@@ -2,27 +2,33 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { delimiter, resolve } from "node:path";
 
+import {
+  createPackagePolicyReport,
+  isInspectable,
+  isProductionAssetFile,
+  isProductionBinaryFile,
+  isProductionNoticeFile,
+  isRawSourceFile,
+  defaultPackageSizeThresholds as thresholds,
+} from "./package-size-report-utils.mjs";
 import { releasePackages } from "./release-config.mjs";
 
-const productionManifestPath = resolve("packages/core/assets/production/MANIFEST.template.json");
+const productionManifestPath = resolve("packages/core/assets/production/MANIFEST.json");
 const manifest = readJson(productionManifestPath);
-const productionStatus = manifest.review?.status ?? "unknown";
-const productionPackageInclusion = manifest.output?.packageInclusion ?? "unknown";
-const thresholds = {
-  packageWarningBytes: 512 * 1024,
-  packageFailBytes: 2 * 1024 * 1024,
-  blockedCoreWarningBytes: 256 * 1024,
-  blockedCoreFailBytes: 1024 * 1024,
-  productionAssetTargetBytes: 2 * 1024 * 1024,
-  productionAssetFailBytes: 8 * 1024 * 1024,
-};
-const findings = [];
-const warnings = [];
 const packageReports = releasePackages.map(inspectPackage);
+const policyReport = createPackagePolicyReport({
+  manifest,
+  packageReports,
+  thresholds,
+});
+const { production, warnings, findings } = policyReport;
 
 for (const report of packageReports) {
-  validatePackageSize(report);
-  validatePackedFiles(report);
+  for (const file of report.files) {
+    if (isInspectable(file.path)) {
+      validateInspectableFile(report, file.path);
+    }
+  }
 }
 
 printReport();
@@ -56,102 +62,22 @@ function inspectPackage(pkg) {
       path: file.path,
       sizeBytes: file.size,
     })),
+    generatedWasmBytes: packed.files
+      .filter((file) => file.path.toLowerCase().endsWith(".wasm"))
+      .reduce((total, file) => total + file.size, 0),
+    productionBinaryBytes: packed.files
+      .filter((file) => isProductionBinaryFile(file.path))
+      .reduce((total, file) => total + file.size, 0),
+    productionBinaryFiles: packed.files
+      .filter((file) => isProductionBinaryFile(file.path))
+      .map((file) => file.path),
+    rawSourceFiles: packed.files
+      .filter((file) => isRawSourceFile(file.path))
+      .map((file) => file.path),
+    productionNoticeFiles: packed.files
+      .filter((file) => isProductionNoticeFile(file.path))
+      .map((file) => file.path),
   };
-}
-
-function validatePackageSize(report) {
-  if (report.name === "@typai/core" && productionStatus === "blocked") {
-    if (report.sizeBytes > thresholds.blockedCoreWarningBytes) {
-      warnings.push(
-        `${report.name} blocked-state tarball ${formatBytes(
-          report.sizeBytes,
-        )} exceeds warning threshold ${formatBytes(thresholds.blockedCoreWarningBytes)}`,
-      );
-    }
-
-    if (report.sizeBytes > thresholds.blockedCoreFailBytes) {
-      findings.push(
-        `${report.name} blocked-state tarball ${formatBytes(
-          report.sizeBytes,
-        )} exceeds failure threshold ${formatBytes(thresholds.blockedCoreFailBytes)}`,
-      );
-    }
-
-    return;
-  }
-
-  if (report.sizeBytes > thresholds.packageWarningBytes) {
-    warnings.push(
-      `${report.name} tarball ${formatBytes(report.sizeBytes)} exceeds warning threshold ${formatBytes(
-        thresholds.packageWarningBytes,
-      )}`,
-    );
-  }
-
-  if (report.sizeBytes > thresholds.packageFailBytes) {
-    findings.push(
-      `${report.name} tarball ${formatBytes(report.sizeBytes)} exceeds failure threshold ${formatBytes(
-        thresholds.packageFailBytes,
-      )}`,
-    );
-  }
-}
-
-function validatePackedFiles(report) {
-  for (const file of report.files) {
-    if (file.path.toLowerCase().includes(".env")) {
-      findings.push(`${report.name} includes env-like file: ${file.path}`);
-    }
-
-    if (isRawSourceFile(file.path)) {
-      findings.push(`${report.name} includes raw dictionary/frequency source file: ${file.path}`);
-    }
-
-    if (isProductionAssetFile(file.path) && productionStatus === "blocked") {
-      findings.push(`${report.name} includes blocked production asset file: ${file.path}`);
-    }
-
-    if (isInspectable(file.path)) {
-      validateInspectableFile(report, file.path);
-    }
-  }
-
-  if (report.name !== "@typai/core") {
-    return;
-  }
-
-  if (productionStatus === "blocked") {
-    if (productionPackageInclusion !== "blocked") {
-      findings.push(
-        `blocked manifest must keep output.packageInclusion blocked, got ${productionPackageInclusion}`,
-      );
-    }
-
-    for (const file of report.files) {
-      if (file.path.startsWith("assets/")) {
-        findings.push(
-          `@typai/core includes assets/ while production manifest is blocked: ${file.path}`,
-        );
-      }
-    }
-
-    return;
-  }
-
-  if (productionStatus !== "approved") {
-    findings.push(
-      `production manifest review.status must be blocked or approved, got ${productionStatus}`,
-    );
-    return;
-  }
-
-  if (
-    productionPackageInclusion === "committed" ||
-    productionPackageInclusion === "generated-in-prepack"
-  ) {
-    requireCoreProductionNoticeFiles(report);
-    validateIncludedProductionAssetSize(report);
-  }
 }
 
 function validateInspectableFile(report, filePath) {
@@ -170,49 +96,11 @@ function validateInspectableFile(report, filePath) {
   }
 }
 
-function requireCoreProductionNoticeFiles(report) {
-  const paths = new Set(report.files.map((file) => file.path));
-  const required = [
-    "assets/production/MANIFEST.json",
-    "assets/production/ATTRIBUTION.md",
-    "assets/production/LICENSES/README.md",
-  ];
-
-  for (const filePath of required) {
-    if (!paths.has(filePath)) {
-      findings.push(`@typai/core approved production inclusion is missing ${filePath}`);
-    }
-  }
-}
-
-function validateIncludedProductionAssetSize(report) {
-  const productionAssets = report.files.filter((file) => isProductionAssetFile(file.path));
-  const totalProductionAssetBytes = productionAssets.reduce(
-    (total, file) => total + file.sizeBytes,
-    0,
-  );
-
-  if (totalProductionAssetBytes > thresholds.productionAssetTargetBytes) {
-    warnings.push(
-      `@typai/core production asset files total ${formatBytes(
-        totalProductionAssetBytes,
-      )}, above target ${formatBytes(thresholds.productionAssetTargetBytes)}`,
-    );
-  }
-
-  if (totalProductionAssetBytes > thresholds.productionAssetFailBytes) {
-    findings.push(
-      `@typai/core production asset files total ${formatBytes(
-        totalProductionAssetBytes,
-      )}, above failure threshold ${formatBytes(thresholds.productionAssetFailBytes)}`,
-    );
-  }
-}
-
 function printReport() {
   console.log("Typai package size report");
-  console.log(`production review.status: ${productionStatus}`);
-  console.log(`production package inclusion: ${productionPackageInclusion}`);
+  console.log(`production review.status: ${production.status}`);
+  console.log(`production package inclusion: ${production.packageInclusion}`);
+  console.log(`selected delivery mode: ${production.selectedDeliveryMode}`);
   console.log(
     `blocked @typai/core warn/fail: ${formatBytes(
       thresholds.blockedCoreWarningBytes,
@@ -236,6 +124,13 @@ function printReport() {
     console.log(`packed size: ${formatBytes(report.sizeBytes)}`);
     console.log(`unpacked size: ${formatBytes(report.unpackedSizeBytes)}`);
     console.log(`files: ${report.fileCount}`);
+    console.log(`generated Wasm size: ${formatBytes(report.generatedWasmBytes)}`);
+    console.log(`production binary included: ${report.productionBinaryFiles.join(", ") || "no"}`);
+    console.log(`production binary size: ${formatBytes(report.productionBinaryBytes)}`);
+    console.log(`raw source files included: ${report.rawSourceFiles.join(", ") || "no"}`);
+    console.log(
+      `manifest/license/attribution included: ${report.productionNoticeFiles.join(", ") || "no"}`,
+    );
     console.log(
       `production/raw asset files: ${
         report.files
@@ -249,36 +144,11 @@ function printReport() {
   console.log("");
   console.log(
     `package-size-report-json: ${JSON.stringify({
-      production: {
-        status: productionStatus,
-        packageInclusion: productionPackageInclusion,
-      },
-      thresholds,
-      packages: packageReports,
-      warnings,
+      ...policyReport,
       findings,
+      warnings,
     })}`,
   );
-}
-
-function isProductionAssetFile(path) {
-  return (
-    path.startsWith("assets/production/") ||
-    /production.*dictionary/i.test(path) ||
-    /production.*frequency/i.test(path)
-  );
-}
-
-function isRawSourceFile(path) {
-  return (
-    /\.(?:aff|dic|gz|tsv|zip)$/i.test(path) ||
-    /(?:^|\/)totalcounts-\d+$/i.test(path) ||
-    /(?:^|\/)books-ngram/i.test(path)
-  );
-}
-
-function isInspectable(path) {
-  return /\.(?:cjs|css|cts|d\.ts|html|js|json|mjs|mts|ts|txt|md)$/i.test(path);
 }
 
 function runPackDry(cwd) {

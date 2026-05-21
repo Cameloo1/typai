@@ -58,6 +58,8 @@ unsafe extern "C" {
 
     fn typai_loaded_dictionary_word_count() -> u32;
 
+    fn typai_loaded_dictionary_byte_size() -> u32;
+
     fn typai_delete_index_entry_count() -> u32;
 
     fn typai_delete_index_memory_estimate_bytes() -> u32;
@@ -155,6 +157,10 @@ fn clear_loaded_dictionary() {
 
 fn loaded_dictionary_word_count() -> u32 {
     unsafe { typai_loaded_dictionary_word_count() }
+}
+
+fn loaded_dictionary_byte_size() -> u32 {
+    unsafe { typai_loaded_dictionary_byte_size() }
 }
 
 fn delete_index_entry_count() -> u32 {
@@ -502,9 +508,11 @@ fn valid_mock_dictionary_blob_loads_and_counts_words() {
     assert_eq!(code, TYPAI_DICTIONARY_LOAD_OK);
     assert_eq!(word_count, mock_word_count(&blob));
     assert_eq!(loaded_dictionary_word_count(), mock_word_count(&blob));
+    assert_eq!(loaded_dictionary_byte_size(), blob.len() as u32);
     assert_ne!(reason_flags & TYPAI_REASON_DICTIONARY_LOADED, 0);
 
     clear_loaded_dictionary();
+    assert_eq!(loaded_dictionary_byte_size(), 0);
 }
 
 #[test]
@@ -548,6 +556,7 @@ fn malformed_dictionary_does_not_replace_existing_delete_index() {
     assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
 
     let word_count_before = loaded_dictionary_word_count();
+    let byte_size_before = loaded_dictionary_byte_size();
     let index_count_before = delete_index_entry_count();
     let index_memory_before = delete_index_memory_estimate_bytes();
     let mut invalid = blob;
@@ -555,6 +564,7 @@ fn malformed_dictionary_does_not_replace_existing_delete_index() {
 
     assert_eq!(load_dictionary_blob(&invalid).0, TYPAI_DICTIONARY_LOAD_INVALID_MAGIC);
     assert_eq!(loaded_dictionary_word_count(), word_count_before);
+    assert_eq!(loaded_dictionary_byte_size(), byte_size_before);
     assert_eq!(delete_index_entry_count(), index_count_before);
     assert_eq!(delete_index_memory_estimate_bytes(), index_memory_before);
     assert!(suggest_token("adress").suggestions.iter().any(|suggestion| suggestion == "address"));
@@ -672,6 +682,7 @@ fn invalid_dictionary_magic_is_rejected_without_replacing_current_dictionary() {
     clear_loaded_dictionary();
     let blob = mock_dictionary_blob();
     assert_eq!(load_dictionary_blob(&blob).0, TYPAI_DICTIONARY_LOAD_OK);
+    let byte_size_before = loaded_dictionary_byte_size();
 
     let mut invalid = blob;
     invalid[0] = b'X';
@@ -681,6 +692,7 @@ fn invalid_dictionary_magic_is_rejected_without_replacing_current_dictionary() {
     assert_eq!(word_count, 0);
     assert_ne!(reason_flags & TYPAI_REASON_DICTIONARY_INVALID_MAGIC, 0);
     assert!(loaded_dictionary_word_count() > 0);
+    assert_eq!(loaded_dictionary_byte_size(), byte_size_before);
 
     clear_loaded_dictionary();
 }

@@ -1564,6 +1564,9 @@ async function startDemo(
     getLoadedDictionaryWordCount() {
       return core.getLoadedDictionaryWordCount();
     },
+    getLoadedDictionaryByteSize() {
+      return core.getLoadedDictionaryByteSize();
+    },
     getDeleteIndexEntryCount() {
       return core.getDeleteIndexEntryCount();
     },

@@ -119,6 +119,14 @@ test("reports contenteditable browser-path demo latency smoke metrics", async ({
   console.log(`p95: ${formatMs(summary.p95)}`);
   console.log(`p99: ${formatMs(summary.p99)}`);
   console.log(`max: ${formatMs(summary.max)}`);
+  emitBrowserBenchmarkJson({
+    label: "Typai browser demo latency smoke benchmark",
+    kind: "deterministic-correction",
+    surface: "contenteditable",
+    summary,
+    warningMs: warningTargetMs,
+    failMs: hardFailureThresholdMs,
+  });
 
   if (summary.p95 > warningTargetMs) {
     console.warn(`warning: browser p95 exceeded ${warningTargetMs} ms target`);
@@ -174,6 +182,14 @@ test("reports textarea browser-path demo latency smoke metrics", async ({ page }
   console.log(`p95: ${formatMs(summary.p95)}`);
   console.log(`p99: ${formatMs(summary.p99)}`);
   console.log(`max: ${formatMs(summary.max)}`);
+  emitBrowserBenchmarkJson({
+    label: "Typai textarea browser latency smoke benchmark",
+    kind: "deterministic-correction",
+    surface: "textarea",
+    summary,
+    warningMs: warningTargetMs,
+    failMs: hardFailureThresholdMs,
+  });
 
   if (summary.p95 > warningTargetMs) {
     console.warn(`warning: textarea browser p95 exceeded ${warningTargetMs} ms target`);
@@ -182,6 +198,66 @@ test("reports textarea browser-path demo latency smoke metrics", async ({ page }
   if (summary.p95 > hardFailureThresholdMs) {
     console.error(
       `error: textarea browser p95 exceeded ${hardFailureThresholdMs} ms hard failure threshold`,
+    );
+  }
+
+  expect(summary.count).toBeGreaterThanOrEqual(textareaBenchmarkTokens.length * rounds);
+  expectFiniteSummary(summary);
+  expect(summary.p95).toBeLessThan(hardFailureThresholdMs);
+});
+
+test("reports React textarea browser-path demo latency smoke metrics", async ({ page }) => {
+  await page.goto(`/?typaiDbName=typai-react-textarea-latency-${Date.now()}&storage=memory`);
+  await expectDemoReady(page);
+  await page.getByRole("button", { name: /React.*Demo/ }).click();
+  const root = page.getByTestId("react-demo-root");
+
+  await expect(root).toBeVisible();
+  await expect(root.getByTestId("react-core-status")).toHaveText("ready");
+
+  const textarea = root.getByTestId("react-textarea");
+  const samples: number[] = [];
+
+  for (let round = 0; round < rounds; round += 1) {
+    for (const token of textareaBenchmarkTokens) {
+      await root.getByTestId("react-reset").click();
+      await expect(textarea).toHaveValue("");
+      samples.push(await dispatchReactTextareaInput(textarea, `${token} `));
+      await expect(textarea).toHaveValue(/.+/);
+    }
+  }
+
+  const summary = summarizeLatencies(samples);
+
+  console.log("Typai React textarea browser latency smoke benchmark");
+  console.log(`tokens: ${textareaBenchmarkTokens.join(", ")}`);
+  console.log(
+    `p95 warning/fail thresholds: ${formatMs(warningTargetMs)} / ${formatMs(
+      hardFailureThresholdMs,
+    )}`,
+  );
+  console.log(`count: ${summary.count}`);
+  console.log(`mean: ${formatMs(summary.mean)}`);
+  console.log(`p50: ${formatMs(summary.p50)}`);
+  console.log(`p95: ${formatMs(summary.p95)}`);
+  console.log(`p99: ${formatMs(summary.p99)}`);
+  console.log(`max: ${formatMs(summary.max)}`);
+  emitBrowserBenchmarkJson({
+    label: "Typai React textarea browser latency smoke benchmark",
+    kind: "deterministic-correction",
+    surface: "react-textarea",
+    summary,
+    warningMs: warningTargetMs,
+    failMs: hardFailureThresholdMs,
+  });
+
+  if (summary.p95 > warningTargetMs) {
+    console.warn(`warning: React textarea browser p95 exceeded ${warningTargetMs} ms target`);
+  }
+
+  if (summary.p95 > hardFailureThresholdMs) {
+    console.error(
+      `error: React textarea browser p95 exceeded ${hardFailureThresholdMs} ms hard failure threshold`,
     );
   }
 
@@ -231,6 +307,14 @@ test("reports CodeMirror browser-path demo latency smoke metrics", async ({ page
   console.log(`p95: ${formatMs(summary.p95)}`);
   console.log(`p99: ${formatMs(summary.p99)}`);
   console.log(`max: ${formatMs(summary.max)}`);
+  emitBrowserBenchmarkJson({
+    label: "typai CodeMirror browser latency smoke benchmark",
+    kind: "deterministic-correction",
+    surface: "codemirror",
+    summary,
+    warningMs: warningTargetMs,
+    failMs: hardFailureThresholdMs,
+  });
 
   if (summary.p95 > warningTargetMs) {
     console.warn(`warning: CodeMirror browser p95 exceeded ${warningTargetMs} ms target`);
@@ -286,6 +370,14 @@ test("reports V4 remote completion mocked ghost latency smoke metrics", async ({
   console.log(`p95: ${formatMs(summary.p95)}`);
   console.log(`p99: ${formatMs(summary.p99)}`);
   console.log(`max: ${formatMs(summary.max)}`);
+  emitBrowserBenchmarkJson({
+    label: "Typai V4 remote completion mocked ghost latency smoke benchmark",
+    kind: "mocked-completion",
+    surface: "contenteditable",
+    summary,
+    warningMs: remoteCompletionWarningTargetMs,
+    failMs: remoteCompletionHardFailureThresholdMs,
+  });
 
   if (summary.p95 > remoteCompletionWarningTargetMs) {
     console.warn(
@@ -451,6 +543,26 @@ async function clearTextarea(textarea: Locator): Promise<void> {
   });
 }
 
+async function dispatchReactTextareaInput(textarea: Locator, text: string): Promise<number> {
+  return textarea.evaluate((element, nextValue) => {
+    const textareaElement = element as HTMLTextAreaElement;
+    const startedAt = performance.now();
+
+    textareaElement.focus();
+    textareaElement.value = nextValue;
+    textareaElement.setSelectionRange(nextValue.length, nextValue.length);
+    textareaElement.dispatchEvent(
+      new InputEvent("input", {
+        bubbles: true,
+        data: nextValue,
+        inputType: "insertText",
+      }),
+    );
+
+    return performance.now() - startedAt;
+  }, text);
+}
+
 async function clearCodeMirror(editor: Locator, page: Page): Promise<void> {
   await editor.click();
   await page.keyboard.press("Control+A");
@@ -560,6 +672,14 @@ function reportRemoteCompletionBenchmark(label: string, samples: number[]): void
   console.log(`p95: ${formatMs(summary.p95)}`);
   console.log(`p99: ${formatMs(summary.p99)}`);
   console.log(`max: ${formatMs(summary.max)}`);
+  emitBrowserBenchmarkJson({
+    label,
+    kind: "mocked-completion",
+    surface: inferCompletionSurface(label),
+    summary,
+    warningMs: remoteCompletionWarningTargetMs,
+    failMs: remoteCompletionHardFailureThresholdMs,
+  });
 
   if (summary.p95 > remoteCompletionWarningTargetMs) {
     console.warn(`warning: ${label} p95 exceeded ${remoteCompletionWarningTargetMs} ms target`);
@@ -578,4 +698,48 @@ function reportRemoteCompletionBenchmark(label: string, samples: number[]): void
 
 function formatMs(value: number): string {
   return `${value.toFixed(4)} ms`;
+}
+
+function emitBrowserBenchmarkJson(options: {
+  label: string;
+  kind: "deterministic-correction" | "mocked-completion";
+  surface: string;
+  summary: LatencySummary;
+  warningMs: number;
+  failMs: number;
+}): void {
+  console.log(
+    `browser-benchmark-json: ${JSON.stringify({
+      label: options.label,
+      kind: options.kind,
+      surface: options.surface,
+      thresholds: {
+        p95WarningMs: options.warningMs,
+        p95FailMs: options.failMs,
+      },
+      summary: options.summary,
+      status:
+        options.summary.p95 > options.failMs
+          ? "fail"
+          : options.summary.p95 > options.warningMs
+            ? "warn"
+            : "pass",
+    })}`,
+  );
+}
+
+function inferCompletionSurface(label: string): string {
+  if (/React textarea/i.test(label)) {
+    return "react-textarea";
+  }
+
+  if (/CodeMirror/i.test(label)) {
+    return "codemirror";
+  }
+
+  if (/textarea/i.test(label)) {
+    return "textarea";
+  }
+
+  return "contenteditable";
 }

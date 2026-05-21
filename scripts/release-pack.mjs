@@ -2,8 +2,13 @@ import { spawnSync } from "node:child_process";
 import { delimiter, resolve } from "node:path";
 
 run("node", ["scripts/release-check.mjs"]);
+run("pnpm", ["bench:language-asset"]);
+run("pnpm", ["package:size-report"]);
+run("pnpm", ["bench:spell-quality"]);
+run("pnpm", ["scan:package-secrets"]);
+run("pnpm", ["smoke:install"]);
+run("pnpm", ["smoke:public-beta"]);
 run("node", ["scripts/pack-local.mjs"]);
-run("node", ["scripts/scan-package-secrets.mjs"]);
 
 console.log("Release pack dry-run complete. No package was published.");
 

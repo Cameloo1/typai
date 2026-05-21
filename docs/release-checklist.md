@@ -10,6 +10,8 @@ release gate for future beta patch or dist-tag work.
 - `docs/beta-release-candidate-plan.md` has been reviewed.
 - `CHANGELOG.md` has been reviewed.
 - `docs/production-language-asset-rc-complete.md` has been reviewed.
+- `docs/production-asset-unblock-complete.md` has been reviewed when releasing
+  from the blocked-host-provided production asset branch.
 - Changelog or release notes exist for any breaking public API change.
 - Public API stability labels are current.
 - Package metadata audit passes.
@@ -17,6 +19,10 @@ release gate for future beta patch or dist-tag work.
 - Package tarball inspection passes.
 - Package size report passes.
 - Language asset benchmark passes.
+- Core benchmark emits parseable `core-benchmark-json` and remains under hard
+  p95 thresholds.
+- Browser benchmark emits parseable `browser-benchmark-json` lines for
+  deterministic correction and mocked completion surfaces.
 - Public beta smoke matrix passes from packed tarballs.
 - Public beta readiness CI is green.
 - Production language assets remain blocked and absent from tarballs unless the
@@ -87,6 +93,11 @@ dry-runs, package secret scan, and provider proxy contract tests.
 The workflow intentionally does not run WebKit, does not require provider
 secrets, does not run the manual real-provider smoke, and does not publish.
 
+`pnpm release:pack` is also a release gate bundle. It runs `release:check`,
+`bench:language-asset`, `package:size-report`, `bench:spell-quality`,
+`scan:package-secrets`, `smoke:install`, `smoke:public-beta`, and local tarball
+packing before reporting success.
+
 ## V4.2 Checkpoint
 
 The completed V4.2 audit is recorded in
@@ -106,8 +117,12 @@ accurate.
 
 Before public beta packaging, review
 `docs/production-language-asset-rc.md` and
-`docs/production-language-asset-rc-complete.md` plus
-`docs/dictionary-production-approval.md`. The current release candidate keeps
+`docs/production-language-asset-rc-complete.md`,
+`docs/production-asset-unblock-complete.md`, plus
+`docs/dictionary-production-approval.md` and
+`docs/language-asset-delivery-policy.md`. The current release candidate keeps
 production language assets host-provided only while manifest review is blocked;
 packed tarballs must not include raw source files, generated production
 dictionary binaries, frequency tables, or blocked production attribution files.
+`pnpm smoke:install` and `pnpm smoke:public-beta` must prove the packed
+host-provided dictionary path and the clear production-mode blocked error.

@@ -1,148 +1,137 @@
 # Dictionary Asset Blockers
 
-Status date: 2026-05-19
+Status date: 2026-05-20.
 
-Prompt 109 verifies and pins the source path for the first production
-dictionary and frequency pipeline:
+Production language asset status: **blocked / host-provided only**.
 
-- Dictionary source: English Speller Database / SCOWL v2 generated Hunspell
-  `en_US` size 60 output, release `2026.02.25` / `[7e99eda]`.
-- Dictionary source file:
-  `https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip`.
-- Dictionary source SHA-256:
-  `ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9`.
-- Frequency source: Google Books Ngram Viewer American English 2019 1-grams,
-  version `20200217`, path segment `eng-us`.
-- Frequency source index:
-  `https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/eng-us-1-ngrams_exports.html`.
+Prompt 132 branch: **blocked-host-provided**. Production generation remains
+closed; host-provided Typai Dictionary Blob v1 bytes remain the fallback.
 
-No production asset is bundled in this checkpoint. The only runtime dictionary
-asset in the repository remains the generated mock fixture:
+The production manifest exists at
+`packages/core/assets/production/MANIFEST.json`, but its review status remains
+blocked. No production dictionary binary, frequency table, raw source file, or
+generated production language blob is bundled.
 
-- `packages/core/assets/mock-en-us.dictionary.bin`
-- `packages/core/assets/mock-en-us.dictionary.json`
-
-Use `pnpm --filter @typai/core generate:mock-dictionary` to regenerate the mock
-fixture.
-
-## Remaining Blockers
+## Blockers
 
 ### Production Manifest Blocked
 
-- Source affected: ESDB/SCOWL and Google Books Ngram.
-- Evidence present: blocked template at
-  `packages/core/assets/production/MANIFEST.template.json`.
-- Evidence still needed: approved manifest with complete frequency source
-  hashes, pinned local production input paths, generated output counts,
-  generated output size, output hash, package-inclusion decision, and review
-  signoff.
-- Owner/action: production asset pipeline implementer.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes. Loader and
-  manifest validation work can proceed without committing a production asset.
+- Source affected: ESDB/SCOWL dictionary and Google Books Ngram frequency.
+- Blocker type: package policy.
+- Evidence needed: manifest review status changed to `approved` only after all
+  source hashes, generated output metadata, notices, size, quality, package,
+  and review gates pass.
+- Action required: keep `review.status: "blocked"` and
+  `output.packageInclusion: "blocked"` until every downstream blocker is closed.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### Deterministic Transform Script Gated To Fixtures
+### Google Ngram Partition Hashes Missing
 
-- Source affected: ESDB/SCOWL and Google Books Ngram.
-- Evidence present: checked-in transform script at
-  `packages/core/scripts/build-production-dictionary.mjs`, fixture inputs under
-  `packages/core/assets/fixtures/production-transform/`, and gated validation
-  via `pnpm --filter @typai/core validate:dictionary:production`.
-- Evidence still needed: approved production manifest, pinned local production
-  source files, complete raw SHA-256 values, generated output hash, generated
-  size evidence, and review signoff before
-  `pnpm --filter @typai/core build:dictionary:production` can run.
-- Owner/action: asset-pipeline PR plus final approval review.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes. The
-  fixture path can validate transform behavior without committing a production
-  asset.
+- Source affected: Google Books Ngram American English 2019 1-grams.
+- Blocker type: hash.
+- Evidence needed: SHA-256 for `1-00000-of-00014.gz` through
+  `1-00013-of-00014.gz`.
+- Action required: fetch and hash the raw partitions in a disposable external
+  workspace with explicit disk budget; do not commit the raw partitions.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### Frequency Raw Source Hashes Not Captured
+### Pinned Local Production Inputs Missing
 
-- Source affected: Google Ngram `totalcounts-1` and `1-00000-of-00014.gz`
-  through `1-00013-of-00014.gz`.
-- Evidence present: exact frequency source URLs in
-  `packages/core/assets/production/MANIFEST.template.json`.
-- Evidence needed: SHA-256 for each raw frequency input and generated output.
-- Owner/action: asset-pipeline PR.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes.
+- Source affected: ESDB/SCOWL dictionary archive and Google Books Ngram
+  frequency files.
+- Blocker type: hash.
+- Evidence needed: external, pinned local paths for every production input that
+  match the manifest SHA-256 values.
+- Action required: stage raw source files in a disposable external workspace,
+  update the manifest with local paths only for the approved generation run,
+  and keep raw source files out of Git and package tarballs.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### Attribution File Placeholder Only
+### Generated Output Metadata Missing
 
-- Source affected: ESDB/SCOWL and Google Books Ngram.
-- Evidence present: placeholder attribution at
-  `packages/core/assets/production/ATTRIBUTION.md`.
-- Evidence needed: final package-visible attribution text with full applicable
-  ESDB/SCOWL notice, affix-file notice, source URLs, Google Ngram
-  acknowledgement, CC BY 3.0 reference, and corpus/version identifier.
-- Owner/action: asset-pipeline PR plus review signoff.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes.
+- Source affected: combined production dictionary/frequency asset.
+- Blocker type: hash.
+- Evidence needed: generated output SHA-256, word count, byte size, transform
+  command, and transform version.
+- Action required: run the deterministic transform only after manifest review
+  status is approved for generation.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### License Files Placeholder Only
+### Final License Bundle Missing
 
-- Source affected: ESDB/SCOWL Hunspell `en_US` and Google Books Ngram.
-- Evidence present: placeholder license summary at
-  `packages/core/assets/production/LICENSES/README.md`.
-- Evidence needed: final package-visible full applicable notice text for
-  ESDB/SCOWL, the Hunspell affix-file BSD-style notice, and Google Ngram CC BY
-  3.0 attribution/license reference.
-- Owner/action: asset-pipeline PR plus review signoff.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes.
+- Source affected: ESDB/SCOWL dictionary and Google Books Ngram frequency.
+- Blocker type: license.
+- Evidence needed: final package-visible notices for ESDB/SCOWL, any relevant
+  Hunspell affix-file notice, Google Books Ngram Viewer attribution, CC BY 3.0
+  link, and change notice.
+- Action required: replace placeholders in
+  `packages/core/assets/production/LICENSES/` only during the approval prompt.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### Package Size Budget Not Proven
+### Final Attribution Missing
+
+- Source affected: ESDB/SCOWL dictionary and Google Books Ngram frequency.
+- Blocker type: attribution.
+- Evidence needed: exact attribution text that will be visible in the package
+  shape that includes the generated asset.
+- Action required: finalize `packages/core/assets/production/ATTRIBUTION.md`
+  before package inclusion.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
+
+### Quality Gate Not Run Against Production Asset
 
 - Source affected: generated production dictionary/frequency asset.
-- Evidence needed: compressed and uncompressed byte sizes, package dry-run
-  evidence, and package contents check proving raw source files are excluded.
-- Owner/action: asset-pipeline PR.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes.
+- Blocker type: quality.
+- Evidence needed: `pnpm bench:spell-quality` results against the generated
+  asset with 0 protected-token writes, 0 valid-word autocorrections, 0 reviewed
+  false-positive autocorrections, and passing correction/suggestion corpora.
+- Action required: generate the asset only after source approval, then run and
+  record quality evidence.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### Quality Gates Not Run Against Generated Asset
+### Package Inclusion Not Proven
 
 - Source affected: generated production dictionary/frequency asset.
-- Evidence needed: protected-token writes = 0, valid-word autocorrections = 0,
-  edit-distance/SymSpell autocorrects = 0 outside explicit common-typo gates,
-  broad misspelling suggestion coverage, false-positive review, direct core p95,
-  browser correction p95, and completion smoke thresholds.
-- Owner/action: quality-gate prompts after pipeline generation.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes, but package
-  inclusion cannot.
+- Blocker type: size.
+- Evidence needed: generated compressed/uncompressed sizes, core tarball size
+  impact, dry-pack contents, install smoke, public-beta smoke, and secret scan.
+- Action required: prove package contents exclude raw sources and include only
+  the approved generated output if package inclusion changes from `blocked`.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### Raw Corpus Inclusion Must Stay Blocked
+### Raw Source Policy
 
-- Source affected: Google Books Ngram.
-- Evidence needed: package scan proving raw Ngram files are not committed or
-  packed.
-- Owner/action: asset-pipeline PR and release smoke.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes.
+- Source affected: ESDB/SCOWL zip, Hunspell files, and Google Ngram partitions.
+- Blocker type: package policy.
+- Evidence needed: package dry-run and Git status showing raw source files are
+  not committed or packed.
+- Action required: keep raw sources external; use disposable workspaces for
+  hashing and transform staging.
+- Whether fallback remains host-provided-only: yes; fallback remains
+  host-provided-only.
 
-### Downstream Dictionary Sources Rejected
-
-- Source affected: LibreOffice, OpenOffice, Mozilla dictionary packages.
-- Evidence needed to revisit: exact file-level license, redistribution
-  statement, and reason they are preferable to ESDB upstream.
-- Owner/action: no action for Prompt 101.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes. These are
-  not needed for the approved source path.
-
-### wordfreq And Derived Dumps Blocked
-
-- Source affected: `wordfreq`, `wordfreq-en-25000`, and derived convenience
-  exports.
-- Evidence needed to revisit: legal/product acceptance of CC BY-SA and
-  source-specific attribution obligations for a transformed npm asset.
-- Owner/action: no action for Prompt 101.
-- Can pipeline proceed with scaled mock or host-provided asset? Yes. Google
-  Ngram is the approved first frequency source.
-
-## Current Safe Path
-
-Current blocked-phase work may continue on:
+## Safe Work That Can Continue
 
 - manifest validation
-- deterministic transform fixture coverage
+- gate-status reporting
 - host-provided dictionary loading
-- scaled mock asset generation for performance and loader tests
-- package scans that exclude raw source files and generated production outputs
+- scaled mock and fixture validation
+- deterministic fixture transform and dictionary inspection
+- package scans that prove raw sources and generated production outputs are
+  excluded
 
-No prompt should commit generated production assets unless the manifest,
-hash, attribution, size, quality, and review gates all pass.
+Host-provided assets must be loaded only during `createTypaiCore()`
+initialization through `bytes`, `load`, or `url`. They must remain separate from
+personal/project dictionary memory and must not weaken valid-word,
+protected-token, or delete-index autocorrect gates.
+
+No prompt should commit generated production assets unless the manifest, hash,
+attribution, size, quality, package, and review gates all pass.

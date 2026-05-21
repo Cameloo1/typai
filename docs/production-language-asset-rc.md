@@ -1,12 +1,15 @@
 # Production Language Asset + Beta Release Candidate
 
-Status date: 2026-05-19.
+Status date: 2026-05-21.
 
 Completion status: complete in the blocked-production-asset public beta RC
 state. This phase prepared Typai for a production language asset release
 candidate and public beta candidate without publishing to npm.
 
-Final checkpoint: `docs/production-language-asset-rc-complete.md`.
+Final checkpoints:
+
+- `docs/production-language-asset-rc-complete.md`
+- `docs/production-asset-unblock-complete.md`
 
 ## Current Foundation State
 
@@ -27,13 +30,28 @@ The Intelligence Quality Foundation is complete. Typai currently has:
 - cross-surface E2E parity across contenteditable, textarea, React textarea,
   React contenteditable, and CodeMirror for the production/host-provided asset
   path boundaries
-- a deterministic production dictionary transform entrypoint that currently
-  runs only against repo-local fixtures while production approval is blocked
+- Prompt 135 structured spell-quality corpus with safety gates for approved
+  common typos, suggestions-only misspellings, valid-word traps, protected
+  tokens, casing/punctuation, contractions, plural ambiguity, proper nouns,
+  domain terms, Markdown/code contexts, and regressions
+- Prompt 136 corpus-backed surface parity E2E across contenteditable,
+  textarea, React textarea, React contenteditable, and CodeMirror, recorded in
+  `reports/spell-quality/surface-parity.md`
+- Prompt 137 performance, memory, package-size, and browser benchmark hardening
+  with machine-readable language-asset, core, browser, and package-size gate
+  output
+- a deterministic production dictionary transform pipeline with fixture mode,
+  production gates, source-hash verification, Blob v1 output, metadata, and
+  inspection commands
 - manual/env-gated real-provider demo support through a secure proxy
 
 The current implementation does not bundle a production dictionary or frequency
 asset. The scaled mock asset remains a loader and performance stress fixture,
 not language coverage.
+
+`pnpm bench:spell-quality` uses an in-memory host-provided quality fixture so
+the corpus can measure valid-word, proper-noun, and domain-term safety without
+generating or packing a production language asset.
 
 ## What Remains Blocked
 
@@ -55,11 +73,29 @@ No generated production dictionary, frequency table, raw corpus, or derived
 asset may be committed, packed, published, or claimed as shipped until those
 gates pass.
 
-The Prompt 110 transform pipeline exists at
+The Prompt 131 transform pipeline exists at
 `packages/core/scripts/build-production-dictionary.mjs`. In the current blocked
 state, `pnpm --filter @typai/core build:dictionary:production` fails before
-processing and `pnpm --filter @typai/core validate:dictionary:production`
-validates the fixture/mock path only.
+processing. `pnpm --filter @typai/core build:dictionary:fixture` exercises the
+full transform against repo-local fixtures, and
+`pnpm --filter @typai/core validate:dictionary:production` accepts blocked
+state only when no production output is present and blockers are documented.
+
+Prompt 132 executed the blocked-host-provided branch. It confirmed
+`build:dictionary:production` fails closed on the blocked manifest, kept
+production output absent, and recorded the current fallback state in
+`docs/production-asset-status-report.md`.
+
+Prompt 133 hardened production/host-provided runtime loading while the branch
+remains blocked-host-provided. Host-provided, fixture, and scaled-mock Blob v1
+bytes load through TypeScript -> Rust/Wasm -> C++ during `createTypaiCore()`
+initialization only. Failed blocked-production or malformed host-provided loads
+do not replace the currently loaded C++ dictionary/delete-index state.
+Runtime diagnostics now include loaded dictionary word count, loaded dictionary
+byte size, delete-index entry count, and delete-index memory estimate. The
+`pnpm ffi:audit` command checks the FFI boundary for forbidden `std::string`,
+heap ownership transfer, Embind/Emscripten bindings, exported C++ classes, and
+full-document text pass-through patterns.
 
 Prompt 111 keeps package inclusion as **excluded from `@typai/core` and
 host-provided only** while production approval is blocked. The package does not
@@ -67,6 +103,32 @@ include `packages/core/assets/production/`, raw source files, generated
 production binaries, or generated frequency tables. `dictionary.mode:
 "production"` is reserved for a future approved asset and currently throws a
 clear unavailable error during `createTypaiCore()` initialization.
+
+Prompt 136 keeps the branch blocked-host-provided and expands browser-level
+spell parity against representative corpus rows. It fixed contenteditable
+punctuation mark persistence and in-progress URL protection without changing
+core autocorrect rules or production asset availability.
+
+Prompt 137 keeps the branch blocked-host-provided and hardens the measurable
+release gates. `pnpm bench:language-asset` now reads the authoritative
+production `MANIFEST.json`, reports built-in, host-provided, scaled-mock, and
+blocked/production asset status, and emits a parseable
+`language-asset-benchmark-json` line. `pnpm --filter @typai/core bench` emits
+`core-benchmark-json`, and browser latency smoke emits per-surface
+`browser-benchmark-json` lines while keeping deterministic correction
+thresholds separate from mocked completion thresholds.
+
+Prompt 138 completed the remediation loop for this blocked branch. It fixed one
+E2E harness race in the Firefox contenteditable completion stale/provider-error
+scenario and reran the full audit gate set.
+
+Prompt 139 completed the final Production Asset Unblock hardening audit. The
+final asset state remains **production asset still blocked / host-provided
+only**. The final checkpoint verifies source/license truthfulness, fixture
+transform determinism, fail-closed production transform behavior, hardened
+runtime loading, FFI boundary checks, correction safety gates, quality corpus,
+surface parity, package inclusion/exclusion, package scans, performance gates,
+and no npm publish during the audit.
 
 ## Phase Scope
 
@@ -190,6 +252,11 @@ Package inclusion policy:
 
 - Current state: production assets are **host-provided only** and excluded from
   `@typai/core`.
+- Prompt 134 package delivery decision: **C. host-provided only** for language
+  assets, with production mode blocked until the manifest review and package
+  inclusion fields are approved.
+- Prompt 132 branch: **blocked-host-provided**; no generated production output
+  exists and package inclusion remains blocked.
 - `@typai/core` may include only `dist`, generated Wasm `pkg`, package
   metadata, and `README.md` while `review.status` is blocked.
 - Production dictionary/frequency binary inclusion requires approved manifest,
@@ -232,19 +299,26 @@ Memory evidence must include inspectable dictionary word count, delete-index
 entry count, generated asset byte size, package dry-run contents, and packed
 tarball byte sizes.
 
-Current Prompt 113 blocked-state measurements are produced by:
+Current blocked-state package and asset measurements are produced by:
 
 ```sh
 pnpm bench:language-asset
 pnpm package:size-report
 ```
 
-The language asset benchmark reports host-provided mock and scaled mock asset
-byte size, word count, dictionary load p95, initialization-inclusive
-delete-index build p95, core check p95, core suggest p95, memory estimate, and
+The language asset benchmark reports built-in, host-provided mock, scaled mock,
+and approved production asset mode when available. It includes asset byte size,
+manifest word count, loaded word count, dictionary load mean/p50/p95/p99,
+initialization-inclusive delete-index build mean/p50/p95/p99, core
+check/suggest mean/p50/p95/p99, delete-index memory estimate, and
 `@typai/core` tarball impact. The package size report fails if blocked
-production assets, raw source files, `.env` files, or secret-like payloads
+production assets, raw source files, `.env` files, secret-like payloads, or
+production binaries without package-visible manifest, license, and attribution
 appear in packed output.
+
+`docs/language-asset-delivery-policy.md` is the current package delivery
+decision record for production, host-provided, prepack-generated, bundled, and
+future language-pack delivery modes.
 
 ## RC Readiness Definition
 

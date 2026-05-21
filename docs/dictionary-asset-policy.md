@@ -1,169 +1,162 @@
 # Dictionary Asset Policy
 
 Production dictionary and frequency assets require explicit source, license,
-manifest, and review approval before they can be bundled, transformed,
-published, or distributed with Typai.
+manifest, hash, attribution, size, quality, package, and review approval before
+they can be generated, bundled, packed, published, or distributed with Typai.
 
-Prompt 100 approves a source path, not a generated asset. No production
-dictionary or frequency binary is approved until the gates below pass in the
-asset PR that introduces it.
+Source approval is not package inclusion approval.
+
+## Fail-Closed Rules
+
+- Production asset build cannot run unless
+  `packages/core/assets/production/MANIFEST.json` has
+  `review.status: "approved"`.
+- Generated asset output cannot be packed unless
+  `manifest.output.packageInclusion` is one of
+  `generated-during-prepack` or `committed-generated-binary`.
+- `manifest.output.packageInclusion: "blocked"` means no generated production
+  output can be packed.
+- Raw source files cannot be packed unless a later policy explicitly allows
+  that exact source path. Current policy is `never-commit`.
+- Source hashes must be checked before transform.
+- Generated output hashes must be recorded after transform.
+- License and attribution files must be package-visible before packaging.
+- Missing, unknown, or unclear redistribution evidence blocks ingestion.
+- No network fetch is allowed in the default production transform path.
+- Production transform source files must be pinned local files whose SHA-256
+  values match before parsing starts.
+- Blocked validation may run the repo-local fixture transform, but it must not
+  write or reference generated production output.
 
 ## Required Approval Gates
 
 Every production dictionary, frequency table, or combined asset must provide:
 
-- Official source URL: canonical upstream URL for every input.
-- Exact source version/hash: release tag, persistent corpus identifier, commit,
-  retrieval date, and SHA-256 for every fetched raw source file.
-- License file committed or linked: full license or notice text in a durable
-  package/doc location, or a stable official license URL when the source does
-  not publish a standalone file.
-- Redistribution statement: explicit evidence that Typai may redistribute the
-  raw or transformed data in its intended package shape.
-- Commercial-use statement: explicit evidence that Typai may use the data in an
-  npm package that can be used commercially.
-- Modification statement: explicit evidence that deterministic filtering,
-  normalization, and binary transformation are allowed.
-- Attribution text: exact package-ready notice text, including source URLs and
-  required copyright/license text.
-- Deterministic transform script: checked-in script that reads pinned local
-  inputs, verifies hashes before processing, and emits deterministic outputs.
-  It must not fetch from the network by default.
-- Manifest metadata: JSON manifest with source, license, transform, count, size,
-  hash, package, and reviewer fields.
-- Package inclusion policy: explicit decision for `none`, `optional`, or
-  `bundled`.
-- Size budget: compressed and uncompressed byte limits with measured output.
-- Update process: repeatable steps for refreshing, reviewing, and comparing a
-  new source version.
-- Review signoff: named human/legal/product signoff recorded in the manifest or
-  associated stable review document.
+- Official source URL for every input.
+- Exact source version, release, commit, corpus identifier, and retrieval date.
+- SHA-256 for every fetched raw source file.
+- Full license or notice text, or a stable official license URL when the source
+  does not publish a standalone file.
+- Explicit redistribution, commercial-use, and modification evidence.
+- Package-ready attribution text.
+- Deterministic transform script that reads pinned local inputs and verifies
+  hashes before processing.
+- Manifest metadata for source, license, transform, output count, output size,
+  generated hash, package inclusion, reviewer, and review date.
+- Size budget and measured package impact.
+- Quality evidence against the generated asset.
+- Package dry-run proof that raw source files are excluded.
+- Named review signoff.
 
 If any gate is missing or unclear, asset ingestion is blocked.
 
-## Manifest Schema
+## Manifest Contract
 
-Future manifests should live under `docs/asset-manifests/` until an asset is
-approved for package inclusion. A production asset manifest must contain these
-fields:
+The production manifest lives at:
 
-```json
-{
-  "schemaVersion": 1,
-  "assetKind": "dictionary",
-  "language": "en-US",
-  "sourceName": "English Speller Database / SCOWL",
-  "officialSourceUrl": "https://wordlist.aspell.net/",
-  "sourceVersion": "2026.02.25",
-  "sourceHash": "sha256-or-release-commit",
-  "retrievedAt": "2026-05-19",
-  "licenseName": "ESDB notice license",
-  "licenseUrl": "https://github.com/en-wl/wordlist/blob/v2/Copyright",
-  "redistributionAllowed": true,
-  "commercialUseAllowed": true,
-  "modificationAllowed": true,
-  "attributionRequired": true,
-  "attributionText": "Package-ready attribution text.",
-  "transformScript": "packages/core/scripts/build-production-dictionary.mjs",
-  "outputFormat": "Typai Dictionary Blob v1",
-  "wordCount": 0,
-  "byteSize": 0,
-  "sha256": "generated-output-sha256",
-  "reviewStatus": "approved",
-  "reviewedBy": "reviewer-name",
-  "reviewedAt": "2026-05-19",
-  "packageInclusion": "optional"
-}
+```text
+packages/core/assets/production/MANIFEST.json
 ```
 
-For combined assets, use `assetKind: "combined"` and include `sources` entries
-with the same source/license fields for each input.
+It uses:
+
+- `review.status: "blocked" | "approved"`
+- `dictionary.redistribution: "approved" | "blocked" | "unknown"`
+- `frequency.redistribution: "approved" | "blocked" | "unknown"`
+- `output.packageInclusion: "blocked" | "host-provided-only" |
+  "generated-during-prepack" | "committed-generated-binary"`
+
+When blocked, `output.assetPath` and `output.sha256` must be empty and
+`output.wordCount` / `output.byteSize` must be `null`.
+
+When approved, every source hash, generated hash, generated count, generated
+size, final license file, final attribution file, and package inclusion
+decision must be present.
 
 ## Approved Source Defaults
 
-The approved Prompt 100 source defaults are:
+The current source defaults are:
 
-- Dictionary: English Speller Database / SCOWL v2, official non-Australian
-  `en-US` size 60 wordlist, release `2026.02.25` / `[7e99eda]`.
+- Dictionary: English Speller Database / SCOWL v2, official `en_US` size 60
+  generated Hunspell dictionary, release `2026.02.25`, commit marker `7e99eda`.
 - Frequency: Google Books Ngram Viewer American English 2019 unigrams,
-  persistent corpus identifier `googlebooks-eng-us-20200217`.
+  `googlebooks-eng-us-20200217`.
 
-These defaults do not approve a committed binary. They only define the sources a
-future pipeline may target.
+These defaults do not approve a committed binary.
 
 ## Package Inclusion Policy
 
-Default package inclusion is `none` until a production asset PR proves:
-
-- generated output size stays within budget
-- attribution is included in package-visible files
-- package smoke proves the asset is present only where intended
-- generated raw inputs stay out of package tarballs
-- no provider, model, network, or telemetry behavior is added to `@typai/core`
+Default package inclusion is `blocked`. Prompt 134 selects
+host-provided-only delivery while manifest review remains blocked; see
+`docs/language-asset-delivery-policy.md`.
 
 Initial budget target:
 
-- compressed package impact: <= 2 MiB
-- uncompressed generated asset impact: <= 8 MiB
+- blocked-state `@typai/core` tarball warning/fail: 256 KiB / 1 MiB
+- general package tarball warning/fail: 512 KiB / 2 MiB
+- target production generated asset package impact: <= 2 MiB
+- generated production asset fail: > 8 MiB
+- raw source files in package tarballs: 0 bytes
+- blocked production binaries in package tarballs: 0 bytes
 
-If the generated asset exceeds that budget, use an optional asset package or a
-host-provided asset path instead of bundling it in `@typai/core`.
+If the generated asset exceeds budget, use host-provided assets or an optional
+language package instead of bundling it in `@typai/core`.
 
 ## Update Process
 
-1. Open a source-review PR that updates `docs/dictionary-source-selection.md`
-   and `docs/dictionary-production-approval.md`.
-2. Pin official source URLs, release identifiers, retrieval dates, and raw input
-   hashes.
-3. Record pinned local input file paths and run the deterministic transform
-   script from an empty cache:
-
-   ```sh
-   pnpm --filter @typai/core build:dictionary:production
-   ```
-
-4. Commit or attach the manifest and license/attribution files.
-5. Run loader tests, package smoke, docs checks, and spell quality gates.
-6. Review false-positive and valid-word behavior before package inclusion.
-7. Record review signoff before generated production output is packaged.
+1. Update `docs/dictionary-source-selection.md` and this policy only with
+   current verified source facts.
+2. Pin source URLs, release identifiers, retrieval dates, and SHA-256 values.
+3. Update `packages/core/assets/production/MANIFEST.json`.
+4. Keep raw source files outside the repository.
+5. Run `pnpm dictionary:check-production` and `pnpm dictionary:gate-status`.
+6. Approve generation only after source/license/hash/attribution gates pass.
+7. Run the deterministic transform from pinned local inputs with:
+   `pnpm --filter @typai/core build:dictionary:production`.
+8. Record generated output count, size, hash, frequency coverage, excluded
+   counts, transform version, and attribution reference.
+9. Run quality, package, smoke, secret, docs, test, build, and lint gates.
+10. Record final review signoff before package inclusion.
 
 ## Mock And Host-Provided Assets
 
 `packages/core/assets/mock-en-us.dictionary.bin` and its JSON companion are
-generated fixtures only. They are not production dictionary or frequency
-assets, and they do not represent a source/license decision.
+mock fixtures only. They are not production dictionary or frequency assets.
 
-Prompt 101 adds a scaled mock generator:
+Generated scaled mock and production-transform fixture outputs live under
+ignored generated paths. They are not production language assets.
 
-```sh
-pnpm --filter @typai/core build:dictionary
-pnpm --filter @typai/core validate:dictionary
-```
-
-The generated scaled mock lives under `packages/core/assets/generated/`, is
-ignored by Git, and must be labeled `mockOnly: true` and `production: false`.
-It stress-tests loader memory, bounds checks, frequency ranking, and
-host-provided loading without bundling third-party language data.
-
-Prompt 110 adds a production transform pipeline with fixture-mode validation:
+Prompt 131 fixture validation uses:
 
 ```sh
+pnpm --filter @typai/core build:dictionary:fixture
 pnpm --filter @typai/core validate:dictionary:production
+pnpm --filter @typai/core inspect:dictionary
 ```
 
-When production approval is blocked, this command confirms the production build
-gate and runs the same transform against repo-local fixtures under
-`packages/core/assets/fixtures/production-transform/`. Generated fixture output
-stays under ignored `packages/core/assets/generated/` paths and is not a
-production language asset.
+The fixture command proves normalization, filtering, frequency merge,
+deduplication, sorting, Blob v1 encoding, metadata generation, and output hash
+determinism without ingesting production sources.
 
-A host-provided asset path may be implemented before production bundling if it
-keeps provenance outside the package and still validates manifests before
-loading. Host-provided assets must not weaken protected-token, valid-word, or
-autocorrect gates.
+Host-provided Typai Dictionary Blob v1 bytes may be loaded during
+`createTypaiCore()` initialization. Host-provided assets must not weaken
+protected-token, valid-word, personal dictionary, or autocorrect gates.
+
+Host-provided loading is initialization-time only. The correction hot path must
+not fetch, stream, parse, or replace dictionary assets. Embedder-provided bytes
+must already be Typai Dictionary Blob v1 and must pass the same loader
+validation as repo fixtures.
+
+Scaled mock output is mock-only. It can be used for loader and delete-index
+stress checks, but it is not production coverage and must remain ignored,
+unpacked, and labeled `mockOnly: true` / `production: false`.
 
 ## Current Status
 
-See `docs/dictionary-source-selection.md` for source evidence,
-`docs/dictionary-production-approval.md` for the current approval decision, and
-`docs/dictionary-asset-blockers.md` for remaining ingestion blockers.
+Production asset status is blocked / host-provided only. See:
+
+- `docs/production-asset-unblock.md`
+- `docs/production-asset-status-report.md`
+- `docs/dictionary-source-selection.md`
+- `docs/dictionary-production-approval.md`
+- `docs/dictionary-asset-blockers.md`

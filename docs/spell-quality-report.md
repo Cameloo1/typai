@@ -1,193 +1,183 @@
 # Spell Quality Report
 
-Status date: 2026-05-19.
+Status date: 2026-05-21.
 
-This is the stable spell-quality report for the Production Language Asset RC
-phase. It describes the committed quality gates and review tables;
-machine-local timings should be read from `pnpm bench:spell-quality` and
-`pnpm bench:browser` output for the run being evaluated. Asset load, memory,
-and package-size timings are owned by `pnpm bench:language-asset` and
-`pnpm package:size-report`.
-
-Prompt 107 keeps the full Intelligence Quality Foundation audit in
-`docs/intelligence-quality-foundation-complete.md`. Prompt 112 expands this
-report and the committed corpus for production/host-provided asset readiness
-while keeping production asset ingestion blocked.
-
-Prompt 114 records the final public beta RC audit in
-`docs/production-language-asset-rc-complete.md`.
-
-## Quality Benchmark
-
-Run:
+This is the stable spell-quality report for the current production asset gate.
+The live quality harness is corpus-driven and runs with:
 
 ```sh
 pnpm bench:spell-quality
 ```
 
-The benchmark uses the committed corpus categories below and prints:
+The benchmark loads structured JSONL fixtures from `tests/spell-quality/corpus`,
+evaluates them through `@typai/core`, writes a concise markdown report to
+`reports/spell-quality/latest.md`, and writes the larger machine-readable JSON
+report to ignored local output at `reports/spell-quality/latest.json`.
 
-- allowed autocorrect count
-- autocorrect precision on the corpus
-- suggestion recall on the corpus
-- valid-word false autocorrect count
-- protected-token false write count
-- protected-token non-noop count
-- reviewed false-positive autocorrect count
-- suggestions-only count
-- host-provided dictionary fixture behavior
-- production dictionary mode blocked status
-- average direct core latency
-- p95 direct core latency
-- a pointer to the separate browser correction p95 gate in
-  `pnpm bench:browser`
-- a pointer to the separate asset load, delete-index memory, and package-size
-  gates in `pnpm bench:language-asset` and `pnpm package:size-report`
+The current run uses an in-memory host-provided Typai Dictionary Blob v1
+quality fixture. That fixture exists only to make valid-word, proper-noun, and
+domain-term safety measurable without generating, packing, or claiming a
+production dictionary asset.
+
+## Current Benchmark Summary
+
+Latest committed report: `reports/spell-quality/latest.md`.
+Surface parity report: `reports/spell-quality/surface-parity.md`.
+
+Latest benchmark run:
+
+- total cases: 142
+- core cases: 142
+- adapter/E2E-designated cases: 0
+- dictionary mode: host-provided quality fixture
+- dictionary words: 71
+- dictionary bytes: 1469
+- delete-index entries: 1875
+- delete-index memory estimate: 210689 bytes
+- allowed autocorrect pass rate: 100.00% (29/29)
+- autocorrect precision: 100.00% (29/29)
+- suggestion recall@1: 100.00%
+- suggestion recall@3: 100.00%
+- suggestion recall@5: 100.00%
+- valid-word false autocorrect count: 0
+- protected-token false write count: 0
+- arbitrary delete-index autocorrect count: 0
+- domain-term false autocorrect count: 0
+- protected-token non-noop count: 0
+- production dictionary mode while blocked: unavailable as expected
+
+Performance from the same run:
+
+- core check average: 0.0030 ms
+- core check p50/p95/p99/max: 0.0023 ms / 0.0104 ms / 0.0153 ms / 0.2481 ms
+- suggestion average: 0.0024 ms
+- suggestion p50/p95/p99/max: 0.0019 ms / 0.0061 ms / 0.0078 ms / 0.1693 ms
+
+Machine-local timings can vary. The hard gate is the command result, not the
+exact numbers above.
+
+## Corpus Categories
+
+| Category | Rows | Expected behavior |
+| --- | ---: | --- |
+| allowed-autocorrect | 21 | explicit common typo table entries auto-correct exactly |
+| suggestions-only | 14 | broad misspellings suggest without automatic rewrite |
+| valid-word-traps | 20 | valid words and explicit real-word traps do nothing |
+| protected-terms | 18 | URLs, emails, paths, commands, identifiers, keys, hashes, package names do nothing |
+| casing-punctuation | 12 | approved corrections preserve case/punctuation; protected fragments stay untouched |
+| contractions | 9 | contraction-like misspellings suggest only unless explicitly approved |
+| plural-ambiguity | 5 | ambiguous plural/inflection cases suggest only |
+| domain-cybersecurity | 13 | security tools and acronyms do not get unwanted autocorrect |
+| domain-trading | 8 | trading abbreviations and terms do not get unwanted autocorrect |
+| markdown-code-contexts | 6 | inline code, fenced code, links, shell/import snippets stay protected |
+| names-proper-nouns | 11 | proper nouns and technical names are protected or dictionary-known |
+| regression-bugs | 5 | prior safety bugs remain pinned as critical regression rows |
+
+## Quality Gates
 
 Hard failures:
 
 | Gate | Failure condition |
 | --- | --- |
-| Allowed autocorrect coverage | any approved common-typo/casing case misses its expected replacement |
-| Autocorrect precision | below 99% on the benchmark corpus |
-| Valid-word false autocorrects | greater than 0 |
-| Protected-token false writes | greater than 0 |
-| Reviewed false-positive autocorrects | greater than 0 |
-| Production dictionary mode | not blocked while package inclusion is blocked |
-| Host-provided fixture behavior | fixture fails to load or fails known-word/suggestion checks |
-| Direct core p95 | greater than 100 ms |
-| Production asset/package contents | handled by `pnpm bench:language-asset` and `pnpm package:size-report`; blocked/raw assets in tarballs are failures |
+| Corpus schema | malformed JSONL row, unknown category, duplicate id, or missing required field |
+| Approved autocorrect | any approved common-typo case misses exact replacement or reason code |
+| Autocorrect precision | below 99% on the evaluated corpus |
+| Valid-word safety | valid-word false autocorrect count greater than 0 |
+| Protected-token safety | protected-token false write count greater than 0 |
+| Delete-index safety | arbitrary delete-index autocorrect count greater than 0 |
+| Domain-term safety | domain/proper noun false autocorrect count greater than 0 |
+| Core latency | core check p95 greater than 100 ms |
+| Suggestion latency | suggestion p95 greater than 100 ms |
 
 Warnings:
 
 | Gate | Warning condition |
 | --- | --- |
-| Suggestion recall | below 90% on the suggestion corpus |
-| Direct core p95 | greater than 20 ms |
-| Browser completion p95 | handled by `pnpm bench:browser`; warning target remains 800 ms |
-| Asset load and memory | handled by `pnpm bench:language-asset` |
+| Suggestion recall | recall@3 below 90% |
+| Category coverage | any configured category has fewer than the required rows |
+| Core latency | core check p95 greater than 20 ms |
+| Suggestion latency | suggestion p95 greater than 20 ms |
 
-## Corpus Categories
+## Tiered Evaluation Model
 
-| Category | Examples | Expected behavior |
-| --- | --- | --- |
-| Expanded common typos | `adress`, `speling`, `definitly`, `tommorow` | blue autocorrect from explicit table |
-| Casing and punctuation | `Teh`, `TEH`, `teh,`, `Adress`, `definitly!` | blue autocorrect with case/punctuation preserved |
-| Suggestions-only misspellings | `reciept`, `addres`, `separat`, `tomorow`, `calandar` | red unresolved mark with suggestion |
-| Contractions | `dont`, `it;s` | red unresolved suggestion, no automatic expansion |
-| Plural ambiguity | `adresss` | red unresolved suggestion, no automatic plural rewrite |
-| Valid-word traps | `form`, `lead`, `to`, `its`, `there`, `their`, `from`, `too`, `led` | do nothing |
-| Protected terms | email, URL, Unix path, home path, identifier, CVE-shaped tokens | do nothing |
-| Technical terms | `nmap`, `sqlmap`, `ffuf`, `gobuster`, `kubectl`, `iptables` | do nothing |
-| Acronyms | `XSS`, `CSRF`, `API`, `NASA`, `SQL`, `HTTP` | do nothing |
-| Proper nouns reviewed | `Alice`, `Cameloo`, `Typai`, `OpenAI` | no autocorrect |
-| Trading/domain terms | `BTC`, `ETH`, `SPY`, `NVDA` | do nothing |
+Tier 1 is the core corpus in `tests/spell-quality`. It is designed to scale to
+thousands of rows and runs direct synchronous `checkCompletedToken()` and
+`suggestToken()` checks without browser work.
+
+Tier 2 is adapter conformance. Existing cross-surface tests cover selected
+representative rows across contenteditable, textarea, React, and CodeMirror.
+
+Tier 3 is browser smoke and latency. `pnpm test:e2e` and `pnpm bench:browser`
+remain the browser-level proof paths.
+
+Prompt 136 adds a corpus-backed Playwright subset for contenteditable,
+textarea, React textarea, React contenteditable, and CodeMirror. It covers
+approved common typos, suggestions-only misspellings, valid-word traps,
+protected technical terms, casing/punctuation preservation, personal
+dictionary behavior, always/never correction rules, CodeMirror Markdown/code
+protection, and completion coexistence through the existing V4.1 completion
+E2E. The matrix is recorded in
+`reports/spell-quality/surface-parity.md`.
+
+Tier 4 is manual review. `reports/spell-quality/latest.md` lists every
+false-positive autocorrect, approved autocorrect miss, suggestion recall miss,
+and suggestions-only case that remains intentionally rejected from automatic
+correction.
 
 ## False-Positive Review
 
-Typai's current autocorrection sources are intentionally narrow:
+Latest result:
 
-| Source | Examples | Automatic? | False-positive control |
-| --- | --- | --- | --- |
-| Original common typo table | `teh`, `adn`, `recieve`, `becuase`, `thier` | yes | exact table entry only |
-| Expanded common typo table | `adress`, `seperate`, `neccessary` | yes | exact table entry after valid/protected gates |
-| User always-correct rule | user-defined original/replacement | yes | explicit user memory only |
-| Delete-index candidate | `reciept` to `receipt` | no | `AUTOCORRECT_GATE_BLOCKED` |
-| Contraction suggestion | `dont` to `don't` | no | suggestions-only override |
-| Plural ambiguity | `adresss` to `address` | no | suggestions-only override |
-| Host-provided dictionary word | `receipt` | no | loaded as known word during initialization |
+- false-positive autocorrections: none
+- approved autocorrect misses: none
+- suggestion recall misses at 5: none
+- valid-word false autocorrect count: 0
+- protected-token false write count: 0
+- arbitrary delete-index autocorrect count: 0
 
-No next-edit logging exists. The local demos can show session-local debug rows,
-reason codes, source kind, and revert actions, but they do not persist full
-documents or user edit streams.
+Suggestions-only rows such as `reciept`, `addres`, `dont`, `adresss`, and
+`theyre` remain rejected from autocorrect unless a later reviewed prompt adds
+an exact explicit table entry. Delete-index candidates do not become
+autocorrect triggers by themselves.
 
-## Current Review Summary
-
-- Common typo table entries: 21.
-- Benchmark autocorrect cases: 27, including casing and punctuation variants.
-- Suggestions-only cases: 12.
-- Valid-word traps: 9.
-- Protected structured terms: 8.
-- Protected technical terms: 6.
-- Acronym terms: 6.
-- Proper-name false-positive candidates reviewed: 4.
-- Trading/domain terms: 4.
-- Suggestion recall in the Prompt 112 benchmark run: 12/12.
-- Valid-word false autocorrect count: 0.
-- Protected-token false write count: 0.
-- Reviewed false-positive autocorrect count: 0.
-- Host-provided fixture path: loads the mock Typai Dictionary Blob during
-  initialization, keeps `receipt` as a known word, and recalls `reciept` to
-  `receipt`.
-- Production dictionary mode: blocked until package inclusion is approved.
-- Reverted correction telemetry: none exists; local tests cover exact revert
-  behavior without collecting user telemetry.
-- Suppressed corrections are represented by reason codes such as
-  `AUTOCORRECT_GATE_BLOCKED`, `VALID_WORD_BLOCK`, and
-  `PROTECTED_TOKEN_BLOCK`.
-
-## Cross-Surface Quality Report
-
-`pnpm test:e2e` includes the Prompt 112 spell-quality parity matrix across:
-
-- contenteditable
-- textarea
-- React textarea
-- React contenteditable
-- CodeMirror
-
-The matrix covers expanded autocorrect, exact blue-mark revert,
-suggestions-only behavior, chosen-suggestion correction transactions,
-valid-word safety, protected-token safety, casing/punctuation, personal
-dictionary, and always/never correction rules. CodeMirror also keeps Markdown
-inline code and fenced code contexts protected while ordinary prose still uses
-spelling behavior.
-
-| Surface | Correction | Suggestions | Valid/protected safety | Completion coexistence |
-| --- | --- | --- | --- | --- |
-| contenteditable | covered | covered | covered | V4.1 E2E |
-| textarea | covered | covered | covered | V4.1 E2E |
-| React textarea | covered | covered | covered | V4.1 E2E |
-| React contenteditable | covered | covered | covered | V4.1 E2E |
-| CodeMirror | covered | covered | Markdown/code contexts covered | V4.1 E2E |
-
-## Completion Quality Notes
-
-The real-provider completion path is manual and proxy-routed. Automated tests,
-E2E, browser benchmarks, smoke scripts, and CI continue to use mock providers
-and mock proxy routes. `pnpm smoke:real-provider:manual` is expected to skip
-unless the explicit real-provider environment gates are set.
-
-`pnpm bench:browser` remains the source for browser correction and mocked
-completion p95 timings. Completion warnings do not trigger provider calls.
-Accepted completions are asserted to produce no blue correction mark. Visible
-completion ghosts are asserted to dismiss when a correction transaction occurs.
-
-## Prompt 107 Audit Summary
-
-- Source/license: no production dictionary or frequency asset is bundled; the
-  checked-in dictionary fixture is mock-only and generated production outputs
-  remain blocked by policy gates.
-- Engine/FFI: native correction and suggestion APIs use primitive returns and
-  caller-owned buffers; no C++ heap ownership crosses into Rust or JavaScript.
-- Correction safety: valid-word autocorrections, protected-token writes, and
-  arbitrary delete-index autocorrections remain gated at zero.
-- Surface parity: E2E covers contenteditable, textarea, React textarea, React
-  contenteditable, and CodeMirror.
-- Completion boundary: mock remains default, proxy mode is optional, and real
-  provider use remains manual and server-side.
-- Metrics/privacy: no next-edit logging or full-document spell-quality report
-  is introduced.
-
-## Known Limitations
+## Current Limits
 
 - No production dictionary or frequency asset is bundled.
-- The scaled mock dictionary is a loader stress fixture, not language quality.
-- Delete-index suggestions improve recall but do not create autocorrect
-  triggers by themselves.
-- Proper nouns and domain terms are protected from autocorrect, but some may
-  still be red spelling issues unless they are known by the built-in or loaded
-  dictionary.
-- Valid-word/context correction is still out of scope.
+- The host-provided quality fixture is test-only and not production language
+  coverage.
+- The scaled mock dictionary is a loader stress fixture, not spell quality.
+- Valid-word/context autocorrection remains out of scope.
 - Grammar, style, tone, clarity, local model inference, and next-edit logging
-  are still out of scope.
+  remain out of scope.
+- No real provider calls occur in this benchmark.
+
+## Prompt 136 Surface Parity Notes
+
+- Browser E2E uses representative corpus rows instead of running the entire
+  corpus through Playwright.
+- Quoted `"teh"` is currently a conservative protected/no-write token rather
+  than a quote-preserving autocorrection.
+- Contenteditable now preserves punctuation-triggered blue marks after a
+  following space.
+- Contenteditable now treats `https:` as an in-progress protected URL prefix,
+  preventing stale red marks while a URL is being typed.
+- Corpus package tests now rely on the Turbo dependency graph for shared
+  `@typai/core` builds, avoiding concurrent Wasm rebuild races in `pnpm test`.
+
+## Prompt 137 Benchmark Hardening Notes
+
+- `pnpm bench:browser` now includes deterministic React textarea correction in
+  addition to contenteditable, textarea, and CodeMirror correction paths.
+- Browser benchmark output now emits parseable `browser-benchmark-json` lines
+  and keeps correction thresholds separate from mocked completion thresholds.
+- `pnpm bench:language-asset` and `pnpm --filter @typai/core bench` emit
+  parseable JSON summaries for release gate consumers.
+
+## Prompt 139 Final Audit Notes
+
+- The final Production Asset Unblock audit reran `pnpm bench:spell-quality`
+  and kept all hard safety counts at zero.
+- The quality harness remains fixture-backed, not a claim that production
+  dictionary coverage is bundled.
+- The final asset state remains blocked / host-provided only; production
+  quality evidence must be rerun after any approved generated asset exists.

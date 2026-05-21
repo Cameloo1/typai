@@ -13,7 +13,7 @@ import {
   writeDictionaryAsset,
 } from "../packages/core/scripts/dictionary-asset-utils.mjs";
 
-const productionManifestPath = resolve("packages/core/assets/production/MANIFEST.template.json");
+const productionManifestPath = resolve("packages/core/assets/production/MANIFEST.json");
 const mockDictionaryPath = resolve("packages/core/assets/mock-en-us.dictionary.bin");
 const checkTokens = ["teh", "reciept", "adress", "form", "user@example.com", "ffuf", "zzzzword"];
 const suggestTokens = ["reciept", "addres", "separat", "tomorow", "adresss", "zzzzword"];
@@ -38,13 +38,16 @@ const productionPackageInclusion = manifest.output?.packageInclusion ?? "unknown
 const productionManifestWordCount = manifest.output?.wordCount ?? null;
 const productionBlocked = await probeProductionModeBlocked();
 const scaledMockBytes = ensureScaledMockAsset();
+const builtIn = await runBuiltInScenario();
 const hostProvidedFixture = await runAssetScenario({
   name: "host-provided mock fixture",
+  assetMode: "host-provided",
   bytes: readFileSync(mockDictionaryPath),
   expectedMinimumWords: 1,
 });
 const scaledMock = await runAssetScenario({
   name: "scaled mock fixture",
+  assetMode: "scaled-mock",
   bytes: scaledMockBytes,
   expectedMinimumWords: defaultScaledMockWordCount,
 });
@@ -119,20 +122,51 @@ async function maybeRunProductionScenario(currentManifest) {
 
   return runAssetScenario({
     name: "approved production asset",
+    assetMode: "production",
     bytes: readFileSync(resolve(assetPath)),
     expectedMinimumWords: currentManifest.output?.wordCount ?? 1,
   });
 }
 
-async function runAssetScenario({ name, bytes, expectedMinimumWords }) {
-  const loadSummary = await measureAsyncLatency(
-    async () => {
-      const core = await createTypaiCore({
+async function runBuiltInScenario() {
+  return runCoreScenario({
+    name: "built-in tiny mode",
+    assetMode: "built-in",
+    createCore: () => createTypaiCore(),
+    assetByteSize: 0,
+    assetSha256: "",
+    expectedMinimumWords: 0,
+  });
+}
+
+async function runAssetScenario({ name, assetMode, bytes, expectedMinimumWords }) {
+  return runCoreScenario({
+    name,
+    assetMode,
+    createCore: () =>
+      createTypaiCore({
         dictionary: {
           mode: "host-provided",
           bytes,
         },
-      });
+      }),
+    assetByteSize: bytes.byteLength,
+    assetSha256: sha256(bytes),
+    expectedMinimumWords,
+  });
+}
+
+async function runCoreScenario({
+  name,
+  assetMode,
+  createCore,
+  assetByteSize,
+  assetSha256,
+  expectedMinimumWords,
+}) {
+  const loadSummary = await measureAsyncLatency(
+    async () => {
+      const core = await createCore();
 
       if (core.getLoadedDictionaryWordCount() < expectedMinimumWords) {
         throw new Error(`${name} loaded fewer words than expected.`);
@@ -143,12 +177,7 @@ async function runAssetScenario({ name, bytes, expectedMinimumWords }) {
       warmupIterations: 2,
     },
   );
-  const core = await createTypaiCore({
-    dictionary: {
-      mode: "host-provided",
-      bytes,
-    },
-  });
+  const core = await createCore();
   const checkSummary = measureSyncLatency(
     (index) => {
       core.checkCompletedToken({ token: checkTokens[index % checkTokens.length] });
@@ -169,8 +198,9 @@ async function runAssetScenario({ name, bytes, expectedMinimumWords }) {
   );
   const result = {
     name,
-    assetByteSize: bytes.byteLength,
-    assetSha256: sha256(bytes),
+    assetMode,
+    assetByteSize,
+    assetSha256,
     loadedWordCount: core.getLoadedDictionaryWordCount(),
     deleteIndexEntryCount: core.getDeleteIndexEntryCount(),
     memoryEstimateBytes: core.getDeleteIndexMemoryEstimateBytes(),
@@ -351,6 +381,7 @@ function printReport() {
     }`,
   );
   console.log(`production dictionary mode blocked: ${productionBlocked ? "yes" : "no"}`);
+  console.log(`status: ${failures.length > 0 ? "fail" : warnings.length > 0 ? "warn" : "pass"}`);
   console.log("");
   console.log("thresholds");
   console.log(
@@ -379,6 +410,7 @@ function printReport() {
     )} / ${formatBytes(thresholds.assetByteFailBytes)}`,
   );
 
+  printAssetScenario(builtIn);
   printAssetScenario(hostProvidedFixture);
   printAssetScenario(scaledMock);
 
@@ -406,7 +438,8 @@ function printReport() {
         manifestWordCount: productionManifestWordCount,
         blocked: productionBlocked,
       },
-      assets: [hostProvidedFixture, scaledMock, productionScenario]
+      status: failures.length > 0 ? "fail" : warnings.length > 0 ? "warn" : "pass",
+      assets: [builtIn, hostProvidedFixture, scaledMock, productionScenario]
         .filter(Boolean)
         .map((asset) => summarizeScenarioForJson(asset)),
       corePackage,
@@ -420,15 +453,16 @@ function printReport() {
 function printAssetScenario(result) {
   console.log("");
   console.log(result.name);
+  console.log(`asset mode: ${result.assetMode}`);
   console.log(`asset byte size: ${formatBytes(result.assetByteSize)}`);
-  console.log(`asset sha256: ${result.assetSha256}`);
+  console.log(`asset sha256: ${result.assetSha256 || "n/a"}`);
   console.log(`manifest word count: ${productionManifestWordCount ?? "not generated"}`);
   console.log(`loaded word count: ${result.loadedWordCount}`);
   console.log(`delete-index entries: ${result.deleteIndexEntryCount}`);
   console.log(`memory estimate: ${formatBytes(result.memoryEstimateBytes)}`);
-  console.log(`dictionary load mean/p95/p99: ${formatLatencyTriple(result.loadSummary)}`);
+  console.log(`dictionary load mean/p50/p95/p99: ${formatLatencySummary(result.loadSummary)}`);
   console.log(
-    `delete-index build mean/p95/p99: ${formatLatencyTriple(
+    `delete-index build mean/p50/p95/p99: ${formatLatencySummary(
       result.deleteIndexBuildSummary,
     )} (initialization-inclusive)`,
   );
@@ -439,13 +473,16 @@ function printAssetScenario(result) {
 function summarizeScenarioForJson(result) {
   return {
     name: result.name,
+    assetMode: result.assetMode,
     assetByteSize: result.assetByteSize,
+    assetSha256: result.assetSha256,
     loadedWordCount: result.loadedWordCount,
     deleteIndexEntryCount: result.deleteIndexEntryCount,
     memoryEstimateBytes: result.memoryEstimateBytes,
-    loadP95Ms: result.loadSummary.p95,
-    checkP95Ms: result.checkSummary.p95,
-    suggestP95Ms: result.suggestSummary.p95,
+    loadSummary: result.loadSummary,
+    deleteIndexBuildSummary: result.deleteIndexBuildSummary,
+    checkSummary: result.checkSummary,
+    suggestSummary: result.suggestSummary,
   };
 }
 
@@ -527,8 +564,10 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function formatLatencyTriple(summary) {
-  return `${formatMs(summary.mean)} / ${formatMs(summary.p95)} / ${formatMs(summary.p99)}`;
+function formatLatencySummary(summary) {
+  return `${formatMs(summary.mean)} / ${formatMs(summary.p50)} / ${formatMs(
+    summary.p95,
+  )} / ${formatMs(summary.p99)}`;
 }
 
 function formatMs(value) {

@@ -8,10 +8,11 @@ embedder-owned endpoints. The C++ core compiled to Wasm runs in browsers today;
 the same engine compiles natively for editor plugins, desktop applications, and
 other host environments.
 
-**Status:** V4.2 public-beta readiness, Intelligence Quality Foundation, and
-the Production Language Asset + Beta Release Candidate checkpoint are complete.
-The `0.0.0-beta.0` package set is published on npm under the `beta` dist-tag
-and has passed registry smoke from public npm packages.
+**Status:** V4.2 public-beta readiness, the Intelligence Quality Foundation,
+and the final Production Asset Unblock audit are complete for the current
+blocked-host-provided asset state. Production dictionary/frequency generation
+and package inclusion remain blocked until the manifest source, license,
+attribution, hash, size, quality, package, and review gates pass.
 
 ## What this is, structurally
 
@@ -103,7 +104,7 @@ Advanced capabilities are separate, explicit, opt-in packages or later phases.
 
 ## Current Phase
 
-Production Language Asset + Beta Release Candidate is complete in the current
+Production Asset Unblock has completed its final hardening audit in the current
 blocked-production-asset state.
 
 - deterministic correction remains local through `@typai/core`
@@ -120,16 +121,24 @@ blocked-production-asset state.
   coverage until an approved production asset lands
 - spell-quality benchmark gates and cross-surface E2E guard the current safety
   baseline
-- production language asset RC gates are complete, but no production
-  dictionary/frequency asset is bundled until the remaining source, hash,
-  generated output, size, quality, and review blockers are closed
-- the deterministic production transform pipeline exists, but package inclusion
-  is currently host-provided only while the production manifest is blocked
-- npm beta publish completed for the seven approved packages
-- registry smoke passed from public npm `@beta` packages
-- the `latest` dist-tag currently also points at `0.0.0-beta.0` because these
-  were first publishes; move it only through an explicit release decision
-- the next release step is selecting the next phase or beta patch/remediation
+- production asset source review is being pinned through
+  `packages/core/assets/production/MANIFEST.json`
+- no production dictionary/frequency asset is bundled unless the production
+  manifest review status is approved and package inclusion gates pass
+- the deterministic production transform pipeline now has fixture build,
+  production validation, inspection, source-hash gates, and Blob v1 metadata,
+  but package inclusion is blocked and the supported external path is
+  host-provided only
+- Prompt 134 selects host-provided-only language asset delivery for package
+  tarballs while production review remains blocked; `pnpm package:size-report`
+  and package smokes enforce that no production binary or raw source ships
+- host-provided, fixture, and scaled-mock Blob v1 assets load through the
+  TypeScript -> Rust/Wasm -> C++ path at `createTypaiCore()` initialization, and
+  `pnpm ffi:audit` checks the FFI boundary
+- release and registry-publish decisions stay outside this production asset
+  prompt
+- the final Production Asset Unblock checkpoint is recorded in
+  `docs/production-asset-unblock-complete.md`
 
 ## Packages
 
@@ -224,6 +233,8 @@ workspace symlinks or local tarballs.
 - [Beta known issues](https://github.com/Cameloo1/typai/blob/fix/docs/beta-known-issues.md)
 - [Beta rollback guidance](https://github.com/Cameloo1/typai/blob/fix/docs/beta-rollback-guidance.md)
 - [Production asset gate recap](https://github.com/Cameloo1/typai/blob/fix/docs/production-asset-gate-recap.md)
+- [Production asset final audit](https://github.com/Cameloo1/typai/blob/fix/docs/production-asset-unblock-complete.md)
+- [Production asset status report](https://github.com/Cameloo1/typai/blob/fix/docs/production-asset-status-report.md)
 - [Common typo table](https://github.com/Cameloo1/typai/blob/fix/docs/common-typo-table.md)
 - [Dictionary source selection](https://github.com/Cameloo1/typai/blob/fix/docs/dictionary-source-selection.md)
 - [Dictionary production approval](https://github.com/Cameloo1/typai/blob/fix/docs/dictionary-production-approval.md)

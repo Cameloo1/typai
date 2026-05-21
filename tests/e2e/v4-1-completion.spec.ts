@@ -277,6 +277,7 @@ async function openContenteditableCompletionDemo(
       await expect
         .poll(() => getContenteditableSourceText(page, "remote-completion-editor"))
         .toBe("");
+      await expect.poll(() => getRemoteCompletionState(page)).toBe("idle");
     },
     async typeText(text) {
       await page.getByTestId("remote-completion-editor").click();
@@ -613,6 +614,10 @@ async function getRemoteCompletionMetrics(page: Page): Promise<CompletionMetrics
       };
     })
     .then(requireMetrics);
+}
+
+async function getRemoteCompletionState(page: Page): Promise<string> {
+  return page.evaluate(() => window.__typaiRemoteCompletionDebug?.getState() ?? "missing");
 }
 
 async function getContenteditableSourceText(page: Page, testId: string): Promise<string> {

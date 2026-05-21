@@ -11,6 +11,7 @@ Current boundaries:
 - optional completion lives in `@typai/completion-remote`
 - completion credentials belong on an embedder-owned server endpoint
 - production language assets are blocked / host-provided only
+- final Production Asset Unblock audit is complete for that blocked state
 - no real Codex adapter, grammar/style layer, local inference, or next-edit
   logging is included
 
@@ -65,14 +66,22 @@ install target until a later release decision changes dist-tags.
 | Privacy boundary | [Privacy](./privacy.md) |
 | API maturity | [API stability](./api-stability.md) |
 | Roadmap | [Roadmap](./roadmap.md) |
+| Spell quality gates | [Spell quality report](./spell-quality-report.md) |
 
 ## Language Assets
 
 | Topic | Doc |
 | --- | --- |
+| Production Asset Unblock | [Production asset unblock](./production-asset-unblock.md) |
+| Production Asset Unblock final audit | [Production asset unblock complete](./production-asset-unblock-complete.md) |
+| Production asset remediation loop | [Production asset unblock remediation](./production-asset-unblock-remediation.md) |
+| Current asset status report | [Production asset status report](./production-asset-status-report.md) |
+| Transform pipeline design | [Production asset transform design](./production-asset-transform-design.md) |
+| Latest spell-quality run | [Latest spell-quality report](../reports/spell-quality/latest.md) |
 | Current production-asset gate | [Production asset gate recap](./production-asset-gate-recap.md) |
 | Autocorrect table | [Common typo table](./common-typo-table.md) |
 | Approved source direction | [Dictionary source selection](./dictionary-source-selection.md) |
 | Production approval checklist | [Dictionary production approval](./dictionary-production-approval.md) |
 | Package asset policy | [Dictionary asset policy](./dictionary-asset-policy.md) |
+| Asset delivery policy | [Language asset delivery policy](./language-asset-delivery-policy.md) |
 | Remaining asset blockers | [Dictionary asset blockers](./dictionary-asset-blockers.md) |

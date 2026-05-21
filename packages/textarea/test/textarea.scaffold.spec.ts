@@ -821,6 +821,9 @@ function createStubTypai(): StubTypai {
     getLoadedDictionaryWordCount() {
       return 0;
     },
+    getLoadedDictionaryByteSize() {
+      return 0;
+    },
     getDeleteIndexEntryCount() {
       return 0;
     },

@@ -91,27 +91,31 @@
   },
   "transform": {
     "script": "packages/core/scripts/build-production-dictionary.mjs",
-    "version": "prompt-110-production-transform-v1",
+    "version": "prompt-131-production-transform-v1",
     "filters": [
       "read pinned ESDB/SCOWL en_US size 60 Hunspell files",
       "strip Hunspell flags or model supported flags explicitly",
       "normalize accepted dictionary words to Typai token policy",
+      "reject protected-looking and non-ASCII/non-alpha tokens",
       "read pinned Google Books Ngram American English 2019 1-gram files",
       "filter to lowercase alphabetic words accepted by the dictionary source",
-      "aggregate frequency counts deterministically",
+      "stream and aggregate frequency counts deterministically",
       "emit Typai Dictionary Blob v1 plus generated-output hash"
     ],
+    "networkFetchAllowed": false,
     "generatedAt": null
   },
   "output": {
     "wordCount": null,
     "byteSize": null,
+    "sha256": "",
     "packageInclusion": "blocked",
     "assetPath": ""
   },
   "review": {
     "status": "blocked",
-    "reviewedAt": "2026-05-19",
+    "reviewedAt": "2026-05-20",
+    "reviewer": "manual-release-operator",
     "reviewNotes": "Source path is approved for future pipeline work, but production asset ingestion remains blocked. Google Ngram raw source hashes, pinned local production input paths, generated output hash, generated size evidence, quality evidence, and final review signoff are missing."
   }
 }

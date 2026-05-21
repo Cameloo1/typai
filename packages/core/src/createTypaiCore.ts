@@ -78,9 +78,10 @@ type TokenAnalysis =
 
 export async function createTypaiCore(options: CreateTypaiCoreOptions = {}): Promise<TypaiCore> {
   const wasm = await loadTypaiWasm();
-  wasm.clearLoadedDictionary();
 
-  if (options.dictionary !== undefined) {
+  if (options.dictionary === undefined) {
+    wasm.clearLoadedDictionary();
+  } else {
     await loadDictionarySource(wasm, options.dictionary);
   }
 
@@ -101,6 +102,9 @@ export async function createTypaiCore(options: CreateTypaiCoreOptions = {}): Pro
     },
     getLoadedDictionaryWordCount() {
       return wasm.loadedDictionaryWordCount();
+    },
+    getLoadedDictionaryByteSize() {
+      return wasm.loadedDictionaryByteSize();
     },
     getDeleteIndexEntryCount() {
       return wasm.deleteIndexEntryCount();
@@ -151,6 +155,7 @@ async function loadDictionarySource(
   const bytes = await resolveDictionaryBytes(dictionary);
 
   if (bytes === null) {
+    wasm.clearLoadedDictionary();
     return;
   }
 
@@ -192,7 +197,7 @@ async function resolveDictionaryBytes(
     return loadDictionaryBytesFromUrl(dictionary.url);
   }
 
-  throw new Error("Typai host-provided dictionary source must provide bytes, load, or url.");
+  throw new Error(`Typai ${mode} dictionary source must provide bytes, load, or url.`);
 }
 
 async function loadDictionaryBytesFromUrl(url: string): Promise<Uint8Array> {

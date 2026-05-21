@@ -2,272 +2,212 @@
 
 Status date: 2026-05-20.
 
-Source approval status: **APPROVED for the candidate source path**.
+Source approval status: **PARTIAL SOURCE PATH APPROVED**.
 
 Asset ingestion status: **BLOCKED**.
 
-Transform pipeline status: **AVAILABLE in gated fixture mode**.
+Transform pipeline status: **PROMPT 131 DETERMINISTIC PIPELINE READY; FIXTURE
+MODE VALIDATED**.
 
-Package inclusion status: **EXCLUDED FROM `@typai/core`; host-provided only**.
+Package inclusion status: **BLOCKED; host-provided only**.
 
-Prompt 109 verifies and pins the first production source path. It does not
-ingest, commit, package, publish, or ship generated production assets.
-Prompt 110 adds the deterministic transform entrypoint, but production mode
-still refuses to run while the manifest review status is blocked.
-Prompt 111 wires the runtime/package policy for the blocked state: packaged
-production assets remain unavailable, `dictionary.mode: "production"` throws a
-clear initialization error, and host-provided assets remain the supported
-external asset path.
-Prompt 112 expands the production-RC spell-quality corpus and confirms the
-blocked production mode plus host-provided fixture behavior in
-`pnpm bench:spell-quality`.
+Prompt 132 branch: **blocked-host-provided**. The production build gate was
+checked and failed closed while `reviewStatus` remained blocked.
 
-## Approved Dictionary Source
+This is the authoritative production language asset approval record. It
+approves no bundled production dictionary or frequency asset. It records the
+current source evidence and the exact blockers that keep production asset
+generation closed.
 
-- Source: English Speller Database / SCOWL v2 generated Hunspell `en_US`
-  dictionary.
-- Official source URL: https://wordlist.aspell.net/
-- Source repository: https://github.com/en-wl/wordlist
-- License/notice URL: https://github.com/en-wl/wordlist/blob/v2/Copyright
-- Maintainer/project: Kevin Atkinson / English Speller Database.
-- Selected export: official non-Australian `en_US` Hunspell dictionary at ESDB
-  size 60.
-- Exact source file:
-  https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip
-- Source pin: release `2026.02.25`, readme timestamp
-  `Wed Feb 25 15:37:24 2026 -0500`, commit marker `[7e99eda]`.
-- Source SHA-256:
-  `ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9`.
-- Source ZIP size: 187,271 bytes.
-- Expanded files observed locally for verification: `en_US.aff` 3,240 bytes,
-  `en_US.dic` 508,614 bytes, `README_en_US.txt` 6,976 bytes.
-- Dictionary entry count in `en_US.dic`: 47,551 header count before Hunspell
-  flag stripping.
-- Notice SHA-256:
-  `71bffd4b74ad47fff01c8b3c666e77da92737854e568850d8728024e0a53f304`.
-- License summary: the official notice permits use, copy, modification,
-  distribution, and sale of ESDB/SCOWL or word lists created from it when the
-  copyright and permission notices are preserved. The `en_US` Hunspell README
-  also includes a BSD-style affix-file notice that must be preserved if the
-  affix-derived source path is used.
-- Transform compatibility: compatible after an explicit deterministic transform
-  strips or models Hunspell flags, applies Typai token policy, records output
-  counts, and emits Typai Dictionary Blob v1.
-- Redistribution in npm package: source appears eligible for transformed npm
-  redistribution only if the package includes the full applicable ESDB/SCOWL
-  and affix-file notices. Generated output is still blocked until the transform,
-  generated hash, generated size, quality, and review gates pass.
-- Package inclusion plan: no generated dictionary is bundled yet. Future
-  inclusion starts as `optional` or host-provided unless package size and
-  quality gates prove `@typai/core` bundling is acceptable.
+## Approval Record
 
-## Approved Frequency Source
+```yaml
+reviewStatus: blocked
+reviewedAt: 2026-05-20
+reviewer: manual-release-operator
 
-- Source: Google Books Ngram Viewer data.
-- Official source URL: https://books.google.com/ngrams/info
-- Dataset index:
-  https://storage.googleapis.com/books/ngrams/books/datasetsv3.html
-- American English 2019 1-gram export index:
-  https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/eng-us-1-ngrams_exports.html
-- Maintainer/project: Google Books Ngram Viewer team / Google Books.
-- Selected corpus: American English 2019 unigrams.
-- Source pin: version `20200217`, American English 2019, path segment
-  `eng-us`.
-- Exact source files: `totalcounts-1` plus `1-00000-of-00014.gz` through
-  `1-00013-of-00014.gz` from the American English 1-gram export index.
-- Export index size observed locally: 4,662 bytes.
-- Raw source SHA-256 status: not captured for `totalcounts-1` or the 14 gzip
-  partitions.
-- License summary: the official export page states the compilation is licensed
-  under Creative Commons Attribution 3.0 Unported.
-- Attribution requirement: package-visible attribution to Google Books Ngram
-  Viewer, source URL, corpus/version, and license is required before generated
-  frequency output can be included.
-- Transform compatibility: compatible after an explicit deterministic transform
-  fetches pinned 1-gram files, records raw hashes, filters to Typai-accepted
-  lowercase alphabetic dictionary words, aggregates frequencies
-  deterministically, and emits compact integer scores.
-- Redistribution in npm package: plausible for transformed frequency scores
-  under CC BY 3.0 only with attribution, but production inclusion remains
-  blocked until raw source hashes, output hashes, generated size evidence, and
-  final review signoff exist.
-- Package inclusion plan: no raw Ngram files or generated frequency tables are
-  bundled yet. Raw Ngram files must stay out of Git and package tarballs.
-  Generated compact scores may be included only after manifest and size gates
-  pass.
+dictionarySource:
+  name: English Speller Database / SCOWL v2 generated Hunspell en_US dictionary
+  url: https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip
+  version: 2026.02.25 rel-2026.02.25 commit 7e99eda
+  files:
+    - hunspell-en_US-2026.02.25.zip
+    - en_US.aff
+    - en_US.dic
+    - README_en_US.txt
+  sha256: ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9
+  license: ESDB/SCOWL notice license plus relevant Hunspell affix-file notice
+  licenseFile: packages/core/assets/production/LICENSES/README.md
+  attribution: English wordlist generated from the English Speller Database / SCOWL by Kevin Atkinson; affix-file notice required if affix-derived material is used.
+  redistributionDecision: approved for transformed redistribution only with notices preserved
 
-## Required Attribution Text
+frequencySource:
+  name: Google Books Ngram Viewer American English 2019 1-grams
+  url: https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/eng-us-1-ngrams_exports.html
+  version: googlebooks-eng-us-20200217 American English 2019
+  files:
+    - totalcounts-1
+    - 1-00000-of-00014.gz
+    - 1-00001-of-00014.gz
+    - 1-00002-of-00014.gz
+    - 1-00003-of-00014.gz
+    - 1-00004-of-00014.gz
+    - 1-00005-of-00014.gz
+    - 1-00006-of-00014.gz
+    - 1-00007-of-00014.gz
+    - 1-00008-of-00014.gz
+    - 1-00009-of-00014.gz
+    - 1-00010-of-00014.gz
+    - 1-00011-of-00014.gz
+    - 1-00012-of-00014.gz
+    - 1-00013-of-00014.gz
+  sha256:
+    totalcounts-1: 6ce99984774743b7142e2f7e95fc33bd676ea4485038081881e61e4456804d8a
+    partitions: blocked; 14 gzip partition hashes missing
+  license: Creative Commons Attribution 3.0 Unported
+  licenseFile: packages/core/assets/production/LICENSES/README.md
+  attribution: Google Books Ngram Viewer source, corpus/version, CC BY 3.0 license, and change notice required.
+  redistributionDecision: blocked for production ingestion until every raw source hash and final attribution notice is present
 
-Current placeholder attribution is recorded in
-`packages/core/assets/production/ATTRIBUTION.md`.
+packageInclusionDecision: blocked
+rawSourcePolicy: never-commit
 
-Future package-visible attribution must include at least:
+sizeBudget:
+  sourceSizeLimit: external-only raw staging; current Google Ngram source set is 8,223,758,203 bytes by HEAD metadata
+  generatedAssetWarningSize: 2 MiB
+  generatedAssetFailSize: 8 MiB
+  coreTarballWarningSize: 2 MiB package impact
+  coreTarballFailSize: 4 MiB package impact
 
-```text
-This product includes an English wordlist generated from the English Speller
-Database / SCOWL by Kevin Atkinson.
-Source: https://wordlist.aspell.net/ and https://github.com/en-wl/wordlist
-Copyright 2000-2026 by Kevin Atkinson.
-The applicable permission notice is included with this package.
+qualityGate:
+  requiredSpellQualityBenchmarkTargets:
+    - pnpm bench:spell-quality must pass
+    - protected-token false writes must be 0
+    - valid-word autocorrections must be 0
+    - delete-index or edit-distance autocorrections outside the common typo table must be 0
+    - reviewed false-positive autocorrections must be 0
+    - approved common-typo correction corpus must pass
+    - suggestions-only recall corpus must pass
+  requiredFalsePositiveThresholds:
+    - 0 protected-token writes
+    - 0 valid-word autocorrections
+    - 0 reviewed false-positive autocorrections
 
-This product includes frequency scores derived from Google Books Ngram Viewer
-data.
-Source: https://books.google.com/ngrams
-Corpus: American English 2019, googlebooks-eng-us-20200217.
-Google Books Ngram Viewer is acknowledged as the source.
+blockers:
+  - Google Ngram partition SHA-256 values are missing.
+  - Generated output hash is missing.
+  - Generated word count and byte size are missing.
+  - Final package-visible license and attribution bundle is missing.
+  - Quality gates have not run against a generated production asset.
+  - Package dry-run has not proven production asset inclusion/exclusion.
+  - Final review signoff is still blocked.
 ```
 
-The final asset PR must include full applicable license/notice text. This short
-block and the current placeholder are not enough by themselves.
+Prompt 131 update:
 
-## Manifest Status
+- `packages/core/scripts/build-production-dictionary.mjs` now implements the
+  deterministic transform pipeline for fixture and production modes.
+- Fixture mode writes ignored output under `packages/core/assets/generated/`
+  and verifies repeated binary SHA-256 determinism.
+- Production mode fails closed while `reviewStatus` is blocked and requires
+  pinned local source paths, matching SHA-256 values, package-visible license
+  and attribution files, approved redistribution fields, and non-blocked
+  package inclusion before processing.
+- The current production approval record remains blocked; this update approves
+  the pipeline machinery, not production source ingestion or package inclusion.
 
-The current production manifest is blocked and lives at:
+Prompt 132 update:
 
-- `packages/core/assets/production/MANIFEST.template.json`
+- Production asset generation was not run because `reviewStatus` remains
+  blocked.
+- `pnpm --filter @typai/core build:dictionary:production` fails closed with
+  `review.status is blocked`.
+- Host-provided Typai Dictionary Blob v1 loading remains the supported external
+  fallback path.
+- Scaled mock output remains mock-only and suitable only for loader and
+  delete-index stress validation.
 
-It records:
+## Dictionary Source Verification
 
-- dictionary source hash and size for
-  `hunspell-en_US-2026.02.25.zip`
-- Google Ngram American English 2019 exact source file URLs
-- missing raw frequency hashes as `null`
-- missing generated output counts and byte size as `null`
-- `output.packageInclusion: "blocked"`
-- `review.status: "blocked"`
-- transform script path:
-  `packages/core/scripts/build-production-dictionary.mjs`
+- Official source URL: `https://wordlist.aspell.net/`.
+- Official project name: English Speller Database / SCOWL.
+- Maintainer/project owner: Kevin Atkinson / English Speller Database.
+- Exact release: `2026.02.25`, `rel-2026.02.25`, commit marker `7e99eda`.
+- Exact file name: `hunspell-en_US-2026.02.25.zip`.
+- Source archive SHA-256:
+  `ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9`.
+- Source size: 187,271 bytes.
+- Expected generated word count: unknown until transform; source `en_US.dic`
+  header count is 47,551 before flag handling.
+- Language/locale coverage: English, United States, ESDB size 60 generated
+  Hunspell dictionary.
+- Update cadence: active upstream releases; each update requires a new source
+  review and hash capture.
+- Redistribution allowed: yes for the selected source path if notices are
+  preserved.
+- Modification allowed: yes if notices are preserved.
+- Commercial use allowed: yes if notices are preserved.
+- Attribution required: yes.
+- Generated derivative npm redistribution: source license appears compatible
+  with a transformed npm asset only when full notices are package-visible.
+- Raw source commit: blocked by project policy even if the upstream license
+  would allow redistribution.
 
-The placeholder license and attribution files are:
+Risks:
 
-- `packages/core/assets/production/LICENSES/README.md`
-- `packages/core/assets/production/ATTRIBUTION.md`
+- Stale data if pinned release is not refreshed.
+- Affix-derived material has separate notice preservation requirements.
+- Large/uncommon word acceptance could degrade Typai false-negative behavior.
+- Generated output still needs quality and false-positive review.
 
-## Runtime And Package Policy
+## Frequency Source Verification
 
-Current package inclusion decision:
+- Official source URL: `https://books.google.com/ngrams/info`.
+- Export index:
+  `https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/eng-us-1-ngrams_exports.html`.
+- Exact corpus/version: American English 2019,
+  `googlebooks-eng-us-20200217`.
+- Exact source files: `totalcounts-1` plus `1-00000-of-00014.gz` through
+  `1-00013-of-00014.gz`.
+- License/terms: Creative Commons Attribution 3.0 Unported on the export page.
+- Source size: 8,223,758,203 compressed bytes by HEAD metadata.
+- Source hash status: `totalcounts-1` pinned; 14 gzip partition hashes missing.
+- Expected generated data size: unknown until transform.
+- Frequency normalization strategy: aggregate pinned unigram rows
+  deterministically, filter to lowercase alphabetic Typai-accepted dictionary
+  words, intersect with accepted dictionary output, and emit compact integer
+  scores with output hash/count/size.
+- Generated frequency table redistribution: blocked until complete source
+  hashes, final attribution, generated metadata, quality evidence, and review
+  signoff are present.
+- Raw source commit: blocked by project policy and package-size constraints.
+
+Risks:
+
+- Raw source is very large.
+- Missing partition hashes block reproducible transform.
+- Generated-data provenance must be preserved in package-visible notices.
+- Book corpus is not the same as modern editor/chat/code-adjacent prose.
+- Package bloat risk remains unknown until generated size is measured.
+
+## Current Runtime And Package Policy
 
 - Production generated binary: not committed.
 - Production prepack generation: disabled while `review.status` is blocked.
-- `@typai/core` tarball: excludes `assets/`, raw source files, production
-  manifest/license placeholders, generated production binaries, and generated
-  frequency tables.
-- Default runtime mode: built-in deterministic correction with no dynamic asset.
-- External asset path: host-provided Typai Dictionary Blob v1 bytes during
+- `@typai/core` tarball: must continue excluding raw sources and generated
+  production language assets.
+- Default runtime mode: built-in deterministic correction.
+- External asset path: host-provided Typai Dictionary Blob v1 bytes at
   `createTypaiCore()` initialization.
-- Future path: optional language pack or explicit packaged production asset
-  only after size, license, attribution, quality, and review gates pass.
-
-Runtime dictionary modes:
-
-- `built-in`: no dynamic dictionary is loaded.
-- `host-provided`: `bytes`, `load`, or `url` is resolved during
-  initialization, then token checking and suggestions stay synchronous.
-- `production`: reserved for a future approved asset and currently unavailable.
-
-Current Prompt 112 quality coverage:
-
-- Approved autocorrection corpus: 27/27 expected corrections.
-- Suggestions-only recall corpus: 12/12 expected suggestions.
-- Valid-word false autocorrect count: 0.
-- Protected-token false write count: 0.
-- Reviewed false-positive autocorrect count: 0.
-- Host-provided fixture path: loads during initialization and keeps the hot
-  path synchronous after initialization.
-- Production dictionary mode: still blocked while package inclusion is blocked.
-
-## Transform Pipeline Status
-
-The Prompt 110 transform command is:
-
-```sh
-pnpm --filter @typai/core build:dictionary:production
-```
-
-Current behavior:
-
-- Reads the production manifest.
-- Fails immediately when `review.status` is `blocked`.
-- Does not download sources or make network calls by default.
-- Requires pinned local input files and SHA-256 hashes before processing.
-- Verifies source hashes before reading dictionary or frequency rows.
-- Normalizes lowercase ASCII alphabetic words.
-- Strips Hunspell-style flags when present.
-- Excludes protected-looking URL, email, path, identifier, numeric, hyphenated,
-  and non-alpha tokens.
-- Deduplicates words, aggregates frequency rows, sorts deterministically, and
-  emits Typai Dictionary Blob v1 plus metadata.
-
-The validation command:
-
-```sh
-pnpm --filter @typai/core validate:dictionary:production
-```
-
-passes in the blocked state by confirming the production build is gated and by
-running the same transform path against repo-local fixtures. Fixture outputs are
-written under ignored `packages/core/assets/generated/` paths and are not
-production assets.
-
-## Exact Source Pinning Required Next
-
-Before any production output can enter the package, the asset PR must record:
-
-- Google Ngram raw file SHA-256 for `totalcounts-1` and every fetched 1-gram
-  partition.
-- Pinned local source file paths for the ESDB/SCOWL input and each Google Ngram
-  input.
-- Retrieval date for every raw source file.
-- Transform command output from
-  `pnpm --filter @typai/core build:dictionary:production`.
-- Generated output SHA-256.
-- Word count, frequency row count, compressed size, and uncompressed size.
-- Review status, reviewer, and review date.
-
-## Current Blockers
-
-Source path approval is not package inclusion approval. Asset ingestion remains
-blocked because:
-
-- Google Ngram raw source hashes are not captured.
-- The production manifest is still `MANIFEST.template.json` with
-  `review.status: "blocked"`.
-- Pinned local production source file paths are not recorded.
-- No generated output hash exists.
-- No generated word count, frequency row count, compressed size, or
-  uncompressed byte size exists.
-- No quality gate run has been performed against a generated production asset.
-- No final review signoff exists.
-
-Scaled mock and host-provided asset loading remain the fallback paths.
 
 ## Operator Summary
 
-For the published beta:
+For this prompt:
 
-- production dictionary binary: not bundled
-- production frequency table: not bundled
-- raw ESDB/SCOWL files: not bundled
-- raw Hunspell files: not bundled
-- raw Google Books Ngram files: not bundled
-- `dictionary.mode: "production"`: unavailable
-- host-provided Typai Dictionary Blob v1: supported external path
-
-This approval record is source/path approval, not package inclusion approval.
-
-## What Can Proceed Next
-
-Production Asset Unblock may proceed only as a separate explicit phase. That
-phase must:
-
-1. capture every missing Google Ngram raw source hash
-2. pin local input paths outside package output
-3. run the deterministic transform
-4. record generated output hash, counts, and size
-5. run quality, false-positive, protected-token, and latency gates against the
-   generated asset
-6. add final attribution and notice files
-7. record named review signoff
-8. prove package tarballs exclude raw sources
-
-Until then, the beta remains blocked / host-provided only.
+- production dictionary binary: not generated
+- production frequency table: not generated
+- raw ESDB/SCOWL files: not committed
+- raw Hunspell files: not committed
+- raw Google Books Ngram files: not committed
+- package inclusion: blocked
+- fallback: host-provided only

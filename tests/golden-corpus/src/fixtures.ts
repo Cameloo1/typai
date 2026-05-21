@@ -20,6 +20,7 @@ export const allowedAutocorrections: AllowedAutocorrectionCase[] = [
   { token: "Teh", replacement: "The" },
   { token: "TEH", replacement: "THE" },
   { token: "teh,", replacement: "the," },
+  { token: "teh.", replacement: "the." },
   { token: "Adress", replacement: "Address" },
   { token: "adress.", replacement: "address." },
   { token: "definitly!", replacement: "definitely!" },
@@ -50,6 +51,7 @@ export const mustNotAutocorrect: TokenCase[] = [
   { token: "lead", reason: "known valid word", category: "valid-word trap" },
   { token: "to", reason: "known valid word", category: "valid-word trap" },
   { token: "its", reason: "known valid word", category: "valid-word trap" },
+  { token: "it's", reason: "known valid word", category: "valid-word trap" },
   { token: "there", reason: "known valid word", category: "valid-word trap" },
   { token: "their", reason: "known valid word", category: "valid-word trap" },
   { token: "from", reason: "known valid word", category: "valid-word trap" },
@@ -58,7 +60,18 @@ export const mustNotAutocorrect: TokenCase[] = [
   { token: "user@example.com", reason: "email address", category: "protected structured token" },
   { token: "https://example.com", reason: "URL", category: "protected structured token" },
   { token: "/etc/passwd", reason: "filesystem path", category: "protected structured token" },
+  {
+    token: "C:\\Work\\typai\\project",
+    reason: "Windows filesystem path",
+    category: "protected structured token",
+  },
   { token: "~/project/src", reason: "home-relative path", category: "protected structured token" },
+  { token: "@typai/core", reason: "scoped package name", category: "protected structured token" },
+  {
+    token: "OPENAI_API_KEY",
+    reason: "environment variable placeholder",
+    category: "protected structured token",
+  },
   {
     token: "snake_case_identifier",
     reason: "snake_case identifier",
@@ -135,21 +148,25 @@ export const surfaceParitySuggestionCases: SuggestionCase[] = [
 
 export const surfaceParityValidWords = [
   "form",
+  "from",
   "lead",
+  "led",
   "to",
+  "too",
   "its",
+  "it's",
   "there",
   "their",
-  "from",
-  "too",
-  "led",
 ];
 
 export const surfaceParityProtectedTerms = [
   "user@example.com",
   "https://example.com",
   "/etc/passwd",
+  "C:\\Work\\typai\\project",
   "~/project/src",
+  "@typai/core",
+  "OPENAI_API_KEY",
   "snake_case_identifier",
   "camelCaseIdentifier",
   "PascalCaseClass",

@@ -36,9 +36,26 @@ for (const pkg of releasePackages) {
   const result = runPackDry(pkg.directory);
   const packed = parsePackJson(result.stdout)[0];
   const files = packed.files.map((file) => file.path);
+  const productionManifest = readProductionManifest(pkg.directory);
+  const productionStatus = productionManifest.review?.status ?? "unknown";
+  const packageInclusion = productionManifest.output?.packageInclusion ?? "unknown";
 
   for (const file of files) {
     scanPath(pkg.name, file);
+
+    if (isRawDictionarySourceFile(file)) {
+      findings.push(`${pkg.name} packed output includes raw dictionary/frequency source: ${file}`);
+    }
+
+    if (
+      pkg.name === "@typai/core" &&
+      productionStatus === "blocked" &&
+      (file.startsWith("assets/") || isProductionBinaryFile(file))
+    ) {
+      findings.push(
+        `${pkg.name} packed output includes blocked production asset path while packageInclusion is ${packageInclusion}: ${file}`,
+      );
+    }
 
     if (!isInspectable(file)) {
       continue;
@@ -70,6 +87,40 @@ function scanPath(packageName, file) {
   if (/^(?:api|examples|routes|server|test|tests)\//.test(lower)) {
     findings.push(`${packageName} packed output includes inappropriate package path: ${file}`);
   }
+}
+
+function readProductionManifest(directory) {
+  if (directory !== "packages/core") {
+    return { review: { status: "not-applicable" }, output: { packageInclusion: "not-applicable" } };
+  }
+
+  for (const manifestFile of [
+    "assets/production/MANIFEST.json",
+    "assets/production/MANIFEST.template.json",
+  ]) {
+    try {
+      return JSON.parse(readFileSync(resolve(directory, manifestFile), "utf8"));
+    } catch {
+      // Try the fallback manifest path.
+    }
+  }
+
+  return { review: { status: "unknown" }, output: { packageInclusion: "unknown" } };
+}
+
+function isProductionBinaryFile(file) {
+  return (
+    /production.*\.(?:bin|dictionary|frequency)$/i.test(file) ||
+    /(?:^|\/)production-en-us\.dictionary\.bin$/i.test(file)
+  );
+}
+
+function isRawDictionarySourceFile(file) {
+  return (
+    /\.(?:aff|dic|gz|tsv|zip)$/i.test(file) ||
+    /(?:^|\/)totalcounts-\d+$/i.test(file) ||
+    /(?:^|\/)books-ngram/i.test(file)
+  );
 }
 
 function scanContents(packageName, file, contents) {

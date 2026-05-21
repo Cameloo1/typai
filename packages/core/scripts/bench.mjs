@@ -1,5 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
+import { createMachineReadableLine } from "../../../scripts/benchmark-report-utils.mjs";
 import { createTypaiCore } from "../dist/index.js";
 import {
   createScaledMockEntries,
@@ -11,6 +13,8 @@ import {
 } from "./dictionary-asset-utils.mjs";
 
 const mockDictionaryUrl = new URL("../assets/mock-en-us.dictionary.bin", import.meta.url);
+const productionManifestUrl = new URL("../assets/production/MANIFEST.json", import.meta.url);
+const productionManifest = JSON.parse(readFileSync(productionManifestUrl, "utf8"));
 const scaledMockBytes = ensureScaledMockAsset();
 const tokens = [
   "teh",
@@ -35,21 +39,31 @@ const iterationsPerToken = 1000;
 const scaledIterationsPerToken = 100;
 const warningTargetMs = 20;
 const hardFailureMs = 100;
+const benchmarkResults = [];
+const warnings = [];
+const failures = [];
 
 console.log("Typai core hot-path latency benchmark");
 console.log(`tokens: ${tokens.join(", ")}`);
 console.log(`check/suggest p95 warning threshold: ${formatMs(warningTargetMs)}`);
 console.log(`check/suggest p95 failure threshold: ${formatMs(hardFailureMs)}`);
 
-const builtInSummary = await runScenario("built-in tiny mode", await createTypaiCore());
+const builtInCore = await createTypaiCore();
+const builtInSummary = await runScenario("built-in tiny check mode", builtInCore);
+const builtInSuggestSummary = await runSuggestScenario("built-in tiny suggest mode", builtInCore);
+const hostProvidedMockCore = await createTypaiCore({
+  dictionary: {
+    mode: "host-provided",
+    bytes: readFileSync(mockDictionaryUrl),
+  },
+});
 const loadedSummary = await runScenario(
-  "host-provided mock dictionary mode",
-  await createTypaiCore({
-    dictionary: {
-      mode: "host-provided",
-      bytes: readFileSync(mockDictionaryUrl),
-    },
-  }),
+  "host-provided mock dictionary check mode",
+  hostProvidedMockCore,
+);
+const loadedSuggestSummary = await runSuggestScenario(
+  "host-provided mock dictionary suggest mode",
+  hostProvidedMockCore,
 );
 const productionModeBlocked = await createTypaiCore({
   dictionary: {
@@ -64,6 +78,16 @@ const productionModeBlocked = await createTypaiCore({
 console.log("");
 console.log(`production dictionary mode blocked: ${productionModeBlocked ? "yes" : "no"}`);
 
+if (productionManifest.review?.status === "blocked" && !productionModeBlocked) {
+  failures.push(
+    "production dictionary mode must be blocked while manifest review.status is blocked",
+  );
+}
+
+if (productionManifest.review?.status === "approved") {
+  await maybeRunApprovedProductionScenario();
+}
+
 const scaledLoadSummary = await runDictionaryLoadScenario(
   "scaled mock dictionary load",
   scaledMockBytes,
@@ -77,6 +101,7 @@ const scaledCore = await createTypaiCore({
 
 console.log("");
 console.log("loaded scaled mock delete index");
+console.log(`loaded dictionary bytes: ${scaledCore.getLoadedDictionaryByteSize()}`);
 console.log(`entries: ${scaledCore.getDeleteIndexEntryCount()}`);
 console.log(`memory estimate: ${scaledCore.getDeleteIndexMemoryEstimateBytes()} bytes`);
 
@@ -94,12 +119,35 @@ const scaledSuggestSummary = await runSuggestScenario(
 
 if (
   builtInSummary.p95 > hardFailureMs ||
+  builtInSuggestSummary.p95 > hardFailureMs ||
   loadedSummary.p95 > hardFailureMs ||
+  loadedSuggestSummary.p95 > hardFailureMs ||
   scaledLoadSummary.p95 > hardFailureMs ||
   scaledCheckSummary.p95 > hardFailureMs ||
-  scaledSuggestSummary.p95 > hardFailureMs ||
-  !productionModeBlocked
+  scaledSuggestSummary.p95 > hardFailureMs
 ) {
+  failures.push("one or more core benchmark p95 values exceeded the hard failure threshold");
+}
+
+console.log("");
+console.log(
+  createMachineReadableLine("core-benchmark-json", {
+    production: {
+      status: productionManifest.review?.status ?? "unknown",
+      packageInclusion: productionManifest.output?.packageInclusion ?? "unknown",
+      modeBlocked: productionModeBlocked,
+    },
+    thresholds: {
+      checkSuggestWarningMs: warningTargetMs,
+      checkSuggestFailMs: hardFailureMs,
+    },
+    scenarios: benchmarkResults,
+    warnings,
+    failures,
+  }),
+);
+
+if (failures.length > 0) {
   process.exitCode = 1;
 }
 
@@ -131,12 +179,22 @@ async function runScenario(name, core, options = {}) {
   console.log(`p99: ${formatMs(summary.p99)}`);
 
   if (summary.p95 > warningTargetMs) {
-    console.warn(`warning: ${name} p95 exceeded ${warningTargetMs} ms target`);
+    const warning = `${name} p95 exceeded ${warningTargetMs} ms target`;
+    warnings.push(warning);
+    console.warn(`warning: ${warning}`);
   }
 
   if (summary.p95 > hardFailureMs) {
-    console.error(`error: ${name} p95 exceeded ${hardFailureMs} ms hard failure threshold`);
+    const failure = `${name} p95 exceeded ${hardFailureMs} ms hard failure threshold`;
+    failures.push(failure);
+    console.error(`error: ${failure}`);
   }
+
+  benchmarkResults.push({
+    name,
+    kind: "check",
+    summary,
+  });
 
   return summary;
 }
@@ -170,12 +228,22 @@ async function runDictionaryLoadScenario(name, bytes) {
   console.log(`p99: ${formatMs(summary.p99)}`);
 
   if (summary.p95 > warningTargetMs) {
-    console.warn(`warning: ${name} p95 exceeded ${warningTargetMs} ms target`);
+    const warning = `${name} p95 exceeded ${warningTargetMs} ms target`;
+    warnings.push(warning);
+    console.warn(`warning: ${warning}`);
   }
 
   if (summary.p95 > hardFailureMs) {
-    console.error(`error: ${name} p95 exceeded ${hardFailureMs} ms hard failure threshold`);
+    const failure = `${name} p95 exceeded ${hardFailureMs} ms hard failure threshold`;
+    failures.push(failure);
+    console.error(`error: ${failure}`);
   }
+
+  benchmarkResults.push({
+    name,
+    kind: "load",
+    summary,
+  });
 
   return summary;
 }
@@ -215,14 +283,53 @@ async function runSuggestScenario(name, core) {
   console.log(`p99: ${formatMs(summary.p99)}`);
 
   if (summary.p95 > warningTargetMs) {
-    console.warn(`warning: ${name} p95 exceeded ${warningTargetMs} ms target`);
+    const warning = `${name} p95 exceeded ${warningTargetMs} ms target`;
+    warnings.push(warning);
+    console.warn(`warning: ${warning}`);
   }
 
   if (summary.p95 > hardFailureMs) {
-    console.error(`error: ${name} p95 exceeded ${hardFailureMs} ms hard failure threshold`);
+    const failure = `${name} p95 exceeded ${hardFailureMs} ms hard failure threshold`;
+    failures.push(failure);
+    console.error(`error: ${failure}`);
   }
 
+  benchmarkResults.push({
+    name,
+    kind: "suggest",
+    summary,
+  });
+
   return summary;
+}
+
+async function maybeRunApprovedProductionScenario() {
+  const assetPath = productionManifest.output?.assetPath;
+
+  if (typeof assetPath !== "string" || assetPath.length === 0) {
+    failures.push("approved production manifest is missing output.assetPath");
+    return;
+  }
+
+  const resolvedAssetPath = fileURLToPath(new URL(`../../../${assetPath}`, import.meta.url));
+
+  if (!existsSync(resolvedAssetPath)) {
+    failures.push(`approved production asset is missing at ${assetPath}`);
+    return;
+  }
+
+  const productionBytes = readFileSync(resolvedAssetPath);
+  const productionCore = await createTypaiCore({
+    dictionary: {
+      mode: "host-provided",
+      bytes: productionBytes,
+    },
+  });
+
+  await runScenario("approved production dictionary check mode", productionCore, {
+    iterationsPerToken: scaledIterationsPerToken,
+  });
+  await runSuggestScenario("approved production dictionary suggest mode", productionCore);
 }
 
 function measureSyncLatency(operation, options = {}) {
@@ -284,6 +391,7 @@ function summarizeLatencies(samples) {
     p50: percentile(sorted, 50),
     p95: percentile(sorted, 95),
     p99: percentile(sorted, 99),
+    max: sorted.at(-1) ?? 0,
   };
 }
 

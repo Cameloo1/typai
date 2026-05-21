@@ -83,6 +83,7 @@ export function runAdapterConformanceSuite(
       ["capitalized", "Teh ", "The"],
       ["uppercase", "TEH ", "THE"],
       ["punctuated", "teh, ", "the"],
+      ["period", "teh. ", "the"],
     ])("preserves %s common-typo correction shape", async (_label, input, markedText) => {
       await withDriver(driverFactory, async (driver) => {
         await driver.typeText(input);
@@ -139,7 +140,10 @@ export function runAdapterConformanceSuite(
       ["email", "user@example.com "],
       ["URL", "https://example.com "],
       ["path", "/etc/passwd "],
+      ["Windows path", "C:\\Work\\typai\\project "],
       ["home path", "~/project/src "],
+      ["scoped package", "@typai/core "],
+      ["environment variable", "OPENAI_API_KEY "],
       ["identifier", "snake_case_identifier "],
       ["camelCase identifier", "camelCaseIdentifier "],
       ["PascalCase identifier", "PascalCaseClass "],

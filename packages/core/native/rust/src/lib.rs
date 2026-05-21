@@ -42,6 +42,8 @@ unsafe extern "C" {
 
     fn typai_loaded_dictionary_word_count() -> u32;
 
+    fn typai_loaded_dictionary_byte_size() -> u32;
+
     fn typai_delete_index_entry_count() -> u32;
 
     fn typai_delete_index_memory_estimate_bytes() -> u32;
@@ -134,6 +136,11 @@ pub fn clear_loaded_dictionary() {
 #[wasm_bindgen]
 pub fn loaded_dictionary_word_count() -> u32 {
     unsafe { typai_loaded_dictionary_word_count() }
+}
+
+#[wasm_bindgen]
+pub fn loaded_dictionary_byte_size() -> u32 {
+    unsafe { typai_loaded_dictionary_byte_size() }
 }
 
 #[wasm_bindgen]

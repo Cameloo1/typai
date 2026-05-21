@@ -15,6 +15,7 @@ describe("createTypaiCore", () => {
 
     expect(core).toHaveProperty("checkCompletedToken");
     expect(core).toHaveProperty("suggestToken");
+    expect(core).toHaveProperty("getLoadedDictionaryByteSize");
     expect(core).toHaveProperty("getDeleteIndexEntryCount");
   });
 
@@ -230,6 +231,7 @@ describe("createTypaiCore", () => {
     });
 
     expect(core.getLoadedDictionaryWordCount()).toBe(blob.wordCount);
+    expect(core.getLoadedDictionaryByteSize()).toBe(bytes.byteLength);
 
     expect(core.checkCompletedToken({ token: "because" })).toEqual({
       action: "do_nothing",
@@ -254,6 +256,7 @@ describe("createTypaiCore", () => {
     });
 
     expect(core.getLoadedDictionaryWordCount()).toBe(1);
+    expect(core.getLoadedDictionaryByteSize()).toBe(bytes.byteLength);
     expect(core.checkCompletedToken({ token: "alphaword" })).toEqual({
       action: "do_nothing",
       reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
@@ -268,8 +271,38 @@ describe("createTypaiCore", () => {
     });
 
     expect(core.getLoadedDictionaryWordCount()).toBe(0);
+    expect(core.getLoadedDictionaryByteSize()).toBe(0);
     expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(0);
     expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
+  });
+
+  it("loads fixture-mode bytes during initialization and keeps hot paths synchronous", async () => {
+    const bytes = encodeTypaiDictionaryBlob({
+      language: "en-US",
+      entries: [
+        { word: "runtimefixture", frequency: 1000, flags: 0 },
+        { word: "synchronous", frequency: 900, flags: 0 },
+      ],
+    });
+    const core = await createTypaiCore({
+      dictionary: {
+        mode: "fixture",
+        bytes,
+      },
+    });
+    const decision = core.checkCompletedToken({ token: "runtimefixture" });
+    const suggestions = core.suggestToken({ token: "runtimefixtur", maxSuggestions: 4 });
+
+    expect(core.getLoadedDictionaryWordCount()).toBe(2);
+    expect(core.getLoadedDictionaryByteSize()).toBe(bytes.byteLength);
+    expect("then" in decision).toBe(false);
+    expect("then" in suggestions).toBe(false);
+    expect(decision).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
+    });
+    expect(suggestions.suggestions).toContain("runtimefixture");
+    expect(suggestions.reasonCodes).toContain("DELETE_INDEX_SUGGESTIONS");
   });
 
   it("rejects production dictionary mode while package inclusion is blocked", async () => {
@@ -309,6 +342,14 @@ describe("createTypaiCore", () => {
   });
 
   it("recovers to an empty built-in dictionary state after a failed host-provided load", async () => {
+    const builtInCore = await createTypaiCore({
+      dictionary: {
+        mode: "built-in",
+      },
+    });
+
+    expect(builtInCore.getLoadedDictionaryWordCount()).toBe(0);
+
     await expect(
       createTypaiCore({
         dictionary: {
@@ -325,7 +366,92 @@ describe("createTypaiCore", () => {
     });
 
     expect(core.getLoadedDictionaryWordCount()).toBe(0);
+    expect(core.getLoadedDictionaryByteSize()).toBe(0);
     expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
+  });
+
+  it("does not corrupt the current dictionary when production or malformed loads fail", async () => {
+    const previousBytes = encodeTypaiDictionaryBlob({
+      language: "en-US",
+      entries: [
+        { word: "alphaword", frequency: 1000, flags: 0 },
+        { word: "betaword", frequency: 900, flags: 0 },
+      ],
+    });
+    const core = await createTypaiCore({
+      dictionary: {
+        mode: "host-provided",
+        bytes: previousBytes,
+      },
+    });
+    const wordCountBefore = core.getLoadedDictionaryWordCount();
+    const byteSizeBefore = core.getLoadedDictionaryByteSize();
+    const deleteIndexBefore = core.getDeleteIndexEntryCount();
+
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "production",
+        },
+      }),
+    ).rejects.toThrow(/production dictionary asset is unavailable/i);
+
+    expect(core.getLoadedDictionaryWordCount()).toBe(wordCountBefore);
+    expect(core.getLoadedDictionaryByteSize()).toBe(byteSizeBefore);
+    expect(core.getDeleteIndexEntryCount()).toBe(deleteIndexBefore);
+    expect(core.checkCompletedToken({ token: "alphaword" })).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
+    });
+
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "host-provided",
+          bytes: new Uint8Array([0, 1, 2, 3]),
+        },
+      }),
+    ).rejects.toThrow(/Typai dictionary load failed/);
+
+    expect(core.getLoadedDictionaryWordCount()).toBe(wordCountBefore);
+    expect(core.getLoadedDictionaryByteSize()).toBe(byteSizeBefore);
+    expect(core.getDeleteIndexEntryCount()).toBe(deleteIndexBefore);
+    expect(core.checkCompletedToken({ token: "betaword" })).toEqual({
+      action: "do_nothing",
+      reasonCodes: ["DYNAMIC_DICTIONARY_MATCH", "VALID_WORD_BLOCK"],
+    });
+  });
+
+  it.each([
+    ["wrong magic", corruptDictionaryMagic],
+    ["wrong version", corruptDictionaryVersion],
+    ["truncated payload", truncateDictionaryBlob],
+    ["duplicate words", duplicateWordDictionaryBlob],
+    ["protected-looking word", protectedLookingDictionaryBlob],
+  ] as const)("rejects malformed host-provided dictionary blobs: %s", async (_label, createBytes) => {
+    await createTypaiCore({
+      dictionary: {
+        mode: "built-in",
+      },
+    });
+
+    await expect(
+      createTypaiCore({
+        dictionary: {
+          mode: "host-provided",
+          bytes: createBytes(),
+        },
+      }),
+    ).rejects.toThrow(/Typai dictionary load failed/);
+
+    const core = await createTypaiCore({
+      dictionary: {
+        mode: "built-in",
+      },
+    });
+
+    expect(core.getLoadedDictionaryWordCount()).toBe(0);
+    expect(core.getLoadedDictionaryByteSize()).toBe(0);
   });
 
   it("clears the loaded dictionary through the public core API", async () => {
@@ -337,10 +463,13 @@ describe("createTypaiCore", () => {
     });
 
     expect(core.getLoadedDictionaryWordCount()).toBeGreaterThan(0);
+    expect(core.getLoadedDictionaryByteSize()).toBeGreaterThan(0);
 
     core.clearLoadedDictionary();
 
     expect(core.getLoadedDictionaryWordCount()).toBe(0);
+    expect(core.getLoadedDictionaryByteSize()).toBe(0);
+    expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(0);
     expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
   });
 
@@ -465,6 +594,7 @@ describe("createTypaiCore", () => {
     });
 
     expect(core.getDeleteIndexEntryCount()).toBeGreaterThan(core.getLoadedDictionaryWordCount());
+    expect(core.getLoadedDictionaryByteSize()).toBeGreaterThan(0);
     expect(core.getDeleteIndexMemoryEstimateBytes()).toBeGreaterThan(0);
     expect(core.checkCompletedToken({ token: "reciept" }).action).toBe("mark_unresolved");
     expect(core.checkCompletedToken({ token: "teh" }).action).toBe("auto_correct");
@@ -884,6 +1014,108 @@ describe("createMemoryStorage", () => {
     expect(await storage.list("settings")).toEqual([]);
   });
 });
+
+function corruptDictionaryMagic(): Uint8Array {
+  const bytes = encodeTypaiDictionaryBlob({
+    language: "en-US",
+    entries: [{ word: "alphaword", frequency: 100, flags: 0 }],
+  });
+
+  bytes[0] = "X".charCodeAt(0);
+  return bytes;
+}
+
+function corruptDictionaryVersion(): Uint8Array {
+  const bytes = encodeTypaiDictionaryBlob({
+    language: "en-US",
+    entries: [{ word: "alphaword", frequency: 100, flags: 0 }],
+  });
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
+  view.setUint32(8, 2, true);
+  return bytes;
+}
+
+function truncateDictionaryBlob(): Uint8Array {
+  const bytes = encodeTypaiDictionaryBlob({
+    language: "en-US",
+    entries: [{ word: "alphaword", frequency: 100, flags: 0 }],
+  });
+
+  return bytes.subarray(0, bytes.byteLength - 1);
+}
+
+function duplicateWordDictionaryBlob(): Uint8Array {
+  return encodeUncheckedDictionaryBlob([
+    ["alphaword", 100, 0],
+    ["alphaword", 90, 0],
+  ]);
+}
+
+function protectedLookingDictionaryBlob(): Uint8Array {
+  return encodeUncheckedDictionaryBlob([["alpha123", 100, 0]]);
+}
+
+function encodeUncheckedDictionaryBlob(
+  entries: Array<[word: string, frequency: number, flags: number]>,
+): Uint8Array {
+  const encoder = new TextEncoder();
+  const languageBytes = encoder.encode("en-US");
+  const encodedEntries = entries.map(([word, frequency, flags]) => ({
+    wordBytes: encoder.encode(word),
+    frequency,
+    flags,
+  }));
+  const stringTableByteLength = encodedEntries.reduce(
+    (total, entry) => total + entry.wordBytes.byteLength,
+    0,
+  );
+  const headerByteLength = 24;
+  const entryByteLength = 14;
+  const output = new Uint8Array(
+    headerByteLength +
+      encodedEntries.length * entryByteLength +
+      stringTableByteLength +
+      languageBytes.byteLength,
+  );
+  const view = new DataView(output.buffer);
+  let offset = 0;
+
+  output.set(encoder.encode("TYPAIDIC"), offset);
+  offset += 8;
+  view.setUint32(offset, 1, true);
+  offset += 4;
+  view.setUint16(offset, languageBytes.byteLength, true);
+  offset += 2;
+  view.setUint16(offset, 0, true);
+  offset += 2;
+  view.setUint32(offset, encodedEntries.length, true);
+  offset += 4;
+  view.setUint32(offset, stringTableByteLength, true);
+  offset += 4;
+
+  let wordOffset = 0;
+
+  for (const entry of encodedEntries) {
+    view.setUint32(offset, wordOffset, true);
+    offset += 4;
+    view.setUint16(offset, entry.wordBytes.byteLength, true);
+    offset += 2;
+    view.setUint32(offset, entry.frequency, true);
+    offset += 4;
+    view.setUint32(offset, entry.flags, true);
+    offset += 4;
+    wordOffset += entry.wordBytes.byteLength;
+  }
+
+  for (const entry of encodedEntries) {
+    output.set(entry.wordBytes, offset);
+    offset += entry.wordBytes.byteLength;
+  }
+
+  output.set(languageBytes, offset);
+  return output;
+}
 
 type RecordingStorage = TypaiStorage & {
   events: string[];

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "language": "en-US",
+  "dictionary": {
+    "name": "English Speller Database / SCOWL v2 generated Hunspell en_US dictionary",
+    "sourceUrl": "https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip",
+    "version": "2026.02.25 rel-2026.02.25 commit 7e99eda",
+    "sourceFiles": [
+      {
+        "fileName": "hunspell-en_US-2026.02.25.zip",
+        "url": "https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip",
+        "sha256": "ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9",
+        "byteSize": 187271,
+        "contents": ["en_US.aff", "en_US.dic", "README_en_US.txt"]
+      }
+    ],
+    "license": "ESDB/SCOWL notice license plus Hunspell affix-file BSD-style notice",
+    "licenseFile": "packages/core/assets/production/LICENSES/README.md",
+    "sha256": "ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9",
+    "attribution": "English wordlist generated from the English Speller Database / SCOWL by Kevin Atkinson; en_US Hunspell affix-file notice must also be preserved if affix-derived material is used.",
+    "redistribution": "approved"
+  },
+  "frequency": {
+    "name": "Google Books Ngram Viewer American English 2019 1-grams",
+    "sourceUrl": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/eng-us-1-ngrams_exports.html",
+    "version": "googlebooks-eng-us-20200217 American English 2019",
+    "sourceFiles": [
+      {
+        "fileName": "totalcounts-1",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/totalcounts-1",
+        "sha256": "6ce99984774743b7142e2f7e95fc33bd676ea4485038081881e61e4456804d8a",
+        "byteSize": 11516
+      },
+      {
+        "fileName": "1-00000-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00000-of-00014.gz",
+        "sha256": "",
+        "byteSize": 319980503
+      },
+      {
+        "fileName": "1-00001-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00001-of-00014.gz",
+        "sha256": "",
+        "byteSize": 518617513
+      },
+      {
+        "fileName": "1-00002-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00002-of-00014.gz",
+        "sha256": "",
+        "byteSize": 485364759
+      },
+      {
+        "fileName": "1-00003-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00003-of-00014.gz",
+        "sha256": "",
+        "byteSize": 443088813
+      },
+      {
+        "fileName": "1-00004-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00004-of-00014.gz",
+        "sha256": "",
+        "byteSize": 538465722
+      },
+      {
+        "fileName": "1-00005-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00005-of-00014.gz",
+        "sha256": "",
+        "byteSize": 633510472
+      },
+      {
+        "fileName": "1-00006-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00006-of-00014.gz",
+        "sha256": "",
+        "byteSize": 665380990
+      },
+      {
+        "fileName": "1-00007-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00007-of-00014.gz",
+        "sha256": "",
+        "byteSize": 610741796
+      },
+      {
+        "fileName": "1-00008-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00008-of-00014.gz",
+        "sha256": "",
+        "byteSize": 630546301
+      },
+      {
+        "fileName": "1-00009-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00009-of-00014.gz",
+        "sha256": "",
+        "byteSize": 612602559
+      },
+      {
+        "fileName": "1-00010-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00010-of-00014.gz",
+        "sha256": "",
+        "byteSize": 626105393
+      },
+      {
+        "fileName": "1-00011-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00011-of-00014.gz",
+        "sha256": "",
+        "byteSize": 651213111
+      },
+      {
+        "fileName": "1-00012-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00012-of-00014.gz",
+        "sha256": "",
+        "byteSize": 635810227
+      },
+      {
+        "fileName": "1-00013-of-00014.gz",
+        "url": "https://storage.googleapis.com/books/ngrams/books/20200217/eng-us/1-00013-of-00014.gz",
+        "sha256": "",
+        "byteSize": 852318528
+      }
+    ],
+    "license": "Creative Commons Attribution 3.0 Unported",
+    "licenseFile": "packages/core/assets/production/LICENSES/README.md",
+    "sha256": "",
+    "attribution": "Frequency scores derived from Google Books Ngram Viewer data, American English 2019, googlebooks-eng-us-20200217; attribution and license link required before package inclusion.",
+    "redistribution": "approved"
+  },
+  "transform": {
+    "script": "packages/core/scripts/build-production-dictionary.mjs",
+    "version": "prompt-131-production-transform-v1",
+    "filters": [
+      "read pinned ESDB/SCOWL en_US size 60 Hunspell source",
+      "strip or explicitly model Hunspell flags",
+      "normalize lowercase ASCII alphabetic words according to Typai token policy",
+      "reject protected-looking URL, email, path, identifier, numeric, hyphenated, and non-alpha tokens",
+      "reject apostrophe, trailing-punctuation, non-ASCII, and over-length tokens",
+      "read pinned Google Books Ngram American English 2019 1-gram sources",
+      "stream and aggregate unigram counts deterministically",
+      "intersect frequency rows with accepted dictionary words",
+      "emit Typai Dictionary Blob v1 plus generated metadata"
+    ],
+    "networkFetchAllowed": false
+  },
+  "output": {
+    "wordCount": null,
+    "byteSize": null,
+    "sha256": "",
+    "packageInclusion": "blocked",
+    "assetPath": ""
+  },
+  "review": {
+    "status": "blocked",
+    "reviewedAt": "2026-05-20",
+    "reviewer": "manual-release-operator",
+    "reviewNotes": "Production asset generation and package inclusion remain blocked. ESDB/SCOWL source hash is pinned and Google Ngram totalcounts-1 hash is pinned, but the 14 Google Ngram gzip partition SHA-256 values, generated output hash, generated counts, generated size, final quality evidence, and package-visible final notices are missing."
+  }
+}

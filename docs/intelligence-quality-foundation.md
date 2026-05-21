@@ -59,6 +59,9 @@ The current local spell intelligence is intentionally thin:
 - Prompt 106 spell-quality benchmark gates and a stable false-positive review
   report
 - Prompt 107 hardening audit and completion checkpoint
+- Prompt 135 corpus-driven spell-quality harness with structured JSONL
+  fixtures, safety gates, latency metrics, and generated false-positive review
+  reports
 - no production dictionary or frequency asset
 - no product-scale dictionary behind the delete index by default
 - no broad morphology or context-aware correction
@@ -135,13 +138,17 @@ No model/local inference is included in this phase.
 ## Quality Targets And Live Gates
 
 Prompt 106 turns the first quality targets into live gates through
-`pnpm bench:spell-quality`:
+`pnpm bench:spell-quality`. Prompt 135 replaces the earlier inline benchmark
+arrays with structured corpus loading and report generation:
 
 - protected-token writes: 0
 - valid-word autocorrections: 0
+- arbitrary delete-index autocorrections: 0
 - autocorrect precision: at least 99% on the committed corpus
+- allowed common-typo autocorrect pass rate: 100%
+- suggestion recall@3: warn below 90%
 - direct core p95: fail above 100 ms and warn above 20 ms
-- suggestion recall: warn below 90%
+- direct suggestion p95: fail above 100 ms and warn above 20 ms
 
 Future quality targets continue to include:
 
@@ -214,7 +221,8 @@ Future phase acceptance:
   while keeping protected-token and valid-word writes at zero
 - valid-word and protected-token write counts remain zero
 - `pnpm bench:spell-quality` reports corpus precision, suggestion recall,
-  direct core latency, and fails safety regressions
+  direct core latency, suggestion latency, corpus category counts, asset mode,
+  dictionary/delete-index stats, and fails safety regressions
 - cross-surface correction behavior remains consistent across contenteditable,
   textarea, React textarea, React contenteditable, and CodeMirror
 - accepted completion text never creates blue correction marks

@@ -71,6 +71,8 @@ extern "C" void typai_clear_loaded_dictionary();
 
 extern "C" unsigned int typai_loaded_dictionary_word_count();
 
+extern "C" unsigned int typai_loaded_dictionary_byte_size();
+
 extern "C" unsigned int typai_delete_index_entry_count();
 
 extern "C" unsigned int typai_delete_index_memory_estimate_bytes();

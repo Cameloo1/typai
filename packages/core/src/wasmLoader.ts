@@ -24,6 +24,7 @@ export interface TypaiWasmBindings {
   loadDictionaryBlob(bytes: Uint8Array): TypaiWasmDictionaryLoadResult;
   clearLoadedDictionary(): void;
   loadedDictionaryWordCount(): number;
+  loadedDictionaryByteSize(): number;
   deleteIndexEntryCount(): number;
   deleteIndexMemoryEstimateBytes(): number;
 }
@@ -35,6 +36,7 @@ interface TypaiWasmModule {
   load_dictionary_blob(bytes: Uint8Array): unknown;
   clear_loaded_dictionary(): void;
   loaded_dictionary_word_count(): number;
+  loaded_dictionary_byte_size(): number;
   delete_index_entry_count(): number;
   delete_index_memory_estimate_bytes(): number;
 }
@@ -78,6 +80,9 @@ async function initializeTypaiWasm(): Promise<TypaiWasmBindings> {
     },
     loadedDictionaryWordCount() {
       return wasmModule.loaded_dictionary_word_count();
+    },
+    loadedDictionaryByteSize() {
+      return wasmModule.loaded_dictionary_byte_size();
     },
     deleteIndexEntryCount() {
       return wasmModule.delete_index_entry_count();

@@ -29,15 +29,17 @@
     "build": "pnpm run build:wasm && tsup",
     "build:dictionary": "node scripts/build-dictionary-asset.mjs",
     "build:dictionary:production": "node scripts/build-production-dictionary.mjs build-production",
+    "build:dictionary:fixture": "node scripts/build-production-dictionary.mjs build-fixture",
     "build:wasm": "node scripts/build-wasm.mjs",
-    "bench": "node scripts/bench.mjs",
+    "bench": "pnpm run build && node scripts/bench.mjs",
     "generate:mock-dictionary": "node scripts/generate-mock-dictionary.mjs",
+    "inspect:dictionary": "node scripts/inspect-dictionary-asset.mjs",
     "prepack": "pnpm run build",
-    "test": "vitest run && pnpm run test:native && pnpm run test:wasm",
+    "test": "pnpm run build:wasm && vitest run && pnpm run test:native && pnpm run test:wasm",
     "test:native": "node scripts/test-native.mjs",
     "test:wasm": "node scripts/test-wasm.mjs",
     "validate:dictionary": "node scripts/validate-dictionary-asset.mjs",
-    "validate:dictionary:production": "node scripts/build-production-dictionary.mjs validate-production",
+    "validate:dictionary:production": "node scripts/validate-production-dictionary.mjs",
     "clean": "node -e \"const fs=require('node:fs'); for (const p of ['dist','pkg']) fs.rmSync(p,{recursive:true,force:true});\""
   }
 }

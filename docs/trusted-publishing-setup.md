@@ -1,41 +1,24 @@
 # npm Trusted Publishing Setup
 
-Status date: 2026-05-20.
+Status date: 2026-05-21.
 
-This document describes the prepared Typai npm beta publish path through npm
-Trusted Publishing and GitHub Actions OIDC. It does not publish packages by
-itself.
+This document is the release-hygiene record for the future npm Trusted
+Publishing path. It does not publish packages and it does not retroactively
+change the provenance of `0.0.0-beta.0`.
 
-The `0.0.0-beta.0` package set has since been observed on the public npm
-registry through a manual tarball publish path. Do not claim that publish used
-OIDC or Trusted Publishing. Keep this workflow for future beta patch releases
-or later registry actions after explicit approval.
-
-## Why Trusted Publishing
-
-The local npm publish path is blocked by interactive passkey authentication.
-Trusted Publishing moves the publish identity into a manually dispatched GitHub
-Actions workflow that npm can verify with OpenID Connect.
-
-Benefits for this release:
-
-- no long-lived `NPM_TOKEN`
-- no npm auth token secret in GitHub
-- no local passkey or OTP prompt during CI publish
-- short-lived OIDC workflow identity
-- npm provenance support through Trusted Publishing
-- publish action still remains gated by workflow inputs and GitHub environment
-  controls
+The already-published `0.0.0-beta.0` package set was a manual npm tarball
+publish. Do not describe it as OIDC or Trusted Publishing. Use the workflow
+below for a future beta patch or later approved registry action.
 
 ## Workflow
 
 Workflow filename:
 
-- `.github/workflows/npm-beta-publish.yml`
+- `.github/workflows/npm-trusted-publish.yml`
 
 Workflow name:
 
-- `npm beta publish`
+- `npm trusted publish`
 
 GitHub repository:
 
@@ -54,21 +37,68 @@ Required workflow permissions:
 - `contents: read`
 - `id-token: write`
 
-Runtime requirements:
+Node setup includes:
 
-- GitHub-hosted runner: `ubuntu-latest`
-- Node: `24`
-- npm: latest npm installed at runtime, then checked for `11.5.1+`
-- pnpm: `10.20.0`
+- Node `24`
+- `registry-url: https://registry.npmjs.org`
+- latest npm installed at runtime, then checked for trusted-publishing minimum
+  `11.5.1`
 
-The workflow intentionally does not reference `NPM_TOKEN` or `NODE_AUTH_TOKEN`.
+The workflow intentionally has no npm auth token path. Publishing must happen
+through npm Trusted Publishing/OIDC.
 
-## npm Trusted Publisher Setup
+## Operator Inputs
+
+Required workflow inputs:
+
+- `version`: the exact version already committed in all seven release package
+  manifests, such as `0.0.0-beta.1`
+- `distTag`: currently must equal `beta`
+- `confirmPublish`: must exactly equal `PUBLISH_BETA`
+
+The workflow fails before publish unless `confirmPublish` matches the strict
+phrase and `distTag` is `beta`. It does not publish `latest` by default.
+
+## Publish Order
+
+Approved publish order:
+
+1. `@typai/ui`
+2. `@typai/core`
+3. `@typai/completion-remote`
+4. `@typai/contenteditable`
+5. `@typai/textarea`
+6. `@typai/react`
+7. `@typai/codemirror`
+
+The support package `@typai/ui` publishes first because React and CodeMirror
+packages depend on it.
+
+## Gates Before Publish
+
+The workflow runs:
+
+- `pnpm build`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm test:e2e`
+- `pnpm pack:dry`
+- `pnpm smoke:install`
+- `pnpm smoke:public-beta`
+- `pnpm scan:package-secrets`
+- `pnpm package:size-report`
+- `pnpm dictionary:check-production`
+- `pnpm release:check`
+- `pnpm release:publish:dry`
+- `pnpm docs:check`
+
+It also checks that every package manifest already matches the requested
+version and that the exact package version is not already present on npm.
+
+## npm Trusted Publisher Checklist
 
 Configure a trusted publisher on npmjs.com for each package before running the
-workflow with `publish=true`.
-
-Packages:
+workflow:
 
 - `@typai/ui`
 - `@typai/core`
@@ -78,122 +108,47 @@ Packages:
 - `@typai/react`
 - `@typai/codemirror`
 
-Trusted publisher fields for each package:
+Trusted publisher fields:
 
 - publisher: GitHub Actions
 - organization/user: `Cameloo1`
 - repository: `typai`
-- workflow filename: `npm-beta-publish.yml`
+- workflow filename: `npm-trusted-publish.yml`
 - environment: `npm-beta`
-- allowed action: npm publish
+- package access: public package publish
 
-Each package can only have one trusted publisher configured at a time.
+Setup checklist:
 
-Trusted publisher setup may require a one-time npm passkey approval in the npm
-web UI.
-
-Self-hosted runners are not supported for this Trusted Publishing path.
-
-`npm whoami` is not proof that OIDC publishing is configured. OIDC is exchanged
-during `npm publish` inside the trusted workflow.
-
-## First-Publish Caveat
-
-The `0.0.0-beta.0` versions are now published. For future first-publish scopes
-or packages, if npm does not allow trusted publisher setup for an unpublished
-package through the npm web UI, stop and document the observed npm UI blocker.
-Do not fall back to token publishing or local passkey publishing without a
-separate explicit approval.
-
-## Provenance Choice
-
-The workflow relies on npm Trusted Publishing's automatic provenance support. It
-does not pass `--provenance` today.
-
-If npm behavior later requires an explicit provenance flag, add `--provenance`
-in a separate reviewed change and rerun the local workflow checker before any
-publish attempt.
-
-## Manual Workflow Inputs
-
-Run `workflow_dispatch` with:
-
-- `confirm_version`: `0.0.0-beta.0`
-- `confirm_dist_tag`: `beta`
-- `publish`: `true`
-- `push_git_tag`: `false`
-
-Use `publish=false` for validation and dry-run behavior only.
-
-`push_git_tag=true` is intentionally rejected by the current workflow because
-the workflow uses `contents: read`. Pushing a Git tag requires a separate
-approval and a separate permissions change.
-
-## Workflow Gates
-
-The workflow fails before publishing if:
-
-- `confirm_version` is not `0.0.0-beta.0`
-- `confirm_dist_tag` is not `beta`
-- `push_git_tag` is `true`
-- any validation command fails
-- any exact package version already exists on npm
-- any approved tarball is missing
-
-Validation commands:
-
-- `pnpm beta:approval:check`
-- `pnpm release:check`
-- `pnpm release:publish:dry`
-- `pnpm scan:package-secrets`
-- `pnpm smoke:install`
-- `pnpm smoke:public-beta`
-- `pnpm docs:check`
-- `pnpm dictionary:check-production`
-- `pnpm test`
-- `pnpm build`
-- `pnpm lint`
-- `pnpm release:pack`
-
-Publish commands, in approved order:
-
-1. `npm publish .pack/typai-ui-0.0.0-beta.0.tgz --tag beta --access public`
-2. `npm publish .pack/typai-core-0.0.0-beta.0.tgz --tag beta --access public`
-3. `npm publish .pack/typai-completion-remote-0.0.0-beta.0.tgz --tag beta --access public`
-4. `npm publish .pack/typai-contenteditable-0.0.0-beta.0.tgz --tag beta --access public`
-5. `npm publish .pack/typai-textarea-0.0.0-beta.0.tgz --tag beta --access public`
-6. `npm publish .pack/typai-react-0.0.0-beta.0.tgz --tag beta --access public`
-7. `npm publish .pack/typai-codemirror-0.0.0-beta.0.tgz --tag beta --access public`
-
-No command uses the `latest` dist-tag.
-
-## Pre-Run Checklist
-
-- Trusted publisher configured for all seven packages.
+- npm package ownership verified for all seven packages.
+- npm package scope access verified for the release operator.
 - GitHub environment `npm-beta` exists.
-- GitHub environment approval rules configured if desired.
-- Workflow file committed to the intended release branch.
-- Workflow file present on the branch used for `workflow_dispatch`.
-- Exact package versions are not already present on npm.
-- Production language asset limitation is acknowledged as blocked /
-  host-provided only.
-- Release operator runs `workflow_dispatch` with the exact approved inputs.
+- Environment approval rules are configured if desired.
+- Workflow file is present on the branch used for `workflow_dispatch`.
+- Requested package version is new and not present on npm.
+- Production language asset state is still documented correctly.
+- No long-lived npm auth token is configured or required.
 
-## Post-Run Checklist
+## Dry-Run And Canary Plan
 
-If publish succeeds:
+The workflow itself is a publish workflow: `confirmPublish=PUBLISH_BETA` is
+required. Dry-run and canary evidence should be gathered before dispatching it:
 
-- Confirm each package resolves through the `beta` dist-tag.
-- Confirm no package was intentionally published with `latest`.
-- Download the `trusted-npm-beta-publish-result` artifact.
-- Record the result in `docs/beta-publish-result.md`.
-- Run the Prompt 127 registry smoke and public docs update.
+```sh
+pnpm release:publish:dry
+pnpm release:pack
+pnpm smoke:registry-beta
+```
 
-If publish fails:
+For the next real publish, prefer a beta patch such as `0.0.0-beta.1` after the
+package versions, changelog, and release approval record are updated.
 
-- Do not unpublish automatically.
-- Stop further publish attempts.
-- Preserve the workflow logs and result artifact.
-- Record the failed package, error, and remediation recommendation.
-- Prefer beta patch remediation or npm deprecation over rewriting public
-  release history.
+## Current Blockers
+
+Trusted Publishing is ready as a repo workflow, but not yet proven end to end:
+
+- npm trusted publisher setup has not been verified for all seven package
+  records.
+- no future beta patch version has been approved in this prompt.
+- `0.0.0-beta.0` already exists and the new workflow must not be rerun for that
+  version.
+- the current public beta provenance remains manual tarball publish.

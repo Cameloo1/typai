@@ -17,6 +17,7 @@
     "pack:local": "node scripts/pack-local.mjs",
     "smoke:install": "node scripts/package-smoke.mjs",
     "smoke:public-beta": "node scripts/public-beta-smoke.mjs",
+    "smoke:registry-beta": "node scripts/registry-beta-smoke.mjs",
     "smoke:real-provider:manual": "node scripts/manual-real-provider-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "ffi:audit": "node scripts/ffi-audit.mjs",

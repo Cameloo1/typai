@@ -8,8 +8,11 @@ Archived planning docs are historical context only.
 typai is an open-source embeddable writing intelligence layer. Codex is a future
 flagship integration, not the root architecture.
 
-Current phase checkpoint: Production Asset Unblock final hardening audit,
-Prompt 139, complete for the blocked-host-provided branch.
+Current phase checkpoint: final containment audit, Prompt 144, complete.
+Release hygiene is parked with app work allowed. The production asset lane is
+parked as blocked / host-provided only. Use
+`docs/app-continuation-checkpoint.md` as the current app-continuation decision
+record.
 Do not generate or bundle production assets unless
 `packages/core/assets/production/MANIFEST.json` has
 `review.status: "approved"`. Do not bypass source, license, attribution, hash,
@@ -133,23 +136,56 @@ blocked / host-provided only. All hard validation gates passed for that state;
 warning-level mocked completion p95 rows and demo/consumer Vite chunk-size
 warnings remain documented.
 
+Prompt 140 reconciles the current registry/repo/tag/asset state in
+`docs/current-release-and-asset-state.md`: the `0.0.0-beta.0` packages exist on
+npm, both `beta` and `latest` point at that version, no `v0.0.0-beta.0` Git tag
+exists, and the production asset remains blocked / host-provided only.
+
+Prompt 141 parks beta release hygiene in `docs/release-hygiene-parked.md`.
+Future publishes should use `.github/workflows/npm-trusted-publish.yml` through
+npm Trusted Publishing/OIDC after external package trusted-publisher setup is
+verified. Do not mutate npm dist-tags without an explicit approval and
+`TYPAI_ALLOW_NPM_DIST_TAG_MUTATION=1`. Do not create or push Git tags without
+provenance, explicit approval, and the required operator gate.
+
+Prompt 142 attempted production asset blocker closure and parked the lane in
+`docs/production-asset-blocker-closure.md`: external pinned source paths are
+missing, all 14 Google Ngram gzip partition hashes are missing, final notices
+are placeholders, generated output metadata is absent, and final review
+signoff remains blocked.
+
+Prompt 143 executed the blocked-host-provided branch in
+`docs/production-asset-execution-result.md`: production generation must fail
+closed, no production asset may be generated or bundled, and app work can
+continue with host-provided Typai Dictionary Blob v1 bytes.
+
+Prompt 144 records the containment checkpoint in
+`docs/app-continuation-checkpoint.md`: release hygiene remains parked, the
+production asset lane remains parked, full validation passed for the current
+state, and app/Codex-adapter work may proceed. The recommended next phase is
+Real Codex Adapter Foundation. Do not publish, mutate npm dist-tags, create or
+push Git tags, generate production assets, or start a new feature lane without
+an explicit prompt.
+
 Preserve no valid-word autocorrect, no protected-token writes, no local
 inference, no next-edit logging, and no browser key path. No local model
 inference or next-edit logging is active in this phase.
 
 Use `docs/beta-release-candidate-plan.md`, `docs/beta-publish-complete.md`,
-and `docs/beta-registry-smoke.md` only when explicitly working release
-workflow history or remediation. Use `docs/production-asset-unblock.md`,
+`docs/beta-registry-smoke.md`, `docs/release-hygiene-parked.md`,
+`docs/trusted-publishing-setup.md`, and `docs/dist-tag-remediation.md` only
+when explicitly working release workflow history or remediation. Use
+`docs/production-asset-unblock.md`,
 `docs/production-asset-gate-recap.md`,
 `docs/dictionary-production-approval.md`, and
 `packages/core/assets/production/MANIFEST.json` for the current production
-asset status.
+asset status. Use `docs/production-asset-execution-result.md` for the latest
+execution decision.
 
-Next asset step: capture the missing Google Ngram partition SHA-256 values in
-an external disposable workspace, then re-review the manifest. If the goal is
-dogfooding or flagship integration instead, choose Real Codex Adapter as a
-separate phase. Do not begin another feature phase without an explicit
-selection.
+Next recommended app phase: Real Codex Adapter Foundation. If the production
+asset lane is reopened later, first capture the missing Google Ngram partition
+SHA-256 values in an external disposable workspace, then re-review the
+manifest. Do not begin another feature phase without an explicit selection.
 
 Rich Editor Adapter Foundation is complete. Rich adapters remain local
 deterministic correction adapters in this phase.

@@ -11,6 +11,9 @@ What you get in the beta:
 - optional ghost completion through an endpoint-backed package
 - mock and server-proxy completion examples
 - package smoke and registry smoke already passed for the public beta
+- first-publish release hygiene is parked: the packages are on npm, but the
+  `latest` dist-tag and missing beta Git tag need a later explicit registry/tag
+  decision
 
 What you do not get yet:
 

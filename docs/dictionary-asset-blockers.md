@@ -1,6 +1,6 @@
 # Dictionary Asset Blockers
 
-Status date: 2026-05-20.
+Status date: 2026-05-21.
 
 Production language asset status: **blocked / host-provided only**.
 
@@ -11,6 +11,13 @@ The production manifest exists at
 `packages/core/assets/production/MANIFEST.json`, but its review status remains
 blocked. No production dictionary binary, frequency table, raw source file, or
 generated production language blob is bundled.
+
+Prompt 142 closure attempt: **blocked / parked host-provided-only**. The
+closure pass found no operator-provided external source paths, no local pinned
+source config, empty SHA-256 fields for all 14 Google Ngram gzip partitions,
+placeholder license/attribution files, and no generated production output
+metadata. The correct result remains a parked production asset lane with
+host-provided Typai Dictionary Blob v1 bytes as the production-scale fallback.
 
 ## Blockers
 

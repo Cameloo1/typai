@@ -1,6 +1,6 @@
 # Beta Rollback Guidance
 
-Status date: 2026-05-20.
+Status date: 2026-05-21.
 
 This guidance applies to the published `0.0.0-beta.0` package set. No public Git
 tag exists for this beta.
@@ -33,7 +33,8 @@ break consumers.
 
 Current state: both `beta` and `latest` point at `0.0.0-beta.0`.
 
-If policy decides `latest` should not point at the beta:
+If policy decides `latest` should not point at the beta, start from
+`docs/dist-tag-remediation.md`, then:
 
 1. Record the decision and operator approval.
 2. Confirm all package tags with `npm view <package> dist-tags`.
@@ -43,6 +44,8 @@ If policy decides `latest` should not point at the beta:
 5. Update public docs with the exact final state.
 
 Do not make dist-tag changes inside unrelated docs or smoke prompts.
+Do not mutate tags without an explicit approval record and
+`TYPAI_ALLOW_NPM_DIST_TAG_MUTATION=1`.
 
 ## Production Asset Issue
 

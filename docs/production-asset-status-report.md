@@ -1,6 +1,6 @@
 # Production Asset Status Report
 
-Status date: 2026-05-20.
+Status date: 2026-05-21.
 
 Branch taken: **blocked-host-provided**.
 
@@ -95,6 +95,22 @@ Prompt 134 package policy enforcement:
   generated production asset exists.
 - Package proof for production asset inclusion: missing because package
   inclusion remains blocked.
+
+Prompt 142 blocker closure result:
+
+- external pinned source paths: missing
+- Google Ngram gzip partition hashes: missing for all 14 partitions
+- dictionary source archive hash: pinned in manifest, not recomputed because no
+  external local archive path was provided
+- Google `totalcounts-1` hash: pinned in manifest, not recomputed because no
+  external local file path was provided
+- final package-visible license/attribution notices: still placeholders
+- generated output hash, word count, and byte size: missing
+- final review signoff: blocked
+
+The production asset lane is parked. Prompt 143 must not generate a production
+asset unless a future manifest review provides complete source paths, hashes,
+notices, quality evidence, package proof, and review approval.
 
 ## Command Summary
 

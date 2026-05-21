@@ -13,6 +13,9 @@ lists limitations users should know before adopting the beta.
 - No public Git tag exists for the beta.
 - The observed publish was manual npm tarball publish, not trusted
   publishing/OIDC.
+- Release hygiene is parked in `docs/release-hygiene-parked.md`: future
+  publishes should use Trusted Publishing, and dist-tag/tag remediation needs a
+  separate approval.
 - `@typai/ui` is published because public packages depend on it; it is not a
   stable independent design system.
 
@@ -28,6 +31,8 @@ lists limitations users should know before adopting the beta.
   raw source files appear in package tarballs.
 - The final Production Asset Unblock audit is complete for this blocked state;
   it did not generate or bundle a production dictionary/frequency asset.
+- Prompt 143 enforced the parked fallback again: no production asset was
+  generated, and app work may continue with host-provided dictionary bytes.
 - Spell coverage is intentionally conservative.
 - The common typo table autocorrects only reviewed non-word typos.
 - Delete-index candidates are suggestions unless explicitly promoted.

@@ -1,36 +1,37 @@
 import { readFileSync } from "node:fs";
 
-const workflowPath = ".github/workflows/npm-beta-publish.yml";
+const workflowPath = ".github/workflows/npm-trusted-publish.yml";
 const workflow = readFileSync(workflowPath, "utf8");
+const requestedVersionPlaceholder = "$" + "{REQUESTED_VERSION}";
 
 const approvedOrder = [
   {
     name: "@typai/ui",
-    tarball: ".pack/typai-ui-0.0.0-beta.0.tgz",
+    tarball: `.pack/typai-ui-${requestedVersionPlaceholder}.tgz`,
   },
   {
     name: "@typai/core",
-    tarball: ".pack/typai-core-0.0.0-beta.0.tgz",
+    tarball: `.pack/typai-core-${requestedVersionPlaceholder}.tgz`,
   },
   {
     name: "@typai/completion-remote",
-    tarball: ".pack/typai-completion-remote-0.0.0-beta.0.tgz",
+    tarball: `.pack/typai-completion-remote-${requestedVersionPlaceholder}.tgz`,
   },
   {
     name: "@typai/contenteditable",
-    tarball: ".pack/typai-contenteditable-0.0.0-beta.0.tgz",
+    tarball: `.pack/typai-contenteditable-${requestedVersionPlaceholder}.tgz`,
   },
   {
     name: "@typai/textarea",
-    tarball: ".pack/typai-textarea-0.0.0-beta.0.tgz",
+    tarball: `.pack/typai-textarea-${requestedVersionPlaceholder}.tgz`,
   },
   {
     name: "@typai/react",
-    tarball: ".pack/typai-react-0.0.0-beta.0.tgz",
+    tarball: `.pack/typai-react-${requestedVersionPlaceholder}.tgz`,
   },
   {
     name: "@typai/codemirror",
-    tarball: ".pack/typai-codemirror-0.0.0-beta.0.tgz",
+    tarball: `.pack/typai-codemirror-${requestedVersionPlaceholder}.tgz`,
   },
 ];
 
@@ -42,20 +43,23 @@ assertIncludes("OIDC id-token permission", "id-token: write");
 assertNotIncludes("NPM token secret", "NPM_TOKEN");
 assertNotIncludes("Node auth token secret", "NODE_AUTH_TOKEN");
 assertMatches("Node 24 runtime", /node-version:\s*24\b/);
+assertIncludes("npm registry URL", "registry-url: https://registry.npmjs.org");
 assertIncludes("npm latest install for 11.5.1+ runtime", "npm install -g npm@latest");
 assertIncludes("npm minimum version check", "below trusted publishing minimum 11.5.1");
-assertIncludes("confirm_version input", "confirm_version:");
-assertIncludes("confirm_dist_tag input", "confirm_dist_tag:");
-assertIncludes("publish input", "publish:");
-assertIncludes("push_git_tag input", "push_git_tag:");
-assertIncludes("version input gate", 'inputs.confirm_version }}" != "$APPROVED_VERSION"');
-assertIncludes("dist-tag input gate", 'inputs.confirm_dist_tag }}" != "$APPROVED_DIST_TAG"');
-assertIncludes(
-  "dry-run stop when publish is false",
-  "publish=false; validation and dry-run checks passed.",
-);
+assertIncludes("version input", "version:");
+assertIncludes("dist-tag input", "distTag:");
+assertIncludes("confirm publish input", "confirmPublish:");
+assertIncludes("strict publish phrase", 'CONFIRM_PUBLISH" != "PUBLISH_BETA"');
+assertIncludes("beta-only dist-tag gate", 'REQUESTED_DIST_TAG" != "beta"');
+assertIncludes("frozen pnpm install", "pnpm install --frozen-lockfile");
+assertIncludes("build gate", "pnpm build");
+assertIncludes("test gate", "pnpm test");
+assertIncludes("e2e gate", "pnpm test:e2e");
+assertIncludes("lint gate", "pnpm lint");
+assertIncludes("package scan gate", "pnpm scan:package-secrets");
+assertIncludes("release dry-run gate", "pnpm release:publish:dry");
 assertIncludes("package availability check", "already exists on npm");
-assertIncludes("beta publish tag", "--tag beta");
+assertIncludes("publish tag argument", '--tag "$REQUESTED_DIST_TAG"');
 assertIncludes("public access publish flag", "--access public");
 assertNotIncludes("latest dist-tag publish flag", "--tag latest");
 

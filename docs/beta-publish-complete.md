@@ -21,6 +21,11 @@ Actions trusted-publishing workflow. The trusted-publishing workflow remains in
 the repo, but it was not dispatched for this publish. Do not claim OIDC or npm
 Trusted Publishing was used for the published artifacts.
 
+Prompt 141 adds a future Trusted Publishing workflow at
+`.github/workflows/npm-trusted-publish.yml`, but release hygiene remains parked
+for external dist-tag and Git tag decisions. See
+`docs/release-hygiene-parked.md`.
+
 ## Version, Dist-Tag, And Git Tag
 
 - Approved version: `0.0.0-beta.0`.
@@ -172,6 +177,8 @@ Rollback guidance: `docs/beta-rollback-guidance.md`.
 - The `latest` dist-tag currently points at the beta because these were first
   publishes.
 - No beta Git tag has been created or pushed.
+- Dist-tag remediation and beta tag recovery are parked pending explicit
+  approval/provenance.
 
 ## Next-Phase Options
 

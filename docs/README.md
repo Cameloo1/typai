@@ -59,6 +59,10 @@ install target until a later release decision changes dist-tags.
 | Current beta checkpoint | [Beta publish complete](./beta-publish-complete.md) |
 | Registry publish evidence | [Beta publish result](./beta-publish-result.md) |
 | Public npm install smoke | [Beta registry smoke](./beta-registry-smoke.md) |
+| Release hygiene parked state | [Release hygiene parked](./release-hygiene-parked.md) |
+| App-continuation checkpoint | [App continuation checkpoint](./app-continuation-checkpoint.md) |
+| Trusted Publishing setup | [Trusted Publishing setup](./trusted-publishing-setup.md) |
+| Dist-tag remediation | [Dist-tag remediation](./dist-tag-remediation.md) |
 | Release candidate history | [Beta release candidate plan](./beta-release-candidate-plan.md) |
 | Known beta limitations | [Beta known issues](./beta-known-issues.md) |
 | Rollback/remediation playbook | [Beta rollback guidance](./beta-rollback-guidance.md) |
@@ -75,6 +79,8 @@ install target until a later release decision changes dist-tags.
 | Production Asset Unblock | [Production asset unblock](./production-asset-unblock.md) |
 | Production Asset Unblock final audit | [Production asset unblock complete](./production-asset-unblock-complete.md) |
 | Production asset remediation loop | [Production asset unblock remediation](./production-asset-unblock-remediation.md) |
+| Production asset blocker closure attempt | [Production asset blocker closure](./production-asset-blocker-closure.md) |
+| Production asset execution result | [Production asset execution result](./production-asset-execution-result.md) |
 | Current asset status report | [Production asset status report](./production-asset-status-report.md) |
 | Transform pipeline design | [Production asset transform design](./production-asset-transform-design.md) |
 | Latest spell-quality run | [Latest spell-quality report](../reports/spell-quality/latest.md) |

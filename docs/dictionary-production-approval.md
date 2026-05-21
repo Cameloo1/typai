@@ -1,6 +1,6 @@
 # Dictionary Production Approval
 
-Status date: 2026-05-20.
+Status date: 2026-05-21.
 
 Source approval status: **PARTIAL SOURCE PATH APPROVED**.
 
@@ -18,6 +18,12 @@ This is the authoritative production language asset approval record. It
 approves no bundled production dictionary or frequency asset. It records the
 current source evidence and the exact blockers that keep production asset
 generation closed.
+
+Prompt 142 update: source blocker closure was attempted and remains blocked.
+No external local source paths were provided, the 14 Google Ngram gzip
+partition SHA-256 fields remain empty, final package-visible notices remain
+placeholders, and no generated output metadata exists. The manifest review
+status therefore remains `blocked`.
 
 ## Approval Record
 

@@ -1,6 +1,6 @@
 # Language Asset Delivery Policy
 
-Status date: 2026-05-20.
+Status date: 2026-05-21.
 
 Current branch: **blocked-host-provided**.
 
@@ -8,6 +8,11 @@ Selected delivery mode: **C. Production asset not bundled; host-provided
 only**. Production mode itself remains **blocked** until
 `packages/core/assets/production/MANIFEST.json` has `review.status:
 "approved"` and the package inclusion decision changes away from `blocked`.
+
+Prompt 143 execution result: **blocked-host-provided fallback enforced**.
+Production transform was not allowed to generate because Prompt 142 parked the
+source blockers and the manifest remains blocked. App work may continue with
+host-provided Typai Dictionary Blob v1 bytes as the production-scale fallback.
 
 ## Decision
 

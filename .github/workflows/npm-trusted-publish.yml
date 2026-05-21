@@ -1,0 +1,223 @@
+name: npm trusted publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version already committed in package.json files, such as 0.0.0-beta.1"
+        required: true
+        type: string
+      distTag:
+        description: "npm dist-tag. Use beta unless a separate release approval changes this workflow."
+        required: true
+        default: beta
+        type: string
+      confirmPublish:
+        description: "Type PUBLISH_BETA to publish through npm Trusted Publishing."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CARGO_TERM_COLOR: always
+  PROVIDER_MODE: mock
+  TYPAI_ALLOW_REAL_PROVIDER_TEST: "0"
+
+jobs:
+  trusted-publish:
+    name: Trusted npm publish
+    runs-on: ubuntu-latest
+    environment: npm-beta
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Require npm trusted-publishing runtime
+        run: |
+          set -euo pipefail
+          npm install -g npm@latest
+          node --version
+          npm --version
+          NPM_VERSION="$(npm --version)"
+          export NPM_VERSION
+          node - <<'NODE'
+          const [major, minor, patch] = process.env.NPM_VERSION.split(".").map(Number);
+          const ok =
+            major > 11 ||
+            (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)));
+          if (!ok) {
+            throw new Error(`npm ${process.env.NPM_VERSION} is below trusted publishing minimum 11.5.1`);
+          }
+          NODE
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          set -euo pipefail
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate operator inputs
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_DIST_TAG: ${{ inputs.distTag }}
+          CONFIRM_PUBLISH: ${{ inputs.confirmPublish }}
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRM_PUBLISH" != "PUBLISH_BETA" ]; then
+            echo "::error::confirmPublish must exactly equal PUBLISH_BETA."
+            exit 1
+          fi
+          if [ "$REQUESTED_DIST_TAG" != "beta" ]; then
+            echo "::error::Only the beta dist-tag is approved by this workflow."
+            exit 1
+          fi
+          case "$REQUESTED_VERSION" in
+            *[!0-9A-Za-z.+-]*|"")
+              echo "::error::Invalid package version input."
+              exit 1
+              ;;
+          esac
+
+      - name: Verify committed package versions
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          packages=(
+            "packages/ui"
+            "packages/core"
+            "packages/completion-remote"
+            "packages/contenteditable"
+            "packages/textarea"
+            "packages/react"
+            "packages/codemirror"
+          )
+          for package_dir in "${packages[@]}"; do
+            actual="$(node -e "console.log(JSON.parse(require('fs').readFileSync('${package_dir}/package.json','utf8')).version)")"
+            if [ "$actual" != "$REQUESTED_VERSION" ]; then
+              echo "::error::${package_dir} version ${actual} does not match ${REQUESTED_VERSION}."
+              exit 1
+            fi
+          done
+
+      - name: Release validation gates
+        run: |
+          set -euo pipefail
+          pnpm build
+          pnpm lint
+          pnpm test
+          pnpm test:e2e
+          pnpm pack:dry
+          pnpm smoke:install
+          pnpm smoke:public-beta
+          pnpm scan:package-secrets
+          pnpm package:size-report
+          pnpm dictionary:check-production
+          pnpm release:check
+          pnpm release:publish:dry
+          pnpm docs:check
+
+      - name: Check npm version availability
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          packages=(
+            "@typai/ui"
+            "@typai/core"
+            "@typai/completion-remote"
+            "@typai/contenteditable"
+            "@typai/textarea"
+            "@typai/react"
+            "@typai/codemirror"
+          )
+          for package_name in "${packages[@]}"; do
+            spec="${package_name}@${REQUESTED_VERSION}"
+            echo "Checking $spec"
+            if npm view "$spec" version >/tmp/npm-view.txt 2>&1; then
+              cat /tmp/npm-view.txt
+              echo "::error::$spec already exists on npm."
+              exit 1
+            fi
+            if grep -Eq "E404|404 Not Found|not found" /tmp/npm-view.txt; then
+              echo "$spec is available."
+              continue
+            fi
+            cat /tmp/npm-view.txt
+            echo "::error::Unexpected npm view failure for $spec."
+            exit 1
+          done
+
+      - name: Create release tarballs
+        run: pnpm release:pack
+
+      - name: Publish in approved order
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_DIST_TAG: ${{ inputs.distTag }}
+        run: |
+          set -euo pipefail
+          publish_one() {
+            local tarball="$1"
+            local package_name="$2"
+            test -f "$tarball"
+            echo "Publishing $package_name from $tarball with tag $REQUESTED_DIST_TAG"
+            npm publish "$tarball" --tag "$REQUESTED_DIST_TAG" --access public
+          }
+
+          publish_one ".pack/typai-ui-${REQUESTED_VERSION}.tgz" "@typai/ui"
+          publish_one ".pack/typai-core-${REQUESTED_VERSION}.tgz" "@typai/core"
+          publish_one ".pack/typai-completion-remote-${REQUESTED_VERSION}.tgz" "@typai/completion-remote"
+          publish_one ".pack/typai-contenteditable-${REQUESTED_VERSION}.tgz" "@typai/contenteditable"
+          publish_one ".pack/typai-textarea-${REQUESTED_VERSION}.tgz" "@typai/textarea"
+          publish_one ".pack/typai-react-${REQUESTED_VERSION}.tgz" "@typai/react"
+          publish_one ".pack/typai-codemirror-${REQUESTED_VERSION}.tgz" "@typai/codemirror"
+
+      - name: Verify published beta versions
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          packages=(
+            "@typai/ui"
+            "@typai/core"
+            "@typai/completion-remote"
+            "@typai/contenteditable"
+            "@typai/textarea"
+            "@typai/react"
+            "@typai/codemirror"
+          )
+          for package_name in "${packages[@]}"; do
+            beta_version="$(npm view "${package_name}@beta" version)"
+            if [ "$beta_version" != "$REQUESTED_VERSION" ]; then
+              echo "::error::$package_name beta resolves to $beta_version, expected $REQUESTED_VERSION."
+              exit 1
+            fi
+            npm view "$package_name" dist-tags --json
+          done

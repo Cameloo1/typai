@@ -147,8 +147,8 @@
   },
   "review": {
     "status": "blocked",
-    "reviewedAt": "2026-05-20",
+    "reviewedAt": "2026-05-21",
     "reviewer": "manual-release-operator",
-    "reviewNotes": "Production asset generation and package inclusion remain blocked. ESDB/SCOWL source hash is pinned and Google Ngram totalcounts-1 hash is pinned, but the 14 Google Ngram gzip partition SHA-256 values, generated output hash, generated counts, generated size, final quality evidence, and package-visible final notices are missing."
+    "reviewNotes": "Prompt 142 closure attempt found no operator-provided external source paths, no local pinned source config, and no production raw sources staged outside the manifest. Production asset generation and package inclusion remain blocked. ESDB/SCOWL source hash is pinned and Google Ngram totalcounts-1 hash is pinned, but the 14 Google Ngram gzip partition SHA-256 values, pinned local paths for every source file, generated output hash, generated counts, generated size, final quality evidence, package-visible final notices, and final review signoff are missing."
   }
 }

@@ -139,6 +139,13 @@ blocked-production-asset state.
   prompt
 - the final Production Asset Unblock checkpoint is recorded in
   `docs/production-asset-unblock-complete.md`
+- beta `0.0.0-beta.0` exists on npm from a manual tarball publish; future
+  registry publishes should use the Trusted Publishing workflow, while the
+  `latest` dist-tag and missing `v0.0.0-beta.0` Git tag remain parked in
+  release hygiene docs
+- Prompt 143 enforced the blocked-host-provided asset fallback again: no
+  production language asset was generated or bundled, and app work may continue
+  while future source-hash and notice blockers remain parked
 
 ## Packages
 
@@ -232,9 +239,12 @@ workspace symlinks or local tarballs.
 - [Beta release candidate plan](https://github.com/Cameloo1/typai/blob/fix/docs/beta-release-candidate-plan.md)
 - [Beta known issues](https://github.com/Cameloo1/typai/blob/fix/docs/beta-known-issues.md)
 - [Beta rollback guidance](https://github.com/Cameloo1/typai/blob/fix/docs/beta-rollback-guidance.md)
+- [Release hygiene parked](https://github.com/Cameloo1/typai/blob/fix/docs/release-hygiene-parked.md)
+- [Trusted Publishing setup](https://github.com/Cameloo1/typai/blob/fix/docs/trusted-publishing-setup.md)
 - [Production asset gate recap](https://github.com/Cameloo1/typai/blob/fix/docs/production-asset-gate-recap.md)
 - [Production asset final audit](https://github.com/Cameloo1/typai/blob/fix/docs/production-asset-unblock-complete.md)
 - [Production asset status report](https://github.com/Cameloo1/typai/blob/fix/docs/production-asset-status-report.md)
+- [Production asset execution result](https://github.com/Cameloo1/typai/blob/fix/docs/production-asset-execution-result.md)
 - [Common typo table](https://github.com/Cameloo1/typai/blob/fix/docs/common-typo-table.md)
 - [Dictionary source selection](https://github.com/Cameloo1/typai/blob/fix/docs/dictionary-source-selection.md)
 - [Dictionary production approval](https://github.com/Cameloo1/typai/blob/fix/docs/dictionary-production-approval.md)

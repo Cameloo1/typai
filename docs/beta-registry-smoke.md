@@ -1,6 +1,6 @@
 # Beta Registry Smoke
 
-Status date: 2026-05-20T15:52:50.4588811-05:00.
+Status date: 2026-05-21.
 
 ## Result
 
@@ -10,6 +10,7 @@ Status date: 2026-05-20T15:52:50.4588811-05:00.
 - local tarballs used: no
 - workspace symlinks used: no
 - temp consumer: disposable directory outside the repository
+- command: `pnpm smoke:registry-beta`
 
 ## Package Versions Installed
 
@@ -57,9 +58,10 @@ Completion:
 
 Build consumers:
 
-- vanilla Vite consumer build: passed
-- React Vite consumer build: passed
-- CodeMirror Vite consumer build: passed
+- registry-installed runtime package matrix: passed
+- host-provided dictionary bytes: passed
+- blocked production dictionary mode: passed
+- endpoint completion against local mock proxy: passed
 
 Boundary checks:
 

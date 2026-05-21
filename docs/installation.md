@@ -89,6 +89,11 @@ Public registry smoke is recorded in [Beta registry smoke](./beta-registry-smoke
 It installed npm `@beta` packages only, with no workspace symlinks or local
 tarballs.
 
+Release hygiene note: the first beta was a manual tarball publish. Future
+publishes should use [Trusted Publishing setup](./trusted-publishing-setup.md).
+The current `latest` dist-tag and missing beta Git tag are parked in
+[Release hygiene parked](./release-hygiene-parked.md).
+
 ## Important Boundaries
 
 - Production dictionary/frequency assets are not bundled.

@@ -39,6 +39,11 @@ Prompt 134 selects host-provided-only delivery for package tarballs while the
 manifest is blocked. See `docs/language-asset-delivery-policy.md` for the
 authoritative delivery decision.
 
+Prompt 143 executed the blocked branch again: production dictionary generation
+failed closed with a clear manifest-blocked error, no production asset was
+created, and package readiness remains tied to excluding raw/generated
+production language assets while preserving host-provided dictionary loading.
+
 The hardening checkpoints are recorded in:
 
 - `docs/v4-remote-completion-complete.md`

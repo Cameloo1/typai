@@ -4,13 +4,16 @@ import { EditorView, type ViewUpdate } from "@codemirror/view";
 import {
   applyFirstTypaiCodeMirrorRedSuggestion,
   type CodeMirrorTypaiMark,
+  clearTypaiCodeMirrorCompletionTransactionsEffect,
   clearTypaiCodeMirrorMarks,
   closeTypaiCodeMirrorPopover,
   createTypaiCodeMirrorExtension,
+  getTypaiCodeMirrorViewCompletionTransactions,
   getTypaiCodeMirrorViewMarks,
   openFirstTypaiCodeMirrorBluePopover,
   openFirstTypaiCodeMirrorRedPopover,
   revertFirstTypaiCodeMirrorCorrection,
+  revertLastTypaiCodeMirrorCompletion,
   setTypaiCodeMirrorRuntimeSettingsEffect,
   type TypaiCodeMirrorCorrectionEvent,
   type TypaiCodeMirrorDecisionEvent,
@@ -24,6 +27,13 @@ import {
   isProtectedTokenText,
   type TypaiCore,
 } from "@typai/core";
+import {
+  COMPLETION_DEMO_DEBOUNCE_MS,
+  COMPLETION_DEMO_MIN_PREFIX_CHARS,
+  createCodeMirrorMockCompletionController,
+  type DemoCodeMirrorCompletionController,
+  formatCompletionLatency,
+} from "./completionDemoControllers";
 
 type CodeMirrorDemoMode = "plain" | "markdown";
 
@@ -44,10 +54,16 @@ type CodeMirrorDemoDebug = {
   getMarks(): CodeMirrorTypaiMark[];
   getMetrics(): CodeMirrorDemoMetrics;
   clearLatencies(): void;
+  getCompletionMetrics(): ReturnType<DemoCodeMirrorCompletionController["getDemoMetrics"]>;
+  getCompletionTransactionCount(): number;
+  setCompletionLatencyMs(value: number): void;
+  setIgnoreAbortForProvider(value: boolean): void;
+  failNextCompletionRequest(): void;
   openFirstRedPopover(): boolean;
   openFirstBluePopover(): boolean;
   applyFirstRedSuggestion(suggestion?: string): boolean;
   revertFirstBlueCorrection(): boolean;
+  revertLastCompletion(): boolean;
 };
 
 type CodeMirrorDemoConfig = {
@@ -97,8 +113,19 @@ const maxLatencySamples = 120;
 export function mountCodeMirrorDemo(mount: HTMLElement): void {
   void mountCodeMirrorSurface(mount, {
     kind: "codemirror",
-    initialDoc: "",
-    initialMode: "plain",
+    initialDoc: [
+      "Draft a release note for this mocked completion demo.",
+      "",
+      "`pnpm test` should remain protected inline code.",
+      "",
+      "```bash",
+      "pnpm test",
+      "rg CVE-2024-1234 /etc/passwd",
+      "```",
+      "",
+      "Ordinary prose after the fence can show completion again.",
+    ].join("\n"),
+    initialMode: "markdown",
     exposeDebugName: "__typaiCodeMirrorDemo",
   });
 }
@@ -150,10 +177,13 @@ function renderCodeMirrorDemoMarkup(): string {
     <div class="codemirror-demo-content">
       <div class="demo-panel-header">
         <div>
-          <h2>CodeMirror 6 Demo</h2>
-          <p>Plain text and Markdown editor surface using @typai/codemirror. Corrections use CodeMirror transactions only.</p>
+          <h2>CodeMirror Completion Demo</h2>
+          <p>CodeMirror-native ghost decorations with mocked completion. Document changes happen only through CodeMirror transactions.</p>
         </div>
-        <button class="reset-button" type="button" data-codemirror-reset data-testid="codemirror-reset">Reset CodeMirror</button>
+        <div class="intro-actions">
+          <button class="reset-button" type="button" data-codemirror-reset data-testid="codemirror-reset">Reset CodeMirror</button>
+          <button class="reset-button" type="button" data-codemirror-revert-completion data-testid="codemirror-revert-completion" disabled>Revert Completion</button>
+        </div>
       </div>
 
       <div class="codemirror-demo-layout">
@@ -174,10 +204,13 @@ function renderCodeMirrorDemoMarkup(): string {
             <div class="codemirror-editor-host" data-codemirror-editor data-testid="codemirror-editor"></div>
           </div>
           <ul class="demo-notes">
+            <li>Type at least <code>${COMPLETION_DEMO_MIN_PREFIX_CHARS}</code> prose characters, pause, then look for gray ghost text.</li>
+            <li>Press Tab to accept the visible completion. Press Escape or continue typing to dismiss it.</li>
+            <li>Use Revert Completion to remove the exact text inserted by the last accepted completion.</li>
             <li><code>teh </code> becomes <code>the </code> with a blue CodeMirror mark.</li>
             <li><code>reciept </code> stays unchanged and opens a red suggestion popover with <code>receipt</code>.</li>
             <li><code>form </code> and <code>user@example.com </code> remain unchanged.</li>
-            <li>Markdown mode skips <code>\`teh\` </code> and fenced code blocks containing <code>teh </code>.</li>
+            <li>Markdown mode suppresses completion and correction in inline code and fenced code blocks, while ordinary prose can still show completion.</li>
           </ul>
         </section>
 
@@ -197,6 +230,25 @@ function renderCodeMirrorDemoMarkup(): string {
               Use personal dictionary
             </label>
           </section>
+          <section class="settings-panel compact-panel" aria-label="CodeMirror completion controls">
+            <h2>Completion Controls</h2>
+            <label>
+              Mock completion
+              <input
+                type="text"
+                data-codemirror-completion-text
+                data-testid="codemirror-completion-text"
+                value=" with mocked CodeMirror completion."
+              />
+            </label>
+            <div class="remote-setting-row">
+              <span>Debounce</span>
+              <output>${COMPLETION_DEMO_DEBOUNCE_MS} ms</output>
+            </div>
+            <button class="reset-button" type="button" data-codemirror-completion-reset-metrics data-testid="codemirror-completion-reset-metrics">Reset completion metrics</button>
+          </section>
+          ${renderCompletionStatusMarkup("CodeMirror completion status")}
+          ${renderCompletionMetricsMarkup("CodeMirror completion metrics")}
           ${renderDebugPanelMarkup("CodeMirror debug")}
         </aside>
       </div>
@@ -302,6 +354,58 @@ function renderDebugPanelMarkup(label: string): string {
   `;
 }
 
+function renderCompletionStatusMarkup(label: string): string {
+  return `
+    <section class="debug-panel compact-panel" aria-label="${escapeAttribute(label)}">
+      <h2>Completion Status</h2>
+      <dl>
+        <div>
+          <dt>Status</dt>
+          <dd data-codemirror-completion-status data-testid="codemirror-completion-status">idle</dd>
+        </div>
+        <div>
+          <dt>Last event</dt>
+          <dd data-codemirror-completion-last-event data-testid="codemirror-completion-last-event">-</dd>
+        </div>
+      </dl>
+    </section>
+  `;
+}
+
+function renderCompletionMetricsMarkup(label: string): string {
+  return `
+    <section class="debug-panel compact-panel" aria-label="${escapeAttribute(label)}">
+      <h2>Completion Metrics</h2>
+      <dl>
+        <div>
+          <dt>Requests</dt>
+          <dd data-codemirror-completion-requests data-testid="codemirror-completion-requests">0</dd>
+        </div>
+        <div>
+          <dt>Ghost shown</dt>
+          <dd data-codemirror-completion-ghost-shown data-testid="codemirror-completion-ghost-shown">0</dd>
+        </div>
+        <div>
+          <dt>Accepted</dt>
+          <dd data-codemirror-completion-accepted data-testid="codemirror-completion-accepted">0</dd>
+        </div>
+        <div>
+          <dt>Dismissed</dt>
+          <dd data-codemirror-completion-dismissed data-testid="codemirror-completion-dismissed">0</dd>
+        </div>
+        <div>
+          <dt>Reverted</dt>
+          <dd data-codemirror-completion-reverted data-testid="codemirror-completion-reverted">0</dd>
+        </div>
+        <div>
+          <dt>p95 ghost latency</dt>
+          <dd data-codemirror-completion-p95 data-testid="codemirror-completion-p95">-</dd>
+        </div>
+      </dl>
+    </section>
+  `;
+}
+
 function startCodeMirrorSurface(
   mount: HTMLElement,
   typai: TypaiCore,
@@ -326,6 +430,79 @@ function startCodeMirrorSurface(
   };
   let pendingStartedAt: number | null = null;
   let view: EditorView;
+  let lastCompletionTransactionId: string | null = null;
+  const completionTextInput = mount.querySelector<HTMLInputElement>(
+    "[data-codemirror-completion-text]",
+  );
+  const revertCompletionButton = mount.querySelector<HTMLButtonElement>(
+    "[data-codemirror-revert-completion]",
+  );
+  let completionLatencyMs = 50;
+  let ignoreAbortForCompletionProvider = false;
+  let failNextCompletionRequest = false;
+  let completionController: DemoCodeMirrorCompletionController | null = null;
+
+  const updateCompletionDebug = () => {
+    const snapshot = completionController?.getDemoMetrics() ?? null;
+
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-status]"),
+      snapshot?.status ?? "idle",
+    );
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-last-event]"),
+      snapshot?.lastEvent ?? "-",
+    );
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-requests]"),
+      String(snapshot?.requestCount ?? 0),
+    );
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-ghost-shown]"),
+      String(snapshot?.ghostShownCount ?? 0),
+    );
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-accepted]"),
+      String(snapshot?.acceptedCount ?? 0),
+    );
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-dismissed]"),
+      String(snapshot?.dismissedCount ?? 0),
+    );
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-reverted]"),
+      String(snapshot?.revertedCount ?? 0),
+    );
+    setText(
+      mount.querySelector<HTMLElement>("[data-codemirror-completion-p95]"),
+      formatCompletionLatency(snapshot?.p95GhostLatencyMs ?? null),
+    );
+
+    if (revertCompletionButton !== null) {
+      revertCompletionButton.disabled = lastCompletionTransactionId === null;
+    }
+  };
+
+  completionController =
+    config.kind === "codemirror"
+      ? createCodeMirrorMockCompletionController({
+          surface: "codemirror",
+          mode,
+          getCompletionText: () =>
+            completionTextInput?.value.trim() === ""
+              ? " with mocked CodeMirror completion."
+              : (completionTextInput?.value ?? " with mocked CodeMirror completion."),
+          getLatencyMs: () => completionLatencyMs,
+          shouldIgnoreAbort: () => ignoreAbortForCompletionProvider,
+          consumeProviderError: () => {
+            const shouldFail = failNextCompletionRequest;
+
+            failNextCompletionRequest = false;
+            return shouldFail;
+          },
+          onUpdate: updateCompletionDebug,
+        })
+      : null;
 
   const updateDebug = () => {
     const marks = getTypaiCodeMirrorViewMarks(view);
@@ -426,6 +603,31 @@ function startCodeMirrorSurface(
       return;
     }
 
+    if (
+      update.transactions.some((transaction) =>
+        transaction.isUserEvent("input.typai.completion.accept"),
+      )
+    ) {
+      lastCompletionTransactionId =
+        getTypaiCodeMirrorViewCompletionTransactions(view).at(-1)?.id ?? null;
+      metrics.lastDecision = "completion accepted";
+      updateDebug();
+      updateCompletionDebug();
+      return;
+    }
+
+    if (
+      update.transactions.some((transaction) =>
+        transaction.isUserEvent("input.typai.completion.revert"),
+      )
+    ) {
+      lastCompletionTransactionId = null;
+      metrics.lastDecision = "completion reverted";
+      updateDebug();
+      updateCompletionDebug();
+      return;
+    }
+
     if (update.transactions.some((transaction) => transaction.isUserEvent("input.typai.correct"))) {
       updateDebug();
       return;
@@ -458,6 +660,8 @@ function startCodeMirrorSurface(
         updateListener,
         createTypaiCodeMirrorExtension({
           typai,
+          completion: completionController ?? undefined,
+          completionMode: mode,
           autocorrect: settings.autocorrect,
           spellcheck: settings.spellcheck,
           onDecision,
@@ -477,6 +681,7 @@ function startCodeMirrorSurface(
         insert: doc,
       },
       selection: { anchor: 0 },
+      effects: clearTypaiCodeMirrorCompletionTransactionsEffect.of(),
       userEvent: "input.typai.demo-reset",
     });
     clearTypaiCodeMirrorMarks(view);
@@ -488,7 +693,10 @@ function startCodeMirrorSurface(
     metrics.protectedSkipCount = 0;
     metrics.lastLatency = null;
     metrics.latencySamples = [];
+    lastCompletionTransactionId = null;
+    completionController?.resetDemoMetrics();
     updateDebug();
+    updateCompletionDebug();
     view.focus();
   };
 
@@ -515,7 +723,35 @@ function startCodeMirrorSurface(
   mount
     .querySelector<HTMLButtonElement>("[data-codemirror-reset]")
     ?.addEventListener("click", () => {
-      resetDoc("");
+      resetDoc(config.initialDoc);
+    });
+
+  mount
+    .querySelector<HTMLButtonElement>("[data-codemirror-revert-completion]")
+    ?.addEventListener("click", () => {
+      if (lastCompletionTransactionId === null) {
+        metrics.lastDecision = "No accepted completion to revert.";
+        updateDebug();
+        updateCompletionDebug();
+        return;
+      }
+
+      if (revertLastTypaiCodeMirrorCompletion(view)) {
+        lastCompletionTransactionId = null;
+        metrics.lastDecision = "completion reverted";
+      } else {
+        metrics.lastDecision = "completion revert skipped";
+      }
+
+      updateDebug();
+      updateCompletionDebug();
+    });
+
+  mount
+    .querySelector<HTMLButtonElement>("[data-codemirror-completion-reset-metrics]")
+    ?.addEventListener("click", () => {
+      completionController?.resetDemoMetrics();
+      updateCompletionDebug();
     });
 
   for (const button of mount.querySelectorAll<HTMLButtonElement>("[data-codemirror-mode]")) {
@@ -615,6 +851,34 @@ function startCodeMirrorSurface(
       metrics.lastLatency = null;
       updateDebug();
     },
+    getCompletionMetrics() {
+      return (
+        completionController?.getDemoMetrics() ?? {
+          status: "idle",
+          requestCount: 0,
+          ghostShownCount: 0,
+          acceptedCount: 0,
+          dismissedCount: 0,
+          revertedCount: 0,
+          providerErrorCount: 0,
+          staleResponseDroppedCount: 0,
+          p95GhostLatencyMs: null,
+          lastEvent: "-",
+        }
+      );
+    },
+    getCompletionTransactionCount() {
+      return getTypaiCodeMirrorViewCompletionTransactions(view).length;
+    },
+    setCompletionLatencyMs(value) {
+      completionLatencyMs = value;
+    },
+    setIgnoreAbortForProvider(value) {
+      ignoreAbortForCompletionProvider = value;
+    },
+    failNextCompletionRequest() {
+      failNextCompletionRequest = true;
+    },
     openFirstRedPopover() {
       return openFirstTypaiCodeMirrorRedPopover(view);
     },
@@ -627,9 +891,13 @@ function startCodeMirrorSurface(
     revertFirstBlueCorrection() {
       return revertFirstTypaiCodeMirrorCorrection(view);
     },
+    revertLastCompletion() {
+      return revertLastTypaiCodeMirrorCompletion(view);
+    },
   };
 
   updateDebug();
+  updateCompletionDebug();
 }
 
 function recordProtectedSkip(update: ViewUpdate): boolean {

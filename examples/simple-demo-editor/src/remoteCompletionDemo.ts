@@ -1,7 +1,12 @@
 import {
   type CompletionMetricEvent,
+  type CompletionProvider,
+  type CompletionProviderOptions,
+  type CompletionRequest,
+  type CompletionResponse,
   type ContenteditableRemoteCompletionController,
   createContenteditableCompletionController,
+  createEndpointCompletionProvider,
   createMockCompletionProvider,
 } from "@typai/completion-remote";
 import {
@@ -14,6 +19,9 @@ import { createMemoryStorage, createTypaiCore, type TypaiCore } from "@typai/cor
 const REMOTE_COMPLETION_DEBOUNCE_MS = 300;
 const REMOTE_COMPLETION_MIN_PREFIX_CHARS = 12;
 const REMOTE_COMPLETION_MAX_EVENTS = 200;
+const DEFAULT_PROXY_ENDPOINT = "http://127.0.0.1:8787/api/typai/completion";
+
+type ProviderMode = "mock" | "proxy";
 
 type RemoteCompletionDemoDebug = {
   getState(): string;
@@ -29,11 +37,13 @@ type RemoteCompletionDemoDebug = {
     dismissByCompositionCount: number;
     revertCount: number;
     staleResponseDroppedCount: number;
+    providerErrorCount: number;
     staleResponseDroppedRequestIds: string[];
     ghostLatencySamples: number[];
   };
   resetMetrics(): void;
   setIgnoreAbortForProvider(value: boolean): void;
+  failNextRequest(): void;
 };
 
 declare global {
@@ -49,7 +59,7 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
         <div class="demo-panel-header">
           <div>
             <h2>V4 Remote Completion</h2>
-            <p>Contenteditable ghost text driven by a deterministic mock provider. No network, server, or API key is used.</p>
+            <p>Contenteditable ghost text driven by a deterministic mock provider by default, with optional proxy mode for a local server-side provider proxy.</p>
           </div>
           <div class="remote-completion-actions">
             <button class="reset-button" type="button" data-remote-reset data-testid="remote-reset">Reset</button>
@@ -91,6 +101,25 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
             <output data-remote-debounce data-testid="remote-debounce">${REMOTE_COMPLETION_DEBOUNCE_MS} ms</output>
           </div>
           <label>
+            Provider mode
+            <select data-remote-provider-mode data-testid="remote-provider-mode">
+              <option value="mock" selected>Mock</option>
+              <option value="proxy">Proxy</option>
+            </select>
+          </label>
+          <label>
+            Proxy endpoint
+            <input
+              type="url"
+              data-remote-proxy-endpoint
+              data-testid="remote-proxy-endpoint"
+              value="${DEFAULT_PROXY_ENDPOINT}"
+            />
+          </label>
+          <p class="panel-note" data-testid="remote-proxy-warning">
+            Real provider mode requires a server-side proxy. Provider credentials stay out of the browser.
+          </p>
+          <label>
             Preset
             <select data-remote-preset data-testid="remote-preset">
               <option value="release">Release note</option>
@@ -130,6 +159,14 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
               <dd data-remote-status data-testid="remote-status">Loading core...</dd>
             </div>
             <div>
+              <dt>Provider mode</dt>
+              <dd data-remote-active-provider-mode data-testid="remote-active-provider-mode">mock</dd>
+            </div>
+            <div>
+              <dt>Endpoint</dt>
+              <dd data-remote-active-endpoint data-testid="remote-active-endpoint">mock</dd>
+            </div>
+            <div>
               <dt>Requests</dt>
               <dd data-remote-request-count data-testid="remote-request-count">0</dd>
             </div>
@@ -154,6 +191,18 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
               <dd data-remote-p95-ghost-latency data-testid="remote-p95-ghost-latency">-</dd>
             </div>
             <div>
+              <dt>Last latency</dt>
+              <dd data-remote-last-latency data-testid="remote-last-latency">-</dd>
+            </div>
+            <div>
+              <dt>Model</dt>
+              <dd data-remote-last-model data-testid="remote-last-model">-</dd>
+            </div>
+            <div>
+              <dt>Ghost text</dt>
+              <dd data-remote-last-ghost data-testid="remote-last-ghost">-</dd>
+            </div>
+            <div>
               <dt>Last event</dt>
               <dd data-remote-last-event data-testid="remote-last-event">-</dd>
             </div>
@@ -165,23 +214,34 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
 
   const editor = root.querySelector<HTMLElement>("[data-remote-editor]");
   const enabledToggle = root.querySelector<HTMLInputElement>("[data-remote-enabled]");
+  const providerModeSelect = root.querySelector<HTMLSelectElement>("[data-remote-provider-mode]");
+  const proxyEndpointInput = root.querySelector<HTMLInputElement>("[data-remote-proxy-endpoint]");
   const presetSelect = root.querySelector<HTMLSelectElement>("[data-remote-preset]");
   const completionTextInput = root.querySelector<HTMLInputElement>("[data-remote-completion-text]");
   const latencyInput = root.querySelector<HTMLInputElement>("[data-remote-latency]");
   const resetButton = root.querySelector<HTMLButtonElement>("[data-remote-reset]");
   const revertButton = root.querySelector<HTMLButtonElement>("[data-remote-revert]");
   const statusElement = root.querySelector<HTMLElement>("[data-remote-status]");
+  const activeProviderModeElement = root.querySelector<HTMLElement>(
+    "[data-remote-active-provider-mode]",
+  );
+  const activeEndpointElement = root.querySelector<HTMLElement>("[data-remote-active-endpoint]");
   const requestCountElement = root.querySelector<HTMLElement>("[data-remote-request-count]");
   const ghostCountElement = root.querySelector<HTMLElement>("[data-remote-ghost-count]");
   const acceptCountElement = root.querySelector<HTMLElement>("[data-remote-accept-count]");
   const dismissCountElement = root.querySelector<HTMLElement>("[data-remote-dismiss-count]");
   const revertCountElement = root.querySelector<HTMLElement>("[data-remote-revert-count]");
   const p95GhostLatencyElement = root.querySelector<HTMLElement>("[data-remote-p95-ghost-latency]");
+  const lastLatencyElement = root.querySelector<HTMLElement>("[data-remote-last-latency]");
+  const lastModelElement = root.querySelector<HTMLElement>("[data-remote-last-model]");
+  const lastGhostElement = root.querySelector<HTMLElement>("[data-remote-last-ghost]");
   const lastEventElement = root.querySelector<HTMLElement>("[data-remote-last-event]");
 
   if (
     editor === null ||
     enabledToggle === null ||
+    providerModeSelect === null ||
+    proxyEndpointInput === null ||
     presetSelect === null ||
     completionTextInput === null ||
     latencyInput === null ||
@@ -201,10 +261,15 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
   let unsubscribeMetrics: (() => void) | null = null;
   let lastAcceptedTransaction: CompletionTransaction | null = null;
   let lastMetricEvent: CompletionMetricEvent | null = null;
+  let lastModel: string | null = null;
+  let lastLatencyMs: number | null = null;
   let ignoreAbortForProvider = false;
+  let failNextRequest = false;
 
   const renderMetrics = () => {
     const snapshot = completionController?.remote.getMetricsSnapshot() ?? null;
+    const providerMode = getProviderMode(providerModeSelect);
+    const remoteState = completionController?.remote.getState() ?? { status: "idle" as const };
     const counts = snapshot?.counts;
     const dismissCount =
       (counts?.ghost_dismissed_by_typing ?? 0) +
@@ -218,13 +283,20 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
         .filter((value): value is number => typeof value === "number") ?? [];
 
     setText(statusElement, formatRemoteStatus(completionController, enabledToggle.checked));
+    setText(activeProviderModeElement, providerMode);
+    setText(activeEndpointElement, providerMode === "proxy" ? proxyEndpointInput.value : "mock");
     setText(requestCountElement, String(counts?.request_scheduled ?? 0));
     setText(ghostCountElement, String(counts?.ghost_shown ?? 0));
     setText(acceptCountElement, String(counts?.ghost_accepted ?? 0));
     setText(dismissCountElement, String(dismissCount));
     setText(revertCountElement, String(counts?.completion_reverted ?? 0));
     setText(p95GhostLatencyElement, formatLatency(getP95(ghostLatencies)));
+    setText(lastLatencyElement, formatLatency(lastLatencyMs));
+    setText(lastModelElement, lastModel ?? "-");
+    setText(lastGhostElement, remoteState.status === "showing" ? remoteState.text : "-");
     setText(lastEventElement, lastMetricEvent?.type ?? "-");
+    completionTextInput.disabled = providerMode !== "mock";
+    latencyInput.disabled = providerMode !== "mock";
     revertButton.disabled = lastAcceptedTransaction === null;
   };
 
@@ -241,18 +313,25 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
     completionController = null;
     lastAcceptedTransaction = null;
     lastMetricEvent = null;
+    lastModel = null;
+    lastLatencyMs = null;
 
     const nextCompletionController = enabledToggle.checked
       ? createContenteditableCompletionController({
-          provider: createMockCompletionProvider(async (request, options) => {
-            const completionText = completionTextInput.value.replaceAll("{requestId}", request.id);
+          provider: createDemoProvider({
+            completionTextInput,
+            endpoint: proxyEndpointInput.value,
+            getIgnoreAbortForProvider: () => ignoreAbortForProvider,
+            getProviderMode: () => getProviderMode(providerModeSelect),
+            latencyInput,
+            shouldFailNextRequest: () => {
+              if (!failNextRequest) {
+                return false;
+              }
 
-            await waitForMockLatency(
-              getMockLatencyMs(latencyInput),
-              ignoreAbortForProvider ? undefined : options.signal,
-            );
-
-            return completionText;
+              failNextRequest = false;
+              return true;
+            },
           }),
           debounceMs: REMOTE_COMPLETION_DEBOUNCE_MS,
           timeoutMs: 2500,
@@ -271,8 +350,22 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
       });
       unsubscribeMetrics = nextCompletionController.remote.subscribeMetrics((event) => {
         lastMetricEvent = event;
+        if (typeof event.latencyMs === "number") {
+          lastLatencyMs = event.latencyMs;
+        }
         renderMetrics();
       });
+      unsubscribeEvents = chainUnsubscribe(
+        unsubscribeEvents,
+        nextCompletionController.remote.subscribe((event) => {
+          if (event.type === "ghost_shown") {
+            lastModel = event.model ?? null;
+            lastLatencyMs = event.latencyMs ?? lastLatencyMs;
+          }
+
+          renderMetrics();
+        }),
+      );
     }
 
     adapter = attachContenteditable({
@@ -321,6 +414,8 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
     completionTextInput.value = presetText(presetSelect.value);
     attachDemo();
   });
+  providerModeSelect.addEventListener("change", attachDemo);
+  proxyEndpointInput.addEventListener("change", attachDemo);
   completionTextInput.addEventListener("change", attachDemo);
   latencyInput.addEventListener("change", attachDemo);
   enabledToggle.addEventListener("change", attachDemo);
@@ -382,6 +477,7 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
         dismissByCompositionCount,
         revertCount: counts?.completion_reverted ?? 0,
         staleResponseDroppedCount: counts?.stale_response_dropped ?? 0,
+        providerErrorCount: counts?.provider_error ?? 0,
         staleResponseDroppedRequestIds,
         ghostLatencySamples,
       };
@@ -389,12 +485,73 @@ export async function mountRemoteCompletionDemo(root: HTMLElement): Promise<void
     resetMetrics() {
       completionController?.remote.resetMetrics();
       lastMetricEvent = null;
+      lastModel = null;
+      lastLatencyMs = null;
       renderMetrics();
     },
     setIgnoreAbortForProvider(value) {
       ignoreAbortForProvider = value;
     },
+    failNextRequest() {
+      failNextRequest = true;
+    },
   };
+}
+
+function createDemoProvider(options: {
+  completionTextInput: HTMLInputElement;
+  endpoint: string;
+  getIgnoreAbortForProvider(): boolean;
+  getProviderMode(): ProviderMode;
+  latencyInput: HTMLInputElement;
+  shouldFailNextRequest(): boolean;
+}): CompletionProvider {
+  if (options.getProviderMode() === "proxy") {
+    return createAbortOptionalProvider(
+      createEndpointCompletionProvider({
+        endpoint: options.endpoint,
+        timeoutMs: 5000,
+      }),
+      options.getIgnoreAbortForProvider,
+    );
+  }
+
+  return createMockCompletionProvider(async (request, providerOptions) => {
+    const completionText = options.completionTextInput.value.replaceAll("{requestId}", request.id);
+
+    await waitForMockLatency(
+      getMockLatencyMs(options.latencyInput),
+      options.getIgnoreAbortForProvider() ? undefined : providerOptions.signal,
+    );
+
+    if (options.shouldFailNextRequest()) {
+      throw new Error("Mock remote completion provider error.");
+    }
+
+    return completionText;
+  });
+}
+
+function createAbortOptionalProvider(
+  provider: CompletionProvider,
+  getIgnoreAbortForProvider: () => boolean,
+): CompletionProvider {
+  return {
+    name: provider.name,
+    async complete(
+      request: CompletionRequest,
+      options: CompletionProviderOptions,
+    ): Promise<CompletionResponse> {
+      return provider.complete(request, {
+        ...options,
+        signal: getIgnoreAbortForProvider() ? undefined : options.signal,
+      });
+    },
+  };
+}
+
+function getProviderMode(select: HTMLSelectElement): ProviderMode {
+  return select.value === "proxy" ? "proxy" : "mock";
 }
 
 function presetText(value: string): string {
@@ -471,6 +628,14 @@ function getP95(values: number[]): number | null {
   const index = Math.ceil(sorted.length * 0.95) - 1;
 
   return sorted[Math.max(0, index)] ?? null;
+}
+
+function chainUnsubscribe(...callbacks: Array<(() => void) | null>): () => void {
+  return () => {
+    for (const callback of callbacks) {
+      callback?.();
+    }
+  };
 }
 
 function placeCaretAtEnd(element: HTMLElement): void {

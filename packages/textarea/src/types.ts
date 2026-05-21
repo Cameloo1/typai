@@ -19,6 +19,101 @@ export type TextareaSnapshot = {
   isComposingIME: boolean;
 };
 
+export type TextareaCompletionMode = "prose" | "prompt" | "markdown" | "command" | "code";
+
+export type TextareaCompletionSnapshot = {
+  text: string;
+  version: number;
+  selection: { start: number; end: number };
+  isComposingIME: boolean;
+  mode?: TextareaCompletionMode;
+};
+
+export type TextareaCompletionRenderMetadata = {
+  requestId?: string;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+};
+
+export type TextareaCompletionTransaction = {
+  id: string;
+  requestId: string;
+  editorVersion: number;
+  rangeBefore: {
+    start: number;
+    end: number;
+    text: string;
+  };
+  rangeAfter: {
+    start: number;
+    end: number;
+    text: string;
+  };
+  insertedText: string;
+  createdAt: number;
+  providerName?: string;
+  model?: string;
+  latencyMs?: number;
+};
+
+export type TextareaCompletionAcceptResult = {
+  applied: boolean;
+  transaction?: TextareaCompletionTransaction;
+  reason?:
+    | "no_visible_ghost"
+    | "not_writable"
+    | "stale_snapshot"
+    | "non_collapsed_selection"
+    | "empty_text";
+};
+
+export type TextareaCompletionRevertResult = {
+  applied: boolean;
+  transaction?: TextareaCompletionTransaction;
+  reason?: "missing_transaction" | "not_writable" | "stale_range";
+};
+
+export type TextareaCompletionEvent = {
+  snapshot: TextareaSnapshot;
+  transaction: TextareaCompletionTransaction;
+};
+
+export type TextareaCompletionDismissEvent = {
+  snapshot: TextareaSnapshot;
+  reason: TextareaGhostTextClearReason;
+  ghostText: string;
+  requestId?: string;
+  providerName?: string;
+  model?: string;
+};
+
+export type TextareaCompletionController = {
+  onEditorInput?(snapshot: TextareaCompletionSnapshot): void;
+  onEditorSelectionChange?(snapshot: TextareaCompletionSnapshot): void;
+  onEditorBlur?(): void;
+  onEditorCompositionStart?(): void;
+  onCorrectionTransaction?(): void;
+  onCompletionAccepted?(event: TextareaCompletionEvent): void;
+  onCompletionDismissed?(event: TextareaCompletionDismissEvent): void;
+  onCompletionReverted?(event: TextareaCompletionEvent): void;
+  destroy?(): void;
+};
+
+export type TextareaGhostTextClearReason =
+  | "manual"
+  | "typing"
+  | "escape"
+  | "selection_change"
+  | "composition_start"
+  | "blur"
+  | "paste"
+  | "correction_transaction"
+  | "stale_snapshot"
+  | "empty"
+  | "overlay_unavailable"
+  | "detach";
+
 export type TextareaMark = {
   id: string;
   range: TextareaRange;
@@ -98,6 +193,7 @@ export type AttachTextareaOptions = {
     enabled?: boolean;
     className?: string;
   };
+  completion?: TextareaCompletionController;
   onDecision?: (event: TextareaDecisionEvent) => void;
   onCorrection?: (event: TextareaCorrectionEvent) => void;
   onMark?: (event: TextareaMarkEvent) => void;
@@ -110,4 +206,15 @@ export type DetachTextarea = (() => void) & {
   getSettings(): TextareaAdapterSettings;
   updateSettings(settings: Partial<TextareaAdapterSettings>): void;
   resyncOverlay(): void;
+  renderTextareaGhostText(
+    text: string,
+    snapshot: TextareaCompletionSnapshot,
+    metadata?: TextareaCompletionRenderMetadata,
+  ): boolean;
+  clearTextareaGhostText(reason?: TextareaGhostTextClearReason): void;
+  isTextareaGhostVisible(): boolean;
+  getTextareaGhostText(): string | null;
+  acceptTextareaCompletion(): TextareaCompletionAcceptResult;
+  revertTextareaCompletion(transactionId: string): TextareaCompletionRevertResult;
+  getTextareaCompletionTransactions(): TextareaCompletionTransaction[];
 };

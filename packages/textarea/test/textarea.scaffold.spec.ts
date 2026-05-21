@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { TypaiCore } from "@typai/core";
 import { describe, expect, it } from "vitest";
 
@@ -71,12 +74,30 @@ describe("attachTextarea event core", () => {
       typai,
     });
 
-    expect(textarea.addedListeners).toEqual(["compositionstart", "compositionend", "input"]);
+    expect(textarea.addedListeners).toEqual([
+      "scroll",
+      "compositionstart",
+      "compositionend",
+      "input",
+      "keydown",
+      "select",
+      "paste",
+      "blur",
+    ]);
 
     detach();
     typeTextareaValue(textarea, "teh ");
 
-    expect(textarea.removedListeners).toEqual(["input", "compositionend", "compositionstart"]);
+    expect(textarea.removedListeners).toEqual([
+      "blur",
+      "paste",
+      "select",
+      "keydown",
+      "input",
+      "compositionend",
+      "compositionstart",
+      "scroll",
+    ]);
     expect(typai.calls).toEqual([]);
   });
 
@@ -118,6 +139,108 @@ describe("attachTextarea event core", () => {
       keepCorrectionMarksVisible: false,
       usePersonalDictionary: true,
     });
+  });
+
+  it("works without a completion controller configured", () => {
+    const textarea = createTextarea("hello");
+    const detach = attachTextarea({
+      textarea,
+      typai: createStubTypai(),
+    });
+
+    expect(detach.isTextareaGhostVisible()).toBe(false);
+    expect(detach.getTextareaGhostText()).toBeNull();
+    expect(detach.getTextareaCompletionTransactions()).toEqual([]);
+    expect(detach.acceptTextareaCompletion()).toEqual({
+      applied: false,
+      reason: "no_visible_ghost",
+    });
+    expect(detach.revertTextareaCompletion("missing")).toEqual({
+      applied: false,
+      reason: "missing_transaction",
+    });
+    expect(
+      detach.renderTextareaGhostText(" world", {
+        text: "hello",
+        version: 0,
+        selection: { start: 5, end: 5 },
+        isComposingIME: false,
+      }),
+    ).toBe(false);
+
+    detach.clearTextareaGhostText();
+    typeTextareaValue(textarea, "hello ");
+
+    expect(textarea.value).toBe("hello ");
+
+    detach();
+  });
+
+  it("emits structural completion editor callbacks", () => {
+    const textarea = createTextarea();
+    const inputSnapshots: unknown[] = [];
+    const selectionSnapshots: unknown[] = [];
+    const events: string[] = [];
+    const detach = attachTextarea({
+      textarea,
+      typai: createStubTypai(),
+      completion: {
+        onEditorInput(snapshot) {
+          inputSnapshots.push(snapshot);
+        },
+        onEditorSelectionChange(snapshot) {
+          selectionSnapshots.push(snapshot);
+        },
+        onEditorBlur() {
+          events.push("blur");
+        },
+        onEditorCompositionStart() {
+          events.push("compositionstart");
+        },
+        onCorrectionTransaction() {
+          events.push("correction_transaction");
+        },
+        destroy() {
+          events.push("destroy");
+        },
+      },
+    });
+
+    typeTextareaValue(textarea, "hello");
+    textarea.selectionStart = 2;
+    textarea.selectionEnd = 2;
+    textarea.dispatchEvent(new Event("select"));
+    textarea.dispatchEvent(new Event("compositionstart"));
+    textarea.dispatchEvent(new Event("blur"));
+    detach();
+
+    expect(inputSnapshots).toEqual([
+      {
+        text: "hello",
+        version: 1,
+        selection: { start: 5, end: 5 },
+        isComposingIME: false,
+      },
+    ]);
+    expect(selectionSnapshots).toEqual([
+      {
+        text: "hello",
+        version: 1,
+        selection: { start: 2, end: 2 },
+        isComposingIME: false,
+      },
+    ]);
+    expect(events).toEqual(["compositionstart", "blur", "destroy"]);
+  });
+
+  it("@typai/core does not import completion-remote", () => {
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const coreRoot = join(currentDir, "..", "..", "core");
+    const files = [...collectSourceFiles(join(coreRoot, "src")), join(coreRoot, "package.json")];
+    const combinedSource = files.map((file) => readFileSync(file, "utf8")).join("\n");
+
+    expect(combinedSource).not.toContain("@typai/completion-remote");
+    expect(combinedSource).not.toContain("completion-remote");
   });
 
   it("fails clearly for a non-textarea element", () => {
@@ -659,6 +782,25 @@ function inputEvent(data: string): Event {
   return event;
 }
 
+function collectSourceFiles(directory: string): string[] {
+  const files: string[] = [];
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...collectSourceFiles(fullPath));
+      continue;
+    }
+
+    if (entry.isFile() && /\.(ts|tsx|js|mjs|json)$/.test(entry.name)) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
 type StubTypai = TypaiCore & {
   calls: string[];
 };
@@ -677,6 +819,15 @@ function createStubTypai(): StubTypai {
       return { suggestions: [], scores: [], reasonCodes: [] };
     },
     getLoadedDictionaryWordCount() {
+      return 0;
+    },
+    getLoadedDictionaryByteSize() {
+      return 0;
+    },
+    getDeleteIndexEntryCount() {
+      return 0;
+    },
+    getDeleteIndexMemoryEstimateBytes() {
       return 0;
     },
     clearLoadedDictionary() {},

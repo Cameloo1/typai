@@ -3,6 +3,8 @@ import { EditorView } from "@codemirror/view";
 import { resolveTypaiCodeMirrorOptions } from "./options";
 import { createTypaiCodeMirrorPlugin } from "./plugin";
 import {
+  typaiCodeMirrorCompletionTransactionsField,
+  typaiCodeMirrorGhostTextField,
   typaiCodeMirrorMarksField,
   typaiCodeMirrorOptionsFacet,
   typaiCodeMirrorRuntimeSettingsField,
@@ -17,6 +19,8 @@ export function createTypaiCodeMirrorExtension(options: TypaiCodeMirrorOptions):
     typaiCodeMirrorOptionsFacet.of(resolvedOptions),
     typaiCodeMirrorRuntimeSettingsField,
     typaiCodeMirrorMarksField,
+    typaiCodeMirrorGhostTextField,
+    typaiCodeMirrorCompletionTransactionsField,
     typaiCodeMirrorTransactionsField,
     typaiCodeMirrorTheme,
     createTypaiCodeMirrorPlugin(resolvedOptions),
@@ -35,5 +39,12 @@ const typaiCodeMirrorTheme = EditorView.baseTheme({
     textDecorationStyle: "solid",
     textDecorationColor: "#2563eb",
     textUnderlineOffset: "0.16em",
+  },
+  ".typai-cm-ghost-text": {
+    color: "#6b7280",
+    opacity: "0.72",
+    pointerEvents: "none",
+    userSelect: "none",
+    whiteSpace: "pre-wrap",
   },
 });

@@ -1,11 +1,18 @@
 {
   "name": "@typai/react",
-  "version": "0.0.0-dev",
+  "version": "0.0.0-beta.0",
+  "description": "React provider, hooks, and components for Typai editor surfaces.",
+  "license": "UNLICENSED",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cameloo1/typai.git",
+    "directory": "packages/react"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,6 +23,7 @@
     "dist",
     "README.md"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "prepack": "pnpm run build",

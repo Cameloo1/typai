@@ -1,0 +1,298 @@
+name: npm beta publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_version:
+        description: "Must equal 0.0.0-beta.0"
+        required: true
+        type: string
+      confirm_dist_tag:
+        description: "Must equal beta"
+        required: true
+        type: string
+      publish:
+        description: "Set true to publish after all gates pass"
+        required: true
+        type: boolean
+        default: false
+      push_git_tag:
+        description: "Reserved for a separately approved tag-push workflow"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  APPROVED_VERSION: 0.0.0-beta.0
+  APPROVED_DIST_TAG: beta
+  APPROVED_GIT_TAG: v0.0.0-beta.0
+  CARGO_TERM_COLOR: always
+  PROVIDER_MODE: mock
+  TYPAI_ALLOW_REAL_PROVIDER_TEST: "0"
+  OPENAI_API_KEY: ""
+
+jobs:
+  trusted-beta-publish:
+    name: Trusted npm beta publish
+    runs-on: ubuntu-latest
+    environment: npm-beta
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Require npm trusted-publishing runtime
+        run: |
+          set -euo pipefail
+          npm install -g npm@latest
+          node --version
+          npm --version
+          NPM_VERSION="$(npm --version)"
+          export NPM_VERSION
+          node - <<'NODE'
+          const [major, minor, patch] = process.env.NPM_VERSION.split(".").map(Number);
+          const ok =
+            major > 11 ||
+            (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)));
+          if (!ok) {
+            throw new Error(`npm ${process.env.NPM_VERSION} is below trusted publishing minimum 11.5.1`);
+          }
+          NODE
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          set -euo pipefail
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate workflow inputs
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm_version }}" != "$APPROVED_VERSION" ]; then
+            echo "::error::confirm_version must equal $APPROVED_VERSION"
+            exit 1
+          fi
+          if [ "${{ inputs.confirm_dist_tag }}" != "$APPROVED_DIST_TAG" ]; then
+            echo "::error::confirm_dist_tag must equal $APPROVED_DIST_TAG"
+            exit 1
+          fi
+          if [ "${{ inputs.push_git_tag }}" = "true" ]; then
+            echo "::error::push_git_tag=true is not enabled because this workflow intentionally uses contents: read"
+            exit 1
+          fi
+
+      - name: Release validation gates
+        run: |
+          set -euo pipefail
+          pnpm beta:approval:check
+          pnpm build
+          pnpm release:check
+          pnpm release:publish:dry
+          pnpm scan:package-secrets
+          pnpm smoke:install
+          pnpm smoke:public-beta
+          pnpm docs:check
+          pnpm dictionary:check-production
+          pnpm test
+          pnpm lint
+
+      - name: Create approved tarballs
+        run: pnpm release:pack
+
+      - name: Verify approved tarballs exist
+        run: |
+          set -euo pipefail
+          tarballs=(
+            ".pack/typai-ui-0.0.0-beta.0.tgz"
+            ".pack/typai-core-0.0.0-beta.0.tgz"
+            ".pack/typai-completion-remote-0.0.0-beta.0.tgz"
+            ".pack/typai-contenteditable-0.0.0-beta.0.tgz"
+            ".pack/typai-textarea-0.0.0-beta.0.tgz"
+            ".pack/typai-react-0.0.0-beta.0.tgz"
+            ".pack/typai-codemirror-0.0.0-beta.0.tgz"
+          )
+          for tarball in "${tarballs[@]}"; do
+            test -f "$tarball"
+            ls -lh "$tarball"
+          done
+
+      - name: Check npm package version availability
+        run: |
+          set -euo pipefail
+          packages=(
+            "@typai/ui"
+            "@typai/core"
+            "@typai/completion-remote"
+            "@typai/contenteditable"
+            "@typai/textarea"
+            "@typai/react"
+            "@typai/codemirror"
+          )
+          for package_name in "${packages[@]}"; do
+            spec="${package_name}@${APPROVED_VERSION}"
+            echo "Checking $spec"
+            if npm view "$spec" version >/tmp/npm-view.txt 2>&1; then
+              cat /tmp/npm-view.txt
+              echo "::error::$spec already exists on npm"
+              exit 1
+            fi
+            if grep -Eq "E404|404 Not Found|not found" /tmp/npm-view.txt; then
+              echo "$spec is available"
+              continue
+            fi
+            cat /tmp/npm-view.txt
+            echo "::error::Unexpected npm view failure for $spec"
+            exit 1
+          done
+
+      - name: Record dry-run result
+        if: ${{ inputs.publish != true }}
+        run: |
+          set -euo pipefail
+          mkdir -p .trusted-publish-result
+          cat > .trusted-publish-result/publish-result.md <<'RESULT'
+          # Trusted npm beta publish result
+
+          published: false
+          mode: dry-run
+          version: 0.0.0-beta.0
+          distTag: beta
+          note: workflow_dispatch ran validation, release pack, and availability checks only because publish was not true.
+          RESULT
+
+      - name: Stop before publish unless explicitly requested
+        if: ${{ inputs.publish != true }}
+        run: |
+          echo "publish=false; validation and dry-run checks passed. No npm publish command was executed."
+
+      - name: Publish approved tarballs with npm trusted publishing
+        if: ${{ inputs.publish == true }}
+        run: |
+          set -euo pipefail
+          mkdir -p .trusted-publish-result
+          published_packages=()
+          attempted_package=""
+          on_exit() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              {
+                echo "# Trusted npm beta publish result"
+                echo
+                echo "published: partial"
+                echo "version: $APPROVED_VERSION"
+                echo "distTag: $APPROVED_DIST_TAG"
+                echo "failedPackage: ${attempted_package:-unknown}"
+                echo "packagesPublished: ${published_packages[*]:-none}"
+                echo "note: publish failed before completing the approved package order."
+              } > .trusted-publish-result/publish-result.md
+            fi
+          }
+          trap on_exit EXIT
+
+          publish_one() {
+            local tarball="$1"
+            local package_name="$2"
+            attempted_package="$package_name"
+            echo "Publishing $package_name from $tarball with tag $APPROVED_DIST_TAG"
+            npm publish "$tarball" --tag beta --access public
+            published_packages+=("$package_name")
+          }
+
+          publish_one ".pack/typai-ui-0.0.0-beta.0.tgz" "@typai/ui"
+          publish_one ".pack/typai-core-0.0.0-beta.0.tgz" "@typai/core"
+          publish_one ".pack/typai-completion-remote-0.0.0-beta.0.tgz" "@typai/completion-remote"
+          publish_one ".pack/typai-contenteditable-0.0.0-beta.0.tgz" "@typai/contenteditable"
+          publish_one ".pack/typai-textarea-0.0.0-beta.0.tgz" "@typai/textarea"
+          publish_one ".pack/typai-react-0.0.0-beta.0.tgz" "@typai/react"
+          publish_one ".pack/typai-codemirror-0.0.0-beta.0.tgz" "@typai/codemirror"
+
+          trap - EXIT
+          {
+            echo "# Trusted npm beta publish result"
+            echo
+            echo "published: true"
+            echo "version: $APPROVED_VERSION"
+            echo "distTag: $APPROVED_DIST_TAG"
+            echo "packagesPublished:"
+            for package_name in "${published_packages[@]}"; do
+              echo "- $package_name"
+            done
+            echo "gitTagStatus: local-only"
+          } > .trusted-publish-result/publish-result.md
+
+      - name: Verify beta dist-tags
+        if: ${{ inputs.publish == true }}
+        run: |
+          set -euo pipefail
+          packages=(
+            "@typai/ui"
+            "@typai/core"
+            "@typai/completion-remote"
+            "@typai/contenteditable"
+            "@typai/textarea"
+            "@typai/react"
+            "@typai/codemirror"
+          )
+          {
+            echo
+            echo "## npm dist-tag results"
+          } >> .trusted-publish-result/publish-result.md
+          for package_name in "${packages[@]}"; do
+            beta_version="$(npm view "${package_name}@beta" version)"
+            npm view "$package_name" dist-tags --json > ".trusted-publish-result/${package_name//@/}.dist-tags.json"
+            npm view "${package_name}@${APPROVED_VERSION}" name version
+            if [ "$beta_version" != "$APPROVED_VERSION" ]; then
+              echo "::error::$package_name beta resolves to $beta_version, expected $APPROVED_VERSION"
+              exit 1
+            fi
+            echo "- $package_name beta: $beta_version" >> .trusted-publish-result/publish-result.md
+          done
+
+      - name: Create local Git tag after successful publish
+        if: ${{ inputs.publish == true }}
+        run: |
+          set -euo pipefail
+          if git rev-parse "$APPROVED_GIT_TAG" >/dev/null 2>&1; then
+            existing="$(git rev-list -n 1 "$APPROVED_GIT_TAG")"
+            current="$(git rev-parse HEAD)"
+            if [ "$existing" != "$current" ]; then
+              echo "::error::$APPROVED_GIT_TAG already exists on a different commit"
+              exit 1
+            fi
+          else
+            git tag "$APPROVED_GIT_TAG"
+          fi
+          echo "Local Git tag created: $APPROVED_GIT_TAG" >> .trusted-publish-result/publish-result.md
+
+      - name: Upload trusted publish result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trusted-npm-beta-publish-result
+          path: .trusted-publish-result/
+          if-no-files-found: ignore

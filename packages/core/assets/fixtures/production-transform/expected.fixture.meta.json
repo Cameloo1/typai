@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "language": "en-US",
+  "wordCount": 8,
+  "byteSize": 185,
+  "outputSha256": "34e58d10f5f96fb6a591c1a82dc971ad2638a9ed88accb9fb10887f2d41da5ac",
+  "words": ["alpha", "bravo", "cafe", "delta", "gamma", "missingfreq", "nasa", "typai"],
+  "frequencies": {
+    "alpha": 15,
+    "bravo": 8,
+    "cafe": 0,
+    "delta": 3,
+    "gamma": 0,
+    "missingfreq": 0,
+    "nasa": 12,
+    "typai": 21
+  },
+  "excludedCountsByReason": {
+    "duplicate_dictionary_word": 2,
+    "frequency_invalid_apostrophe": 1,
+    "frequency_invalid_non_ascii_token": 1,
+    "frequency_invalid_trailing_punctuation": 1,
+    "frequency_protected_numeric": 1,
+    "frequency_word_not_in_dictionary": 1,
+    "invalid_apostrophe": 1,
+    "invalid_frequency_count": 1,
+    "invalid_frequency_row": 1,
+    "invalid_non_ascii_token": 1,
+    "invalid_trailing_punctuation": 1,
+    "protected_email": 1,
+    "protected_identifier": 2,
+    "protected_numeric": 1,
+    "protected_path": 3,
+    "protected_url": 1
+  },
+  "frequencyCoverage": {
+    "wordsWithFrequency": 5,
+    "wordsWithoutFrequency": 3,
+    "totalWords": 8,
+    "percentage": 62.5
+  },
+  "packageInclusion": "host-provided-only"
+}

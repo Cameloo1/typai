@@ -1,0 +1,16 @@
+{
+  "name": "consumer-completion-with-proxy",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true});\""
+  },
+  "dependencies": {
+    "@typai/completion-remote": "workspace:*",
+    "@typai/contenteditable": "workspace:*",
+    "@typai/core": "workspace:*"
+  }
+}

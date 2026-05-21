@@ -57,4 +57,8 @@ for (const [token, expectedSuggestion] of suggestionCases) {
   }
 }
 
+if (typeof wasm.loaded_dictionary_byte_size() !== "number") {
+  throw new Error("Malformed loaded_dictionary_byte_size() result");
+}
+
 console.log("Typai Wasm smoke test passed.");

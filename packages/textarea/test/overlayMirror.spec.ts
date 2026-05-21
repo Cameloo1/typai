@@ -1116,6 +1116,15 @@ function createStubTypai(): StubTypai {
     getLoadedDictionaryWordCount() {
       return 0;
     },
+    getLoadedDictionaryByteSize() {
+      return 0;
+    },
+    getDeleteIndexEntryCount() {
+      return 0;
+    },
+    getDeleteIndexMemoryEstimateBytes() {
+      return 0;
+    },
     clearLoadedDictionary() {},
     async addToPersonalDictionary(word) {
       addedWords.add(word);

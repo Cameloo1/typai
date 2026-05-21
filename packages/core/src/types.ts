@@ -66,7 +66,15 @@ export interface SuggestTokenResult {
   reasonCodes: string[];
 }
 
+export type TypaiDictionaryMode =
+  | "built-in"
+  | "host-provided"
+  | "production"
+  | "fixture"
+  | "scaled-mock";
+
 export interface TypaiDictionaryLoadSource {
+  mode?: TypaiDictionaryMode;
   bytes?: Uint8Array;
   url?: string;
   load?: () => Promise<Uint8Array>;
@@ -133,6 +141,9 @@ export interface TypaiCore {
   checkCompletedToken(input: CheckCompletedTokenInput): CorrectionDecision;
   suggestToken(input: SuggestTokenInput): SuggestTokenResult;
   getLoadedDictionaryWordCount(): number;
+  getLoadedDictionaryByteSize(): number;
+  getDeleteIndexEntryCount(): number;
+  getDeleteIndexMemoryEstimateBytes(): number;
   clearLoadedDictionary(): void;
   addToPersonalDictionary(word: string): Promise<void>;
   removeFromPersonalDictionary(word: string): Promise<void>;

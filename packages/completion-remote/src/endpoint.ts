@@ -1,4 +1,9 @@
-import type { CompletionProvider } from "./provider";
+import {
+  type CompletionProvider,
+  type CompletionProviderError,
+  type CompletionProviderErrorKind,
+  CompletionProviderFailure,
+} from "./provider";
 import { sanitizeCompletionText } from "./sanitize";
 import type { CompletionProviderOptions, CompletionRequest, CompletionResponse } from "./types";
 
@@ -11,27 +16,20 @@ export type EndpointCompletionProviderOptions = {
   timeoutMs?: number;
 };
 
-export type EndpointCompletionProviderErrorCode =
-  | "aborted"
-  | "headers_error"
-  | "http_error"
-  | "malformed_response"
-  | "network_error"
-  | "timeout";
+export type EndpointCompletionProviderErrorCode = CompletionProviderErrorKind;
 
-export class EndpointCompletionProviderError extends Error {
+export class EndpointCompletionProviderError extends CompletionProviderFailure {
   readonly code: EndpointCompletionProviderErrorCode;
-  readonly status?: number;
 
   constructor(
     code: EndpointCompletionProviderErrorCode,
     message: string,
-    options: { status?: number } = {},
+    options: { status?: number; retryAfterMs?: number } = {},
   ) {
-    super(message);
+    const providerError = createEndpointProviderError(code, message, options);
+    super(providerError);
     this.name = "EndpointCompletionProviderError";
-    this.code = code;
-    this.status = options.status;
+    this.code = providerError.kind;
   }
 }
 
@@ -59,10 +57,7 @@ async function completeFromEndpoint(
   let timeoutExpired = false;
 
   if (providerSignal?.aborted) {
-    throw new EndpointCompletionProviderError(
-      "aborted",
-      "Endpoint completion request was aborted.",
-    );
+    throw new EndpointCompletionProviderError("abort", "Endpoint completion request was aborted.");
   }
 
   const abortFromProviderSignal = () => {
@@ -89,11 +84,7 @@ async function completeFromEndpoint(
     });
 
     if (!response.ok) {
-      throw new EndpointCompletionProviderError(
-        "http_error",
-        "Endpoint completion request returned an unsuccessful status.",
-        { status: response.status },
-      );
+      throw classifyHttpError(response);
     }
 
     const payload = await readJson(response);
@@ -127,7 +118,7 @@ async function completeFromEndpoint(
 
     if (isAbortLikeError(error) || controller.signal.aborted) {
       throw new EndpointCompletionProviderError(
-        "aborted",
+        "abort",
         "Endpoint completion request was aborted.",
       );
     }
@@ -155,7 +146,7 @@ async function buildHeaders(
       typeof options.headers === "function" ? await options.headers() : (options.headers ?? {});
   } catch {
     throw new EndpointCompletionProviderError(
-      "headers_error",
+      "invalid_response",
       "Endpoint completion headers could not be resolved.",
     );
   }
@@ -173,7 +164,7 @@ async function readJson(response: Response): Promise<unknown> {
     return await response.json();
   } catch {
     throw new EndpointCompletionProviderError(
-      "malformed_response",
+      "invalid_response",
       "Endpoint completion response was not valid JSON.",
     );
   }
@@ -229,7 +220,7 @@ function assertStringRecord(value: Record<string, string>, label: string): void 
   for (const [key, item] of Object.entries(value)) {
     if (typeof key !== "string" || typeof item !== "string") {
       throw new EndpointCompletionProviderError(
-        "headers_error",
+        "invalid_response",
         `Endpoint completion ${label} must be string values.`,
       );
     }
@@ -238,9 +229,98 @@ function assertStringRecord(value: Record<string, string>, label: string): void 
 
 function throwMalformedResponse(): never {
   throw new EndpointCompletionProviderError(
-    "malformed_response",
+    "invalid_response",
     "Endpoint completion response had an invalid shape.",
   );
+}
+
+function createEndpointProviderError(
+  kind: EndpointCompletionProviderErrorCode,
+  message: string,
+  options: { status?: number; retryAfterMs?: number },
+): CompletionProviderError {
+  switch (kind) {
+    case "server_error":
+      return {
+        kind,
+        status: options.status ?? 500,
+        message,
+      };
+    case "client_error":
+      return {
+        kind,
+        status: options.status ?? 400,
+        message,
+      };
+    case "rate_limited":
+      return {
+        kind,
+        message,
+        retryAfterMs: options.retryAfterMs,
+      };
+    case "network_error":
+    case "timeout":
+    case "abort":
+    case "invalid_response":
+      return {
+        kind,
+        message,
+      };
+  }
+}
+
+function classifyHttpError(response: Response): EndpointCompletionProviderError {
+  if (response.status === 429) {
+    return new EndpointCompletionProviderError(
+      "rate_limited",
+      "Endpoint completion request was rate limited.",
+      { retryAfterMs: parseRetryAfterMs(response.headers.get("retry-after")) },
+    );
+  }
+
+  if (response.status >= 500) {
+    return new EndpointCompletionProviderError(
+      "server_error",
+      "Endpoint completion request returned a server error.",
+      { status: response.status },
+    );
+  }
+
+  if (response.status >= 400) {
+    return new EndpointCompletionProviderError(
+      "client_error",
+      "Endpoint completion request returned a client error.",
+      { status: response.status },
+    );
+  }
+
+  return new EndpointCompletionProviderError(
+    "invalid_response",
+    "Endpoint completion response had an invalid HTTP status.",
+  );
+}
+
+function parseRetryAfterMs(value: string | null): number | undefined {
+  if (value === null) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  const seconds = Number(trimmed);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.floor(seconds * 1000);
+  }
+
+  const dateMs = Date.parse(trimmed);
+  if (!Number.isFinite(dateMs)) {
+    return undefined;
+  }
+
+  return Math.max(0, dateMs - Date.now());
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

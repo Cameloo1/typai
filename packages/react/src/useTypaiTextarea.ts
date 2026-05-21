@@ -8,7 +8,7 @@ import {
   type TextareaMarkRemovedEvent,
   type TextareaProtectedSkipEvent,
 } from "@typai/textarea";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useComposedRefs } from "./internals/useComposedRefs";
 import { useStableCallback } from "./internals/useStableCallback";
 import type {
@@ -25,9 +25,12 @@ const defaultTextareaSettings: TextareaAdapterSettings = {
   usePersonalDictionary: true,
 };
 
+const useAdapterLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function useTypaiTextarea(options: TypaiTextareaHookOptions = {}): TypaiTextareaHookResult {
   const coreContext = useTypaiCore();
   const typai = options.typai ?? coreContext.typai;
+  const completion = options.completion ?? coreContext.completion?.textarea;
   const coreStatus = options.typai !== undefined ? "ready" : coreContext.status;
   const coreError = options.typai !== undefined ? null : coreContext.error;
   const [textarea, setTextarea] = useState<HTMLTextAreaElement | null>(null);
@@ -94,7 +97,7 @@ export function useTypaiTextarea(options: TypaiTextareaHookOptions = {}): TypaiT
   const onProtectedSkip = useStableCallback((event: TextareaProtectedSkipEvent) => {
     options.onProtectedSkip?.(event);
   });
-  const overlayEnabled = options.overlay?.enabled ?? false;
+  const overlayEnabled = options.overlay?.enabled ?? completion !== undefined;
   const overlayClassName = options.overlay?.className;
   const disabled = options.disabled;
   const readOnly = options.readOnly;
@@ -103,7 +106,7 @@ export function useTypaiTextarea(options: TypaiTextareaHookOptions = {}): TypaiT
     adapterRef.current?.updateSettings(settings);
   }, [settings]);
 
-  useEffect(() => {
+  useAdapterLayoutEffect(() => {
     if (typai === null) {
       setAdapter(null);
       setStatus(coreStatus === "error" ? "error" : "waiting_for_core");
@@ -134,12 +137,14 @@ export function useTypaiTextarea(options: TypaiTextareaHookOptions = {}): TypaiT
           enabled: overlayEnabled,
           className: overlayClassName,
         },
+        completion,
         onDecision,
         onCorrection,
         onMark,
         onMarkRemoved,
         onProtectedSkip,
       });
+      const disconnectCompletion = completion?.connectEditor?.(attachedAdapter);
 
       adapterRef.current = attachedAdapter;
       setAdapter(() => attachedAdapter);
@@ -153,6 +158,7 @@ export function useTypaiTextarea(options: TypaiTextareaHookOptions = {}): TypaiT
           setAdapter(null);
         }
 
+        disconnectCompletion?.();
         attachedAdapter();
         setDetachCount((current) => current + 1);
       };
@@ -170,6 +176,7 @@ export function useTypaiTextarea(options: TypaiTextareaHookOptions = {}): TypaiT
     textarea,
     overlayEnabled,
     overlayClassName,
+    completion,
     disabled,
     readOnly,
     onDecision,

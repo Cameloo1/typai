@@ -2,9 +2,10 @@
 
 Internal framework-free UI utilities for Typai adapters.
 
-This package is private and unstable. It is not a public UI API promise yet.
-It exists to reduce repeated popover, settings, debug, accessibility, and style
-logic across Typai adapters as React and CodeMirror work begins.
+This package is internal and unstable. It is packed only because public Typai
+packages currently depend on it; it is not a public UI API promise. It exists to
+reduce repeated popover, settings, debug, accessibility, and style logic across
+Typai adapters.
 
 ## Scope
 

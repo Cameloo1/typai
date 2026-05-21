@@ -1,0 +1,22 @@
+# Typai production transform fixture dictionary.
+alpha
+Alpha
+bravo
+BRAVO
+Gamma
+typai
+delta/AB
+NASA
+missingfreq
+can't
+trail.
+CVE-2026-0001
+user@example.com
+https://example.com/word
+C:\Users\typai\dictionary.txt
+/etc/passwd
+snake_case_identifier
+camelCaseToken
+path/to/file
+cafe
+café

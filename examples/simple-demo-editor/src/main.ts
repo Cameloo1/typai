@@ -17,6 +17,10 @@ import {
 } from "@typai/core";
 import {
   attachTextarea,
+  type TextareaCompletionAcceptResult,
+  type TextareaCompletionRevertResult,
+  type TextareaCompletionSnapshot,
+  type TextareaCompletionTransaction,
   type TextareaCorrectionEvent,
   type TextareaDecisionEvent,
   type TextareaMark,
@@ -24,7 +28,14 @@ import {
   type TextareaMarkRemovedEvent,
   type TextareaProtectedSkipEvent,
 } from "@typai/textarea";
+import { measureCaretInOverlayMirror } from "../../../packages/textarea/src/completion/caretGeometry";
 import { mountCodeMirrorDemo, mountCodexMockDemo } from "./codemirrorDemo";
+import {
+  COMPLETION_DEMO_DEBOUNCE_MS,
+  COMPLETION_DEMO_MIN_PREFIX_CHARS,
+  createTextareaMockCompletionController,
+  type DemoTextareaCompletionController,
+} from "./completionDemoControllers";
 import { type DemoMark, pruneStaleMarks, renderMarkedText } from "./markRendering";
 import { mountReactDemo } from "./reactDemo";
 import "./styles.css";
@@ -47,10 +58,15 @@ type MetricState = {
 type DebugEvent = {
   time: string;
   actionType: string;
+  sourceKind: string;
   original: string;
   replacement: string;
   result: string;
   reasonCodes: string[];
+};
+
+type DebugEventInput = Omit<DebugEvent, "time" | "sourceKind"> & {
+  sourceKind?: string;
 };
 
 type StorageMode = "indexeddb" | "memory";
@@ -70,10 +86,49 @@ type TypaiTextareaDemoDebug = {
   clearLatencies(): void;
 };
 
+type TextareaGhostFeasibilitySnapshot = {
+  textareaValue: string;
+  ghostText: string;
+  offset: number;
+  ghostRect: RectSnapshot;
+  caretRect: RectSnapshot | null;
+  deltaLeft: number | null;
+  deltaTop: number | null;
+};
+
+type RectSnapshot = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
+type TypaiTextareaGhostFeasibilityDebug = {
+  render(text: string, offset?: number): TextareaGhostFeasibilitySnapshot;
+  resync(offset?: number): TextareaGhostFeasibilitySnapshot;
+  clear(): void;
+  getSnapshot(): TextareaGhostFeasibilitySnapshot | null;
+  accept(): TextareaCompletionAcceptResult;
+  revertLast(): TextareaCompletionRevertResult;
+  getTransactions(): TextareaCompletionTransaction[];
+};
+
+type TypaiTextareaCompletionDemoDebug = {
+  getMetrics(): ReturnType<DemoTextareaCompletionController["getDemoMetrics"]>;
+  setLatencyMs(value: number): void;
+  setIgnoreAbortForProvider(value: boolean): void;
+  failNextRequest(): void;
+};
+
 declare global {
   interface Window {
     __typaiDebug?: TypaiDemoDebug;
     __typaiTextareaDebug?: TypaiTextareaDemoDebug;
+    __typaiTextareaCompletionDebug?: TypaiTextareaCompletionDemoDebug;
+    __typaiTextareaGhostFeasibility?: TypaiTextareaGhostFeasibilityDebug;
+    __typaiTextareaGhostRenderer?: TypaiTextareaGhostFeasibilityDebug;
   }
 }
 
@@ -96,9 +151,9 @@ if (app) {
 
       <nav class="demo-tabs" aria-label="Demo surfaces">
         <button type="button" data-demo-tab="contenteditable" data-active="true">Contenteditable Demo</button>
-        <button type="button" data-demo-tab="textarea" data-active="false">Textarea Demo</button>
-        <button type="button" data-demo-tab="react" data-active="false">React Demo</button>
-        <button type="button" data-demo-tab="codemirror" data-active="false">CodeMirror Demo</button>
+        <button type="button" data-demo-tab="textarea" data-active="false">Textarea Completion Demo</button>
+        <button type="button" data-demo-tab="react" data-active="false">React Completion Demo</button>
+        <button type="button" data-demo-tab="codemirror" data-active="false">CodeMirror Completion Demo</button>
         <button type="button" data-demo-tab="codex-mock" data-active="false">Codex Mock Demo</button>
         <button type="button" data-demo-tab="remote-completion" data-active="false">V4 Remote Completion</button>
         <button type="button" data-demo-tab="chat" data-active="false">Chat Input Demo</button>
@@ -239,6 +294,7 @@ if (app) {
               <tr>
                 <th>Time</th>
                 <th>Action</th>
+                <th>Source</th>
                 <th>Original</th>
                 <th>Replacement</th>
                 <th>Result</th>
@@ -253,10 +309,13 @@ if (app) {
       <section class="textarea-demo-panel" aria-label="Native textarea demo" data-demo-panel="textarea" data-testid="textarea-demo-root" hidden>
         <div class="demo-panel-header">
           <div>
-            <h2>Native Textarea Demo</h2>
-            <p>typai attaches to a real <code>textarea</code>. The textarea value stays plain text; red and blue marks render in the overlay mirror.</p>
+            <h2>Textarea Completion Demo</h2>
+            <p>Mocked completion renders as overlay ghost text near the caret. <code>textarea.value</code> remains the source of truth until Tab accepts.</p>
           </div>
-          <button class="reset-button" type="button" data-textarea-reset data-testid="textarea-reset">Reset Textarea</button>
+          <div class="intro-actions">
+            <button class="reset-button" type="button" data-textarea-reset data-testid="textarea-reset">Reset Textarea</button>
+            <button class="reset-button" type="button" data-textarea-revert-completion data-testid="textarea-revert-completion" disabled>Revert Completion</button>
+          </div>
         </div>
 
         <div class="textarea-demo-layout">
@@ -276,11 +335,14 @@ if (app) {
               <output class="textarea-submit-output" data-textarea-submit-value data-testid="textarea-submit-value" aria-live="polite">-</output>
             </div>
             <ul class="demo-notes">
+              <li>Type at least <code>${COMPLETION_DEMO_MIN_PREFIX_CHARS}</code> characters, pause for the mocked provider, then look for gray ghost text at the caret.</li>
+              <li>Press Tab to accept the visible completion. Press Escape or keep typing to dismiss it.</li>
+              <li>Accepted completion is normal textarea text only after Tab; Revert Completion removes the exact inserted text.</li>
               <li><code>teh </code> becomes <code>the </code> with a blue dotted overlay mark.</li>
               <li>Open the blue mark trigger with keyboard review to revert.</li>
               <li><code>reciept </code> renders a red mark with <code>receipt</code> as a suggestion.</li>
               <li><code>form </code>, <code>user@example.com </code>, and <code>/etc/passwd </code> remain unchanged.</li>
-              <li>Paste multiline text and scroll to verify mirror synchronization.</li>
+              <li>Paste multiline text and scroll to verify mirror synchronization. Overlay ghost alignment follows the measured caret, with browser text rendering as the remaining limit.</li>
             </ul>
           </form>
 
@@ -310,6 +372,73 @@ if (app) {
                 </label>
                 <button class="reset-button" type="button" data-textarea-reset-memory data-testid="textarea-reset-memory">Reset Memory</button>
               </div>
+            </section>
+
+            <section class="settings-panel compact-panel" aria-label="Textarea completion controls">
+              <h2>Completion Controls</h2>
+              <label>
+                <input type="checkbox" data-textarea-completion-enabled data-testid="textarea-completion-enabled" checked />
+                Mock completion
+              </label>
+              <label>
+                Mock text
+                <input
+                  type="text"
+                  data-textarea-completion-text
+                  data-testid="textarea-completion-text"
+                  value=" with mocked textarea ghost text."
+                />
+              </label>
+              <div class="remote-setting-row">
+                <span>Debounce</span>
+                <output>${COMPLETION_DEMO_DEBOUNCE_MS} ms</output>
+              </div>
+              <p class="panel-note">No network calls, no browser key input. The overlay is visual only and is not submitted with the form.</p>
+            </section>
+
+            <section class="debug-panel compact-panel" aria-label="Textarea completion status">
+              <h2>Completion Status</h2>
+              <dl>
+                <div>
+                  <dt>Status</dt>
+                  <dd data-textarea-completion-status data-testid="textarea-completion-status">idle</dd>
+                </div>
+                <div>
+                  <dt>Last event</dt>
+                  <dd data-textarea-completion-last-event data-testid="textarea-completion-last-event">-</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="debug-panel compact-panel" aria-label="Textarea completion metrics">
+              <h2>Completion Metrics</h2>
+              <dl>
+                <div>
+                  <dt>Requests</dt>
+                  <dd data-textarea-completion-requests data-testid="textarea-completion-requests">0</dd>
+                </div>
+                <div>
+                  <dt>Ghost shown</dt>
+                  <dd data-textarea-completion-ghost-shown data-testid="textarea-completion-ghost-shown">0</dd>
+                </div>
+                <div>
+                  <dt>Accepted</dt>
+                  <dd data-textarea-completion-accepted data-testid="textarea-completion-accepted">0</dd>
+                </div>
+                <div>
+                  <dt>Dismissed</dt>
+                  <dd data-textarea-completion-dismissed data-testid="textarea-completion-dismissed">0</dd>
+                </div>
+                <div>
+                  <dt>Reverted</dt>
+                  <dd data-textarea-completion-reverted data-testid="textarea-completion-reverted">0</dd>
+                </div>
+                <div>
+                  <dt>p95 ghost latency</dt>
+                  <dd data-textarea-completion-p95 data-testid="textarea-completion-p95">-</dd>
+                </div>
+              </dl>
+              <button class="reset-button" type="button" data-textarea-completion-reset-metrics data-testid="textarea-completion-reset-metrics">Reset completion metrics</button>
             </section>
 
             <section class="debug-panel compact-panel" aria-label="Textarea debug">
@@ -424,6 +553,9 @@ if (app) {
   const textareaForm = app.querySelector<HTMLFormElement>("[data-textarea-form]");
   const textareaSubmitValue = app.querySelector<HTMLElement>("[data-textarea-submit-value]");
   const textareaResetButton = app.querySelector<HTMLButtonElement>("[data-textarea-reset]");
+  const textareaRevertCompletionButton = app.querySelector<HTMLButtonElement>(
+    "[data-textarea-revert-completion]",
+  );
   const textareaStorageModeSelect = app.querySelector<HTMLSelectElement>(
     "[data-textarea-storage-mode]",
   );
@@ -442,6 +574,15 @@ if (app) {
   const textareaResetMemoryButton = app.querySelector<HTMLButtonElement>(
     "[data-textarea-reset-memory]",
   );
+  const textareaCompletionEnabledToggle = app.querySelector<HTMLInputElement>(
+    "[data-textarea-completion-enabled]",
+  );
+  const textareaCompletionTextInput = app.querySelector<HTMLInputElement>(
+    "[data-textarea-completion-text]",
+  );
+  const textareaCompletionResetMetricsButton = app.querySelector<HTMLButtonElement>(
+    "[data-textarea-completion-reset-metrics]",
+  );
   const textareaDebugEls = {
     lastDecision: app.querySelector<HTMLElement>("[data-textarea-last-decision]"),
     latency: app.querySelector<HTMLElement>("[data-textarea-debug-latency]"),
@@ -452,6 +593,16 @@ if (app) {
       "[data-textarea-debug-protected-skip-count]",
     ),
     markCount: app.querySelector<HTMLElement>("[data-textarea-debug-mark-count]"),
+  };
+  const textareaCompletionDebugEls = {
+    status: app.querySelector<HTMLElement>("[data-textarea-completion-status]"),
+    lastEvent: app.querySelector<HTMLElement>("[data-textarea-completion-last-event]"),
+    requests: app.querySelector<HTMLElement>("[data-textarea-completion-requests]"),
+    ghostShown: app.querySelector<HTMLElement>("[data-textarea-completion-ghost-shown]"),
+    accepted: app.querySelector<HTMLElement>("[data-textarea-completion-accepted]"),
+    dismissed: app.querySelector<HTMLElement>("[data-textarea-completion-dismissed]"),
+    reverted: app.querySelector<HTMLElement>("[data-textarea-completion-reverted]"),
+    p95Latency: app.querySelector<HTMLElement>("[data-textarea-completion-p95]"),
   };
   const chatDemoRoot = app.querySelector<HTMLElement>("[data-testid='chat-demo-root']");
   const chatForm = app.querySelector<HTMLFormElement>("[data-chat-form]");
@@ -517,12 +668,16 @@ if (app) {
     textareaForm &&
     textareaSubmitValue &&
     textareaResetButton &&
+    textareaRevertCompletionButton &&
     textareaStorageModeSelect &&
     textareaAutocorrectToggle &&
     textareaSpellcheckToggle &&
     textareaExportMemoryButton &&
     textareaImportMemoryInput &&
-    textareaResetMemoryButton
+    textareaResetMemoryButton &&
+    textareaCompletionEnabledToggle &&
+    textareaCompletionTextInput &&
+    textareaCompletionResetMetricsButton
   ) {
     void startTextareaDemo({
       root: textareaDemoRoot,
@@ -530,13 +685,18 @@ if (app) {
       form: textareaForm,
       submitValue: textareaSubmitValue,
       resetButton: textareaResetButton,
+      revertCompletionButton: textareaRevertCompletionButton,
       storageModeSelect: textareaStorageModeSelect,
       autocorrectToggle: textareaAutocorrectToggle,
       spellcheckToggle: textareaSpellcheckToggle,
       exportMemoryButton: textareaExportMemoryButton,
       importMemoryInput: textareaImportMemoryInput,
       resetMemoryButton: textareaResetMemoryButton,
+      completionEnabledToggle: textareaCompletionEnabledToggle,
+      completionTextInput: textareaCompletionTextInput,
+      completionResetMetricsButton: textareaCompletionResetMetricsButton,
       debugEls: textareaDebugEls,
+      completionDebugEls: textareaCompletionDebugEls,
     });
   }
 
@@ -555,19 +715,35 @@ type TextareaDebugElements = {
   markCount: HTMLElement | null;
 };
 
+type TextareaCompletionDebugElements = {
+  status: HTMLElement | null;
+  lastEvent: HTMLElement | null;
+  requests: HTMLElement | null;
+  ghostShown: HTMLElement | null;
+  accepted: HTMLElement | null;
+  dismissed: HTMLElement | null;
+  reverted: HTMLElement | null;
+  p95Latency: HTMLElement | null;
+};
+
 type TextareaDemoElements = {
   root: HTMLElement;
   textarea: HTMLTextAreaElement;
   form: HTMLFormElement;
   submitValue: HTMLElement;
   resetButton: HTMLButtonElement;
+  revertCompletionButton: HTMLButtonElement;
   storageModeSelect: HTMLSelectElement;
   autocorrectToggle: HTMLInputElement;
   spellcheckToggle: HTMLInputElement;
   exportMemoryButton: HTMLButtonElement;
   importMemoryInput: HTMLInputElement;
   resetMemoryButton: HTMLButtonElement;
+  completionEnabledToggle: HTMLInputElement;
+  completionTextInput: HTMLInputElement;
+  completionResetMetricsButton: HTMLButtonElement;
   debugEls: TextareaDebugElements;
+  completionDebugEls: TextareaCompletionDebugElements;
 };
 
 type TextareaDemoMetrics = {
@@ -654,7 +830,13 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
   let storage = createDemoStorage(storageMode);
   let core = await createTypaiCore({ storage });
   let adapter: ReturnType<typeof attachTextarea> | null = null;
+  let completionController: DemoTextareaCompletionController | null = null;
   let suppressMarkRemovedMetrics = false;
+  let latestCompletionSnapshot: TextareaCompletionSnapshot | null = null;
+  let lastCompletionTransactionId: string | null = null;
+  let completionLatencyMs = 50;
+  let ignoreAbortForCompletionProvider = false;
+  let failNextCompletionRequest = false;
 
   const updateDebug = () => {
     setText(elements.debugEls.lastDecision, metrics.lastDecision);
@@ -664,6 +846,26 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
     setText(elements.debugEls.revertCount, String(metrics.revertCount));
     setText(elements.debugEls.protectedSkipCount, String(metrics.protectedSkipCount));
     setText(elements.debugEls.markCount, String(activeMarks.size));
+  };
+
+  const updateCompletionDebug = () => {
+    const snapshot = completionController?.getDemoMetrics() ?? null;
+
+    setText(
+      elements.completionDebugEls.status,
+      elements.completionEnabledToggle.checked ? (snapshot?.status ?? "idle") : "disabled",
+    );
+    setText(elements.completionDebugEls.lastEvent, snapshot?.lastEvent ?? "-");
+    setText(elements.completionDebugEls.requests, String(snapshot?.requestCount ?? 0));
+    setText(elements.completionDebugEls.ghostShown, String(snapshot?.ghostShownCount ?? 0));
+    setText(elements.completionDebugEls.accepted, String(snapshot?.acceptedCount ?? 0));
+    setText(elements.completionDebugEls.dismissed, String(snapshot?.dismissedCount ?? 0));
+    setText(elements.completionDebugEls.reverted, String(snapshot?.revertedCount ?? 0));
+    setText(
+      elements.completionDebugEls.p95Latency,
+      formatLatency(snapshot?.p95GhostLatencyMs ?? null),
+    );
+    elements.revertCompletionButton.disabled = lastCompletionTransactionId === null;
   };
 
   const finishLatency = () => {
@@ -724,6 +926,24 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
 
   const attachAdapter = () => {
     adapter?.();
+    lastCompletionTransactionId = null;
+    completionController = elements.completionEnabledToggle.checked
+      ? createTextareaMockCompletionController({
+          surface: "textarea",
+          mode: "prose",
+          getCompletionText: () => elements.completionTextInput.value,
+          getLatencyMs: () => completionLatencyMs,
+          shouldIgnoreAbort: () => ignoreAbortForCompletionProvider,
+          consumeProviderError: () => {
+            const shouldFail = failNextCompletionRequest;
+
+            failNextCompletionRequest = false;
+            return shouldFail;
+          },
+          onUpdate: updateCompletionDebug,
+        })
+      : null;
+    latestCompletionSnapshot = null;
     adapter = attachTextarea({
       textarea: elements.textarea,
       typai: core,
@@ -737,17 +957,82 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
         enabled: true,
         className: "typai-textarea-demo-overlay",
       },
+      completion: {
+        onEditorInput(snapshot) {
+          latestCompletionSnapshot = snapshot;
+          completionController?.onEditorInput?.(snapshot);
+        },
+        onEditorSelectionChange(snapshot) {
+          latestCompletionSnapshot = snapshot;
+          completionController?.onEditorSelectionChange?.(snapshot);
+        },
+        onEditorBlur() {
+          latestCompletionSnapshot = null;
+          completionController?.onEditorBlur?.();
+        },
+        onEditorCompositionStart() {
+          latestCompletionSnapshot = null;
+          completionController?.onEditorCompositionStart?.();
+        },
+        onCorrectionTransaction() {
+          latestCompletionSnapshot = {
+            text: elements.textarea.value,
+            version: (latestCompletionSnapshot?.version ?? 0) + 1,
+            selection: {
+              start: elements.textarea.selectionStart,
+              end: elements.textarea.selectionEnd,
+            },
+            isComposingIME: false,
+          };
+          completionController?.onCorrectionTransaction?.();
+        },
+        onCompletionAccepted(event) {
+          lastCompletionTransactionId = event.transaction.id;
+          completionController?.onCompletionAccepted?.(event);
+          updateCompletionDebug();
+        },
+        onCompletionDismissed(event) {
+          completionController?.onCompletionDismissed?.(event);
+          updateCompletionDebug();
+        },
+        onCompletionReverted(event) {
+          if (lastCompletionTransactionId === event.transaction.id) {
+            lastCompletionTransactionId = null;
+          }
+          completionController?.onCompletionReverted?.(event);
+          updateCompletionDebug();
+        },
+        destroy() {
+          completionController?.destroy?.();
+          completionController = null;
+          latestCompletionSnapshot = null;
+        },
+      },
       onDecision,
       onCorrection,
       onMark,
       onMarkRemoved,
       onProtectedSkip,
     });
+    completionController?.setEditor(adapter);
     markTextareaOverlayForTests(elements.textarea);
+    updateCompletionDebug();
+  };
+
+  const clearTextareaGhostFeasibility = () => {
+    adapter?.clearTextareaGhostText("manual");
+  };
+  const getGhostFeasibilitySnapshot = (): TextareaGhostFeasibilitySnapshot | null => {
+    if (adapter === null || !adapter.isTextareaGhostVisible()) {
+      return null;
+    }
+
+    return getTextareaGhostFeasibilitySnapshot(elements.textarea, adapter);
   };
 
   const reinitializeCore = async () => {
     adapter?.();
+    completionController = null;
     activeMarks.clear();
     core = await createTypaiCore({ storage });
     attachAdapter();
@@ -756,6 +1041,7 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
   };
 
   const resetTextarea = (message = "Ready.") => {
+    clearTextareaGhostFeasibility();
     elements.textarea.value = "";
     elements.textarea.setSelectionRange(0, 0);
     activeMarks.clear();
@@ -767,6 +1053,8 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
     metrics.latencySamples = [];
     metrics.pendingStartedAt = null;
     metrics.lastDecision = message;
+    lastCompletionTransactionId = null;
+    completionController?.resetDemoMetrics();
     suppressMarkRemovedMetrics = true;
     dispatchTextareaInput(elements.textarea);
     suppressMarkRemovedMetrics = false;
@@ -774,6 +1062,7 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
     metrics.revertCount = 0;
     elements.submitValue.textContent = "-";
     updateDebug();
+    updateCompletionDebug();
   };
 
   elements.storageModeSelect.value = storageMode;
@@ -795,6 +1084,41 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
     adapter?.updateSettings({ spellcheck: elements.spellcheckToggle.checked });
     metrics.lastDecision = `textarea spellcheck=${elements.spellcheckToggle.checked}`;
     updateDebug();
+  });
+  elements.completionEnabledToggle.addEventListener("change", () => {
+    attachAdapter();
+    metrics.lastDecision = elements.completionEnabledToggle.checked
+      ? "Textarea mock completion enabled."
+      : "Textarea mock completion disabled.";
+    updateDebug();
+    updateCompletionDebug();
+  });
+  elements.completionResetMetricsButton.addEventListener("click", () => {
+    completionController?.resetDemoMetrics();
+    updateCompletionDebug();
+  });
+  elements.revertCompletionButton.addEventListener("click", () => {
+    const transaction =
+      lastCompletionTransactionId === null
+        ? undefined
+        : adapter
+            ?.getTextareaCompletionTransactions()
+            .find((candidate) => candidate.id === lastCompletionTransactionId);
+
+    if (adapter === null || transaction === undefined) {
+      metrics.lastDecision = "No accepted completion to revert.";
+      updateDebug();
+      updateCompletionDebug();
+      return;
+    }
+
+    const result = adapter.revertTextareaCompletion(transaction.id);
+
+    metrics.lastDecision = result.applied
+      ? "Textarea completion reverted."
+      : `Textarea completion revert skipped: ${result.reason ?? "unknown"}.`;
+    updateDebug();
+    updateCompletionDebug();
   });
   elements.storageModeSelect.addEventListener("change", () => {
     storageMode = elements.storageModeSelect.value === "memory" ? "memory" : "indexeddb";
@@ -872,8 +1196,109 @@ async function startTextareaDemo(elements: TextareaDemoElements): Promise<void> 
       updateDebug();
     },
   };
+  window.__typaiTextareaGhostFeasibility = {
+    render(text, offset = elements.textarea.selectionStart) {
+      const snapshot = getTextareaCompletionSnapshotForDemo(
+        elements.textarea,
+        latestCompletionSnapshot,
+        offset,
+      );
+
+      if (
+        adapter?.renderTextareaGhostText(text, snapshot, {
+          requestId: `textarea-demo-completion-${snapshot.version}-${offset}`,
+          providerName: "demo-mock",
+          model: "mock-textarea",
+          latencyMs: 0,
+        }) !== true
+      ) {
+        throw new Error("Textarea ghost renderer did not render.");
+      }
+
+      latestCompletionSnapshot = snapshot;
+
+      return getTextareaGhostFeasibilitySnapshot(elements.textarea, adapter);
+    },
+    resync(offset = elements.textarea.selectionStart) {
+      if (adapter === null || !adapter.isTextareaGhostVisible()) {
+        throw new Error("Textarea ghost renderer has no visible ghost to resync.");
+      }
+
+      const text = adapter.getTextareaGhostText() ?? "";
+      const snapshot = getTextareaCompletionSnapshotForDemo(
+        elements.textarea,
+        latestCompletionSnapshot,
+        offset,
+      );
+
+      adapter.renderTextareaGhostText(text, snapshot);
+      latestCompletionSnapshot = snapshot;
+
+      return getTextareaGhostFeasibilitySnapshot(elements.textarea, adapter);
+    },
+    clear() {
+      clearTextareaGhostFeasibility();
+    },
+    getSnapshot() {
+      return getGhostFeasibilitySnapshot();
+    },
+    accept() {
+      const result = adapter?.acceptTextareaCompletion();
+
+      if (result === undefined) {
+        throw new Error("Textarea adapter is not attached.");
+      }
+
+      updateCompletionDebug();
+      return result;
+    },
+    revertLast() {
+      const transaction = adapter?.getTextareaCompletionTransactions().at(-1);
+
+      if (adapter === null || transaction === undefined) {
+        return { applied: false, reason: "missing_transaction" };
+      }
+
+      const result = adapter.revertTextareaCompletion(transaction.id);
+
+      updateCompletionDebug();
+      return result;
+    },
+    getTransactions() {
+      return adapter?.getTextareaCompletionTransactions() ?? [];
+    },
+  };
+  window.__typaiTextareaGhostRenderer = window.__typaiTextareaGhostFeasibility;
+  window.__typaiTextareaCompletionDebug = {
+    getMetrics() {
+      return (
+        completionController?.getDemoMetrics() ?? {
+          status: "idle",
+          requestCount: 0,
+          ghostShownCount: 0,
+          acceptedCount: 0,
+          dismissedCount: 0,
+          revertedCount: 0,
+          providerErrorCount: 0,
+          staleResponseDroppedCount: 0,
+          p95GhostLatencyMs: null,
+          lastEvent: "-",
+        }
+      );
+    },
+    setLatencyMs(value) {
+      completionLatencyMs = value;
+    },
+    setIgnoreAbortForProvider(value) {
+      ignoreAbortForCompletionProvider = value;
+    },
+    failNextRequest() {
+      failNextCompletionRequest = true;
+    },
+  };
   metrics.lastDecision = "Ready.";
   updateDebug();
+  updateCompletionDebug();
 }
 
 async function startChatDemo(
@@ -955,6 +1380,67 @@ function markTextareaOverlayForTests(textarea: HTMLTextAreaElement): void {
   }
 }
 
+function getTextareaGhostFeasibilitySnapshot(
+  textarea: HTMLTextAreaElement,
+  adapter: ReturnType<typeof attachTextarea>,
+): TextareaGhostFeasibilitySnapshot {
+  const ghost = textarea.parentElement?.querySelector<HTMLElement>(
+    "[data-typai-textarea-ghost='true']",
+  );
+
+  if (ghost === undefined || ghost === null) {
+    throw new Error("Textarea ghost element is not visible.");
+  }
+
+  const offset = Number.parseInt(ghost.dataset.typaiTextareaGhostOffset ?? "", 10);
+  const safeOffset = Number.isFinite(offset) ? offset : textarea.selectionStart;
+  const ghostRect = rectSnapshot(ghost.getBoundingClientRect());
+  const overlay = textarea.parentElement?.querySelector<HTMLElement>(
+    "[data-testid='textarea-overlay']",
+  );
+  const caretRect =
+    overlay === undefined || overlay === null
+      ? null
+      : rectSnapshot(measureCaretInOverlayMirror(textarea, overlay, safeOffset));
+
+  return {
+    textareaValue: textarea.value,
+    ghostText: adapter.getTextareaGhostText() ?? "",
+    offset: safeOffset,
+    ghostRect,
+    caretRect,
+    deltaLeft: caretRect === null ? null : ghostRect.left - caretRect.left,
+    deltaTop: caretRect === null ? null : ghostRect.top - caretRect.top,
+  };
+}
+
+function getTextareaCompletionSnapshotForDemo(
+  textarea: HTMLTextAreaElement,
+  latestSnapshot: TextareaCompletionSnapshot | null,
+  offset: number,
+): TextareaCompletionSnapshot {
+  return {
+    text: textarea.value,
+    version: latestSnapshot?.text === textarea.value ? latestSnapshot.version : 0,
+    selection: {
+      start: offset,
+      end: offset,
+    },
+    isComposingIME: false,
+  };
+}
+
+function rectSnapshot(rect: DOMRect | RectSnapshot): RectSnapshot {
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
 async function startDemo(
   editor: HTMLElement,
   resetButton: HTMLButtonElement,
@@ -1015,10 +1501,11 @@ async function startDemo(
     renderDebugTable(debugEls.debugTableBody, debugEvents);
   };
 
-  const logDebugEvent = (event: Omit<DebugEvent, "time">) => {
+  const logDebugEvent = (event: DebugEventInput) => {
     debugEvents.unshift({
       time: new Date().toLocaleTimeString(),
       ...event,
+      sourceKind: event.sourceKind ?? sourceKindFromReasonCodes(event.reasonCodes),
     });
 
     if (debugEvents.length > 20) {
@@ -1076,6 +1563,15 @@ async function startDemo(
     },
     getLoadedDictionaryWordCount() {
       return core.getLoadedDictionaryWordCount();
+    },
+    getLoadedDictionaryByteSize() {
+      return core.getLoadedDictionaryByteSize();
+    },
+    getDeleteIndexEntryCount() {
+      return core.getDeleteIndexEntryCount();
+    },
+    getDeleteIndexMemoryEstimateBytes() {
+      return core.getDeleteIndexMemoryEstimateBytes();
     },
     clearLoadedDictionary() {
       return core.clearLoadedDictionary();
@@ -1569,7 +2065,7 @@ function renderDebugTable(element: HTMLElement | null, events: DebugEvent[]): vo
   if (events.length === 0) {
     element.innerHTML = `
       <tr>
-        <td colspan="6">No local events yet.</td>
+        <td colspan="7">No local events yet.</td>
       </tr>
     `;
     return;
@@ -1581,6 +2077,7 @@ function renderDebugTable(element: HTMLElement | null, events: DebugEvent[]): vo
         <tr data-testid="debug-row">
           <td>${escapeHtml(event.time)}</td>
           <td>${escapeHtml(event.actionType)}</td>
+          <td>${escapeHtml(event.sourceKind)}</td>
           <td>${escapeHtml(event.original)}</td>
           <td>${escapeHtml(event.replacement)}</td>
           <td>${escapeHtml(event.result)}</td>
@@ -1589,6 +2086,41 @@ function renderDebugTable(element: HTMLElement | null, events: DebugEvent[]): vo
       `,
     )
     .join("");
+}
+
+function sourceKindFromReasonCodes(reasonCodes: string[]): string {
+  if (reasonCodes.includes("ALWAYS_CORRECT_RULE")) {
+    return "user_always_rule";
+  }
+
+  if (reasonCodes.includes("NEVER_CORRECT_RULE")) {
+    return "user_never_rule";
+  }
+
+  if (reasonCodes.includes("COMMON_TYPO_TABLE_EXPANDED")) {
+    return "expanded_common_typo_table";
+  }
+
+  if (reasonCodes.includes("COMMON_TYPO_MATCH")) {
+    return "common_typo_table";
+  }
+
+  if (
+    reasonCodes.includes("DELETE_INDEX_CANDIDATE") ||
+    reasonCodes.includes("DELETE_INDEX_SUGGESTIONS")
+  ) {
+    return "delete_index_suggestion_engine";
+  }
+
+  if (reasonCodes.includes("PROTECTED_TOKEN_BLOCK")) {
+    return "protected_token_gate";
+  }
+
+  if (reasonCodes.includes("AUTOCORRECT_GATE_BLOCKED")) {
+    return "suppressed_autocorrect_gate";
+  }
+
+  return "local_action";
 }
 
 async function handlePopoverClick(
@@ -1642,7 +2174,7 @@ async function handlePopoverClick(
   focusAfterPopoverAction(editor, result);
 }
 
-function debugEventFromUserAction(action: TypaiUserAction): Omit<DebugEvent, "time"> {
+function debugEventFromUserAction(action: TypaiUserAction): DebugEventInput {
   if (action.type === "revert_correction") {
     return {
       actionType: "revert_correction",

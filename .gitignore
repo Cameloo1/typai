@@ -8,11 +8,16 @@ dist/
 coverage/
 test-results/
 playwright-report/
+reports/spell-quality/latest.json
 *.tsbuildinfo
 .DS_Store
 .env
 .env.*
 !.env.example
+
+# Local manual real-provider smoke config. Keep provider keys out of git.
+.env.openai.local
+*.local.ps1
 
 packages/*/dist/
 packages/core/pkg/

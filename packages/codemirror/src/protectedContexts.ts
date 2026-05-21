@@ -66,6 +66,23 @@ export function isProtectedCodeMirrorToken(state: EditorState, token: Token): bo
   );
 }
 
+export function isProtectedCodeMirrorCompletionContext(
+  state: EditorState,
+  offset: number,
+): boolean {
+  const token = getCompletedTokenBeforeCursor(state.doc, offset);
+
+  if (token === null) {
+    return false;
+  }
+
+  return (
+    isCompletionProtectedTokenText(token.text) ||
+    isProtectedBySyntaxTree(state, token.range.start, token.range.end) ||
+    isProtectedByMarkdownHeuristics(state.doc, token.range.start, token.range.end)
+  );
+}
+
 function isProtectedBySyntaxTree(state: EditorState, from: number, to: number): boolean {
   const tree = syntaxTree(state);
   let protectedContext = false;
@@ -204,4 +221,52 @@ function isCommandLookingLine(lineText: string): boolean {
   }
 
   return shellCommandNames.has(match[1].toLowerCase());
+}
+
+function isCompletionProtectedTokenText(text: string): boolean {
+  const token = text.trim();
+
+  if (token.length === 0) {
+    return false;
+  }
+
+  return (
+    isMarkdownCodeFence(token) ||
+    isInlineCode(token) ||
+    isCodeLikeText(token) ||
+    /^https?:\/\/\S+$/i.test(token) ||
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(token) ||
+    isPathLike(token) ||
+    /^[A-Z]{2,}$/.test(token) ||
+    /^[a-z]+(?:[A-Z][A-Za-z0-9]*)+$/.test(token) ||
+    /^[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+$/.test(token) ||
+    /^CVE-\d{4}-\d+$/i.test(token)
+  );
+}
+
+function isMarkdownCodeFence(text: string): boolean {
+  return (
+    text.startsWith("```") || text.endsWith("```") || text.startsWith("~~~") || text.endsWith("~~~")
+  );
+}
+
+function isInlineCode(text: string): boolean {
+  return text.length >= 2 && text.startsWith("`") && text.endsWith("`");
+}
+
+function isCodeLikeText(text: string): boolean {
+  return (
+    /\b(const|let|var|function|return|class|import|export)\b/.test(text) || /[=;{}]/.test(text)
+  );
+}
+
+function isPathLike(text: string): boolean {
+  return (
+    text.startsWith("/") ||
+    text.startsWith("~/") ||
+    text.startsWith("./") ||
+    text.startsWith("../") ||
+    /^[A-Za-z]:[\\/]/.test(text) ||
+    text.includes("\\")
+  );
 }

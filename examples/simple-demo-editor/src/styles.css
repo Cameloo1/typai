@@ -376,6 +376,12 @@ code {
   font-weight: 700;
 }
 
+.panel-note {
+  margin: 10px 0 0;
+  color: #526173;
+  font-size: 0.86rem;
+}
+
 .settings-panel input[type="text"],
 .settings-panel input[type="number"] {
   width: min(100%, 170px);

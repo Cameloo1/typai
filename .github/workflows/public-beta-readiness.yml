@@ -1,0 +1,314 @@
+name: Public Beta Readiness
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  PROVIDER_MODE: mock
+  TYPAI_ALLOW_REAL_PROVIDER_TEST: "0"
+  OPENAI_API_KEY: ""
+
+jobs:
+  build-test-lint:
+    name: Build, Test, Lint, Core Bench
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Deterministic correction benchmark
+        run: pnpm --filter @typai/core bench
+
+      - name: Language asset benchmark gates
+        run: pnpm bench:language-asset
+
+      - name: Spell quality benchmark gates
+        run: pnpm bench:spell-quality
+
+  e2e:
+    name: Chromium and Firefox E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium and Firefox
+        run: pnpm exec playwright install --with-deps chromium firefox
+
+      - name: Build
+        run: pnpm build
+
+      - name: E2E and accessibility checks
+        run: pnpm test:e2e
+
+      - name: Browser benchmark
+        run: pnpm bench:browser
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-beta-readiness-playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  package-smoke:
+    name: Package Dry Run and Smoke Install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package artifacts
+        run: pnpm build
+
+      - name: Package dry run
+        run: pnpm pack:dry
+
+      - name: Package size report
+        run: pnpm package:size-report
+
+      - name: Package install smoke
+        run: pnpm smoke:install
+
+  public-beta-smoke:
+    name: Public Beta Smoke Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Public beta smoke matrix
+        run: pnpm smoke:public-beta
+
+  release-dry-run:
+    name: Release Dry Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build release artifacts
+        run: pnpm build
+
+      - name: Version dry run
+        run: pnpm release:version:dry
+
+      - name: Release check
+        run: pnpm release:check
+
+      - name: Package size report
+        run: pnpm package:size-report
+
+      - name: Release pack dry run
+        run: pnpm release:pack
+
+      - name: Publish dry run
+        run: pnpm release:publish:dry
+
+  security-audit-smoke:
+    name: Security and Provider Contract Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked
+          fi
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Package secret scan
+        run: pnpm scan:package-secrets
+
+      - name: Package size report
+        run: pnpm package:size-report
+
+      - name: Build provider proxy contract packages
+        run: |
+          pnpm --filter @typai/provider-proxy-testkit build
+          pnpm --filter @typai/provider-proxy-example-utils build
+          pnpm --filter provider-proxy-express build
+          pnpm --filter provider-proxy-next build
+          pnpm --filter provider-proxy-cloudflare-worker build
+
+      - name: Provider proxy contract tests
+        run: |
+          pnpm --filter @typai/provider-proxy-testkit test
+          pnpm --filter provider-proxy-express test
+          pnpm --filter provider-proxy-next test
+          pnpm --filter provider-proxy-cloudflare-worker test
+
+      - name: Docs safety check
+        run: pnpm docs:check

@@ -5,7 +5,8 @@ CodeMirror 6 adapter package for typai.
 This package is part of Rich Editor Adapter Foundation. The initial version is
 focused on local deterministic correction: it marks unresolved spelling issues
 with CodeMirror decorations and applies common-typo corrections through
-range-verified CodeMirror transactions.
+range-verified CodeMirror transactions. It can also render optional completion
+ghost text when a host passes a structural completion controller.
 
 ## Scope
 
@@ -27,9 +28,21 @@ range-verified CodeMirror transactions.
   lines, URLs, emails, paths, identifiers, acronyms, and CVEs are protected.
 - If no syntax tree is available, conservative Markdown heuristics still protect
   common code, link, and shell-command contexts.
+- Optional completion ghost text uses CodeMirror decoration widgets at the
+  caret.
+- Ghost text is visual only, aria-hidden, and not part of the CodeMirror
+  document.
+- Completion ghost text clears on typing, Escape, selection changes,
+  composition, blur, paste, correction transactions, and stale snapshots.
+- Tab accepts visible ghost text with a CodeMirror transaction after stale
+  snapshot checks.
+- Accepted completion creates a completion transaction and does not create a
+  blue correction mark.
+- Exact revert removes the inserted completion text only when the recorded
+  inserted range still matches.
+- Completion controllers are passed in by the host; this package does not
+  construct providers or require `@typai/completion-remote`.
 - No CodeMirror 5 support.
-- No V4 remote completion.
-- No ghost text completion.
 - No OpenAI/provider endpoint.
 
 ## Dependency Policy
@@ -85,6 +98,49 @@ With a syntax tree, typai skips inline code, fenced code blocks, and Markdown
 link destinations. Without a syntax tree, it falls back to conservative text
 heuristics for fences, inline code, link destinations, and command-looking
 lines such as `npm install zzzzword`.
+
+## Optional Completion
+
+Completion is opt-in. Pass a structural controller that receives editor
+snapshots and renders through the connected editor bridge. The adapter never
+imports or configures `@typai/completion-remote` by itself, and browser examples
+must not contain private provider keys.
+
+```ts
+const extension = createTypaiCodeMirrorExtension({
+  typai,
+  completion: {
+    connectEditor(editor) {
+      completionScheduler.onGhost((text, snapshot) => {
+        editor.renderGhostTextAtCaret(text, snapshot);
+      });
+    },
+    onEditorInput(snapshot) {
+      completionScheduler.schedule(snapshot);
+    },
+    onEditorSelectionChange() {
+      completionScheduler.dismiss("selection_change");
+    },
+  },
+});
+```
+
+The current CodeMirror completion layer renders ghost text, accepts it with Tab,
+and supports exact revert through CodeMirror-native transactions:
+
+```ts
+import {
+  getTypaiCodeMirrorViewCompletionTransactions,
+  revertLastTypaiCodeMirrorCompletion,
+} from "@typai/codemirror";
+
+getTypaiCodeMirrorViewCompletionTransactions(view);
+revertLastTypaiCodeMirrorCompletion(view);
+```
+
+Accepted completions are not correction marks. They do not use the blue
+applied-correction decoration because blue remains reserved for deterministic
+corrections that Typai changed.
 
 ## Popovers And Controls
 

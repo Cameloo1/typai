@@ -8,6 +8,7 @@ import {
   createCompletionRequest,
   createEndpointCompletionProvider,
   createMockCompletionProvider,
+  createMockStreamingCompletionProvider,
   createNoopCompletionProvider,
   createRemoteCompletion,
   sanitizeCompletionText,
@@ -18,6 +19,7 @@ describe("@typai/completion-remote scaffold", () => {
     expect(typeof createRemoteCompletion).toBe("function");
     expect(typeof createNoopCompletionProvider).toBe("function");
     expect(typeof createMockCompletionProvider).toBe("function");
+    expect(typeof createMockStreamingCompletionProvider).toBe("function");
     expect(typeof createEndpointCompletionProvider).toBe("function");
   });
 
@@ -57,8 +59,17 @@ describe("@typai/completion-remote scaffold", () => {
       "request_scheduled",
       "request_canceled_before_send",
       "request_aborted_in_flight",
+      "request_budget_exceeded",
       "provider_error",
+      "provider_timeout",
+      "invalid_response",
+      "rate_limit_cooldown_started",
       "provider_latency",
+      "stream_started",
+      "stream_delta",
+      "stream_completed",
+      "stream_aborted",
+      "stream_stale_delta_dropped",
       "ghost_shown",
       "ghost_dismissed_by_typing",
       "ghost_dismissed_by_escape",
@@ -88,6 +99,29 @@ describe("@typai/completion-remote scaffold", () => {
     });
 
     expect(sanitized).toBe("abc");
+  });
+
+  it("supports deterministic mock streaming deltas without network access", async () => {
+    const provider = createMockStreamingCompletionProvider(" streaming text", {
+      deltas: [" stream", "ing", " text"],
+    });
+    const request = createCompletionRequest({
+      id: "request-4",
+      mode: "prompt",
+      contextBefore: "hello",
+    });
+    const deltas = [];
+
+    for await (const delta of provider.streamComplete?.(request, {}) ?? []) {
+      deltas.push(delta);
+    }
+
+    expect(deltas).toEqual([
+      { id: "request-4", textDelta: " stream" },
+      { id: "request-4", textDelta: "ing" },
+      { id: "request-4", textDelta: " text" },
+      { id: "request-4", textDelta: "", done: true },
+    ]);
   });
 
   it("does not include direct OpenAI provider source", () => {

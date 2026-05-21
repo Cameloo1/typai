@@ -1,17 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { delimiter, resolve } from "node:path";
+import { releasePackages } from "./release-config.mjs";
 
-const packages = [
-  { name: "@typai/core", directory: "packages/core" },
-  { name: "@typai/contenteditable", directory: "packages/contenteditable" },
-  { name: "@typai/textarea", directory: "packages/textarea" },
-  { name: "@typai/ui", directory: "packages/ui" },
-  { name: "@typai/react", directory: "packages/react" },
-  { name: "@typai/codemirror", directory: "packages/codemirror" },
-  { name: "@typai/completion-remote", directory: "packages/completion-remote" },
-];
-
-for (const pkg of packages) {
+for (const pkg of releasePackages) {
   const cwd = resolve(pkg.directory);
   const npmCommand = resolveCommand("npm", ["pack", "--dry-run", "--json"]);
   const result = spawnSync(npmCommand.command, npmCommand.args, {
@@ -29,7 +21,7 @@ for (const pkg of packages) {
   const packed = parsePackJson(result.stdout)[0];
   const files = packed.files.map((file) => file.path);
 
-  validatePackedFiles(pkg, files);
+  validatePackedFiles(pkg, cwd, files);
 
   console.log(`\n${pkg.name} dry-run tarball`);
   console.log(`filename: ${packed.filename}`);
@@ -58,15 +50,18 @@ function parsePackJson(stdout) {
   return JSON.parse(match[0]);
 }
 
-function validatePackedFiles(pkg, files) {
+function validatePackedFiles(pkg, cwd, files) {
   const forbiddenPrefixes = [
+    "api/",
     "src/",
+    "server/",
     "test/",
     "tests/",
     "coverage/",
     "examples/",
     "playwright-report/",
     "reports/",
+    "routes/",
     "test-results/",
   ];
 
@@ -74,6 +69,13 @@ function validatePackedFiles(pkg, files) {
     if (forbiddenPrefixes.some((prefix) => file.startsWith(prefix))) {
       throw new Error(`${pkg.name} dry-run includes forbidden package file: ${file}`);
     }
+  }
+
+  validatePackedMetadata(pkg, cwd, files);
+  validatePackedSecrets(pkg, cwd, files);
+
+  if (pkg.name === "@typai/core") {
+    validateCorePackedFiles(pkg, cwd, files);
   }
 
   if (
@@ -88,6 +90,138 @@ function validatePackedFiles(pkg, files) {
       }
     }
   }
+}
+
+function validateCorePackedFiles(pkg, cwd, files) {
+  for (const requiredFile of [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "pkg/typai_wasm.js",
+    "pkg/typai_wasm_bg.wasm",
+    "README.md",
+  ]) {
+    if (!files.includes(requiredFile)) {
+      throw new Error(`${pkg.name} dry-run is missing ${requiredFile}`);
+    }
+  }
+
+  const productionManifest = readProductionManifest(cwd);
+  const productionStatus = productionManifest.review?.status ?? "unknown";
+  const packageInclusion = productionManifest.output?.packageInclusion ?? "unknown";
+
+  if (productionStatus === "blocked") {
+    if (packageInclusion !== "blocked") {
+      throw new Error(
+        `${pkg.name} blocked production manifest must keep output.packageInclusion blocked, got ${packageInclusion}.`,
+      );
+    }
+
+    for (const file of files) {
+      if (
+        file.startsWith("assets/") ||
+        /production.*dictionary/i.test(file) ||
+        /(?:dictionary|frequency).*\.(?:bin|gz|dic|aff|tsv|txt)$/i.test(file)
+      ) {
+        throw new Error(
+          `${pkg.name} dry-run includes blocked production or raw asset file: ${file}`,
+        );
+      }
+    }
+
+    return;
+  }
+
+  if (productionStatus !== "approved") {
+    throw new Error(
+      `${pkg.name} production manifest review.status must be approved or blocked, got ${productionStatus}.`,
+    );
+  }
+
+  if (
+    packageInclusion === "committed-generated-binary" ||
+    packageInclusion === "generated-during-prepack"
+  ) {
+    for (const requiredFile of [
+      "assets/production/MANIFEST.json",
+      "assets/production/ATTRIBUTION.md",
+      "assets/production/LICENSES/README.md",
+    ]) {
+      if (!files.includes(requiredFile)) {
+        throw new Error(`${pkg.name} approved production inclusion is missing ${requiredFile}.`);
+      }
+    }
+
+    if (!files.some((file) => /(?:^|\/)production-en-us\.dictionary\.bin$/i.test(file))) {
+      throw new Error(`${pkg.name} approved production inclusion is missing the generated binary.`);
+    }
+  }
+
+  for (const file of files) {
+    if (isRawDictionarySourceFile(file)) {
+      throw new Error(`${pkg.name} dry-run includes raw dictionary/frequency source file: ${file}`);
+    }
+  }
+}
+
+function validatePackedMetadata(pkg, cwd, files) {
+  if (!files.includes("package.json")) {
+    throw new Error(`${pkg.name} dry-run is missing package.json`);
+  }
+
+  const packageJson = JSON.parse(readFileSync(resolve(cwd, "package.json"), "utf8"));
+  const serializedPackage = JSON.stringify(packageJson);
+  const dependencies = {
+    ...packageJson.dependencies,
+    ...packageJson.peerDependencies,
+    ...packageJson.optionalDependencies,
+  };
+
+  if (/api[_-]?key|private[_-]?key|provider[_-]?key|OPENAI_API_KEY/i.test(serializedPackage)) {
+    throw new Error(`${pkg.name} dry-run metadata contains private provider-key wording.`);
+  }
+
+  if (Object.keys(dependencies).some((dependencyName) => /^openai$/i.test(dependencyName))) {
+    throw new Error(`${pkg.name} dry-run metadata must not include an OpenAI SDK dependency.`);
+  }
+}
+
+function validatePackedSecrets(pkg, cwd, files) {
+  const inspectableFiles = files.filter(
+    (file) =>
+      !file.toLowerCase().endsWith("readme.md") &&
+      /\.(?:cjs|cts|d\.ts|js|json|mjs|mts|ts)$/.test(file),
+  );
+
+  for (const file of inspectableFiles) {
+    const contents = readFileSync(resolve(cwd, file), "utf8");
+
+    if (/\bOPENAI_API_KEY\b/i.test(contents) || /\bsk-[A-Za-z0-9_-]{8,}\b/.test(contents)) {
+      throw new Error(`${pkg.name} dry-run includes provider secret-like content in ${file}`);
+    }
+  }
+}
+
+function readProductionManifest(cwd) {
+  for (const manifestFile of [
+    "assets/production/MANIFEST.json",
+    "assets/production/MANIFEST.template.json",
+  ]) {
+    try {
+      return JSON.parse(readFileSync(resolve(cwd, manifestFile), "utf8"));
+    } catch {
+      // Try the fallback manifest path.
+    }
+  }
+
+  return { review: { status: "unknown" }, output: { packageInclusion: "unknown" } };
+}
+
+function isRawDictionarySourceFile(file) {
+  return (
+    /\.(?:aff|dic|gz|tsv|zip)$/i.test(file) ||
+    /(?:^|\/)totalcounts-\d+$/i.test(file) ||
+    /(?:^|\/)books-ngram/i.test(file)
+  );
 }
 
 function resolveCommand(command, args) {

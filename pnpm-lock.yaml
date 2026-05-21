@@ -304,6 +304,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
 
+  tests/spell-quality:
+    dependencies:
+      '@typai/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
 packages:
 
   '@acemir/cssom@0.9.31':
